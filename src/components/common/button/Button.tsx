@@ -1,8 +1,21 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./Button.module.css";
 
+interface ButtonProps {
+  text: string;
+  /** Click handler, for buttons that perform an action */
+  action?: () => void;
+  /** Destination, for buttons that navigate; renders a Link instead */
+  href?: string;
+  variant?: "primary" | "secondary" | "outline";
+  /** "sm" is the compact style for app UI like the dashboard */
+  size?: "md" | "sm";
+  icon?: ReactNode;
+  iconPosition?: "left" | "right";
+}
+
 // Renders a <Link> when given an href (navigation), a <button> otherwise (action).
-// variant: "primary" | "secondary" | "outline"   size: "md" | "sm"
 export default function Button({
   text,
   action,
@@ -11,7 +24,7 @@ export default function Button({
   size = "md",
   icon,
   iconPosition = "left",
-}) {
+}: ButtonProps) {
   const className = [
     styles.button,
     styles[variant],

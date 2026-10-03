@@ -1,4 +1,5 @@
 import { TODAY } from "@/data/mockData";
+import type { ISODate, ISODateTime, Metric } from "@/types/finance";
 
 const MONTHS = [
   "Jan",
@@ -22,20 +23,23 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 /** formatCurrency(2400, { signed: true }) -> "+$2,400.00" */
-export function formatCurrency(value, { signed = false } = {}) {
+export function formatCurrency(
+  value: number,
+  { signed = false }: { signed?: boolean } = {},
+): string {
   const text = currency.format(Math.abs(value));
   if (!signed) return value < 0 ? `-${text}` : text;
   return `${value < 0 ? "-" : "+"}${text}`;
 }
 
 /** 12400 -> "$12k" (chart axis labels) */
-export function formatCompactCurrency(value) {
+export function formatCompactCurrency(value: number): string {
   if (Math.abs(value) >= 1000)
     return `$${Math.round(value / 100) / 10}k`.replace(".0k", "k");
   return `$${value}`;
 }
 
-export function formatNumber(value) {
+export function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
@@ -44,7 +48,10 @@ export function getMetricChange({
   value,
   previousValue,
   higherIsBetter = true,
-}) {
+}: Pick<Metric, "value" | "previousValue" | "higherIsBetter">): {
+  text: string;
+  isPositive: boolean;
+} {
   if (value === previousValue) return { text: "No change", isPositive: true };
   const pct = ((value - previousValue) / previousValue) * 100;
   return {
@@ -53,19 +60,21 @@ export function getMetricChange({
   };
 }
 
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const dayDiff = (from, to) =>
-  Math.round((startOfDay(to) - startOfDay(from)) / 86400000);
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const dayDiff = (from: Date, to: Date) =>
+  Math.round(
+    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86400000,
+  );
 const today = () => new Date(`${TODAY}T00:00:00`);
 
-function formatTime(d) {
+function formatTime(d: Date): string {
   const h = d.getHours();
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h % 12 || 12}:${m} ${h >= 12 ? "PM" : "AM"}`;
 }
 
 /** "Today, 2:41 PM" / "Yesterday" / "Sep 28" */
-export function formatRelativeDate(iso) {
+export function formatRelativeDate(iso: ISODateTime): string {
   const d = new Date(iso);
   const diff = dayDiff(d, today());
   if (diff === 0) return `Today, ${formatTime(d)}`;
@@ -74,7 +83,7 @@ export function formatRelativeDate(iso) {
 }
 
 /** "today" / "tomorrow" / "in 3 days" */
-export function formatDueLabel(isoDate) {
+export function formatDueLabel(isoDate: ISODate): string {
   const diff = dayDiff(today(), new Date(`${isoDate}T00:00:00`));
   if (diff <= 0) return "today";
   if (diff === 1) return "tomorrow";

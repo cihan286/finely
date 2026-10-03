@@ -1,6 +1,6 @@
 import styles from "./Logo.module.css";
 
-export default function Logo({ showText = true }) {
+export default function Logo({ showText = true }: { showText?: boolean }) {
   return (
     <svg
       className={styles.logoSvg}
