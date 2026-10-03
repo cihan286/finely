@@ -1,0 +1,753 @@
+.contentArea {
+  flex: 1;
+  min-width: 0; /* lets the flex child shrink instead of overflowing */
+  padding: 2rem 3rem;
+  overflow-y: auto;
+  background-color: rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .contentArea {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: #666;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .subtitle {
+    color: #a1a1aa;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btnSecondary {
+  background-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: inherit;
+}
+
+.btnSecondary:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btnPrimary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .btnSecondary {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .btnSecondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.metricCard {
+  background-color: var(--background);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .metricCard {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.metricHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metricTitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .metricTitle {
+    color: #a1a1aa;
+  }
+}
+
+.iconContainer {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.metricBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metricValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.metricChange {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.positive {
+  color: #10b981;
+}
+
+.negative {
+  color: #ef4444;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background-color: var(--background);
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.viewAllBtn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.viewAllBtn:hover {
+  text-decoration: underline;
+}
+
+.dropdown {
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dropdown {
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--background);
+  }
+}
+
+.chartCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.chartPlaceholder {
+  flex: 1;
+  min-height: 250px;
+  border-radius: 0.5rem;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chartPlaceholder {
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.01);
+  }
+}
+
+.placeholderText {
+  color: #888;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.expenseList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.expenseItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.expenseHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expenseCategory {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expenseIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expenseName {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.expenseAmount {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+  .progressBarBg {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease-out;
+}
+
+.transactionList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.transactionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.transactionItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .transactionItem {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+.transactionLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.txIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.txIconIncome {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.txIconExpense {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .txIconExpense {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #a1a1aa;
+  }
+}
+
+.txDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.txName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.txDate {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .txDate {
+    color: #a1a1aa;
+  }
+}
+
+.txAmount {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.positiveAmount {
+  color: #10b981;
+}
+
+.billList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.billItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.billItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .billItem {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+.billLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.billIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.billDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.billName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.billDue {
+  font-size: 0.8rem;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.payBtn {
+  background-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+}
+
+.payBtn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .payBtn {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* ============================================================
+   Overflow protection (all screen sizes)
+   Names/amounts no longer collide: names shrink + truncate,
+   amounts never wrap.
+   ============================================================ */
+.dashboardGrid > * {
+  min-width: 0;
+}
+
+.cardHeader {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cardTitle {
+  flex-shrink: 0;
+}
+
+.expenseHeader,
+.transactionLeft,
+.billLeft {
+  gap: 0.75rem;
+}
+
+.expenseCategory,
+.transactionLeft,
+.billLeft,
+.txDetails,
+.billDetails {
+  min-width: 0;
+}
+
+.expenseIcon,
+.txIcon,
+.billIcon {
+  flex-shrink: 0;
+}
+
+.expenseName,
+.txName,
+.billName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expenseAmount,
+.txAmount,
+.payBtn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.transactionItem,
+.billItem {
+  gap: 0.75rem;
+}
+
+/* ============================================================
+   Tablet / mobile
+   ============================================================ */
+@media (max-width: 768px) {
+  .contentArea {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  /* 2 x 2 metric tiles instead of a tall single column */
+  .metricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .metricCard {
+    padding: 1rem;
+    gap: 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .metricTitle {
+    font-size: 0.8rem;
+  }
+
+  .metricValue {
+    font-size: 1.2rem;
+  }
+
+  .metricChange {
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  .dashboardGrid {
+    gap: 1.25rem;
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  .cardHeader {
+    margin-bottom: 1rem;
+  }
+
+  .cardTitle {
+    font-size: 1rem;
+  }
+
+  .chartPlaceholder {
+    min-height: 180px;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .expenseList {
+    gap: 1rem;
+  }
+
+  .txIcon,
+  .billIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .payBtn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .metricValue {
+    font-size: 1.05rem;
+  }
+}
+
+/* ============================================================
+   Cash flow chart
+   ============================================================ */
+.chartStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.chartStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chartStatLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666;
+}
+
+.chartStatValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* color is inherited by the chart's axis labels and grid (currentColor) */
+.chartWrap {
+  width: 100%;
+  height: 280px;
+  color: #888;
+}
+
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--background);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 0.8rem;
+  color: inherit;
+}
+
+.tooltipLabel {
+  font-weight: 600;
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tooltipRow strong {
+  margin-left: auto;
+  padding-left: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chartStatLabel {
+    color: #a1a1aa;
+  }
+  .chartWrap {
+    color: #a1a1aa;
+  }
+  .tooltip {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (max-width: 768px) {
+  .chartStats {
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .chartStatValue {
+    font-size: 1rem;
+  }
+  .chartWrap {
+    height: 220px;
+  }
+}

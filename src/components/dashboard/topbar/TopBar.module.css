@@ -1,0 +1,287 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 72px;
+  flex-shrink: 0;
+  padding: 0 3rem;
+  background-color: var(--background);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 5;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 0.85rem 0 2.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--primary);
+  background-color: transparent;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bellWrap {
+  position: relative;
+}
+
+.iconBtn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.iconBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 360px;
+  max-height: 70vh;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+  background-color: var(--background);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.linkBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.notifList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notifItem {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.unread {
+  background-color: rgba(33, 150, 243, 0.06);
+}
+
+.notifDot {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.4rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: transparent;
+}
+
+.unread .notifDot {
+  background-color: var(--primary);
+}
+
+.notifBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.notifTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.notifDesc {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.notifTime {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.userName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.userRole {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .topBar,
+  .searchInput,
+  .iconBtn,
+  .panel {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .topBar {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  .searchInput {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .searchInput:focus {
+    background-color: transparent;
+    border-color: var(--primary);
+  }
+  .iconBtn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .panel {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+  .notifItem {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  .unread {
+    background-color: rgba(33, 150, 243, 0.12);
+  }
+  .notifDesc,
+  .userRole {
+    color: #a1a1aa;
+  }
+  .notifTime {
+    color: #71717a;
+  }
+}
+
+@media (max-width: 768px) {
+  .topBar {
+    height: 64px;
+    padding: 0 1rem;
+    gap: 0.75rem;
+  }
+
+  .actions {
+    gap: 0.75rem;
+  }
+
+  /* Notification panel spans the screen instead of overflowing it */
+  .panel {
+    position: fixed;
+    top: 4.5rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+
+  .userInfo {
+    display: none;
+  }
+}
