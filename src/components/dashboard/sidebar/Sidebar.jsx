@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
 import Logo from "@/components/common/logo/Logo";
 import {
@@ -11,8 +13,26 @@ import {
   LogOut,
 } from "lucide-react";
 
+const NAV_LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  {
+    href: "/dashboard/transactions",
+    label: "Transactions",
+    icon: ArrowRightLeft,
+  },
+  { href: "/dashboard/insights", label: "Insights", icon: PieChart },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
+// "/dashboard" only matches itself; sections also match their sub-pages.
+function isActive(pathname, href) {
+  if (href === "/dashboard") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const pathname = usePathname();
 
   return (
     <aside
@@ -25,46 +45,50 @@ export default function Sidebar() {
       </div>
 
       <nav className={styles.navMenu}>
-        <NavItem
-          icon={<LayoutDashboard size={20} />}
-          label="Dashboard"
-          isExpanded={isExpanded}
-          active
-        />
-        <NavItem
-          icon={<ArrowRightLeft size={20} />}
-          label="Transactions"
-          isExpanded={isExpanded}
-        />
-        <NavItem
-          icon={<PieChart size={20} />}
-          label="Insights"
-          isExpanded={isExpanded}
-        />
-        <NavItem
-          icon={<Settings size={20} />}
-          label="Settings"
-          isExpanded={isExpanded}
-        />
+        {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+          <NavLink
+            key={href}
+            href={href}
+            icon={<Icon size={20} />}
+            label={label}
+            isExpanded={isExpanded}
+            active={isActive(pathname, href)}
+          />
+        ))}
       </nav>
 
       <div className={styles.footer}>
-        <NavItem
-          icon={<LogOut size={20} />}
-          label="Log out"
-          isExpanded={isExpanded}
-        />
+        {/* Stays a button: logging out is an action, not a page */}
+        <button className={styles.navItem}>
+          <NavItemContent
+            icon={<LogOut size={20} />}
+            label="Log out"
+            isExpanded={isExpanded}
+          />
+        </button>
       </div>
     </aside>
   );
 }
 
-function NavItem({ icon, label, isExpanded, active }) {
+function NavLink({ href, icon, label, isExpanded, active }) {
   return (
-    <button className={`${styles.navItem} ${active ? styles.active : ""}`}>
+    <Link
+      href={href}
+      className={`${styles.navItem} ${active ? styles.active : ""}`}
+      aria-current={active ? "page" : undefined}
+    >
+      <NavItemContent icon={icon} label={label} isExpanded={isExpanded} />
+    </Link>
+  );
+}
+
+function NavItemContent({ icon, label, isExpanded }) {
+  return (
+    <>
       <span className={styles.icon}>{icon}</span>
       <span className={styles.label}>{label}</span>
       {!isExpanded && <span className={styles.tooltip}>{label}</span>}
-    </button>
+    </>
   );
 }

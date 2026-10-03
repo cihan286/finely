@@ -80,10 +80,12 @@
   text-align: center;
 }
 
-.divided {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+@media (max-width: 650px) {
+  .lastLine {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 }
 
 @media (max-width: 550px) {
