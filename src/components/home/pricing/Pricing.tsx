@@ -5,7 +5,22 @@ import { useState } from "react";
 import Button from "@/components/common/button/Button";
 import { Check, ArrowRight } from "lucide-react";
 
-const plans = [
+interface Plan {
+  name: string;
+  description: string;
+  /** null = custom pricing ("Contact sales") */
+  monthlyPrice: number | null;
+  yearlyPrice: number | null;
+  features: string[];
+  cta: string;
+  ctaHref?: string;
+  variant: "primary" | "secondary";
+  featured: boolean;
+}
+
+type BillingCycle = "monthly" | "yearly";
+
+const plans: Plan[] = [
   {
     name: "Starter",
     description: "For small teams getting started",
@@ -60,15 +75,15 @@ const plans = [
 
 // Lowest yearly discount among paid plans, so the badge holds for every plan
 const yearlySavings = Math.min(
-  ...plans
-    .filter((plan) => plan.monthlyPrice !== null)
-    .map((plan) =>
-      Math.floor((1 - plan.yearlyPrice / plan.monthlyPrice) * 100),
-    ),
+  ...plans.flatMap(({ monthlyPrice, yearlyPrice }) =>
+    monthlyPrice !== null && yearlyPrice !== null
+      ? [Math.floor((1 - yearlyPrice / monthlyPrice) * 100)]
+      : [],
+  ),
 );
 
 export default function Pricing() {
-  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
   return (
     <section id="pricing" className={styles.mainContainer}>

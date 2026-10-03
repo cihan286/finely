@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import styles from "./PhoneMockup.module.css";
 import {
   Home,
@@ -95,7 +96,21 @@ export default function PhoneMockup() {
   );
 }
 
-function Transaction({ icon, name, time, amount, positive }) {
+interface TransactionProps {
+  icon: ReactNode;
+  name: string;
+  time: string;
+  amount: string;
+  positive?: boolean;
+}
+
+function Transaction({
+  icon,
+  name,
+  time,
+  amount,
+  positive = false,
+}: TransactionProps) {
   return (
     <div className={styles.transaction}>
       <div
@@ -120,7 +135,13 @@ function Transaction({ icon, name, time, amount, positive }) {
   );
 }
 
-function Tab({ icon, label, active }) {
+interface TabProps {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+}
+
+function Tab({ icon, label, active = false }: TabProps) {
   return (
     <div className={`${styles.tab} ${active ? styles.tabActive : ""}`}>
       {icon}

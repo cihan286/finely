@@ -11,18 +11,18 @@ import {
 export default function TopBar() {
   const [items, setItems] = useState(initialNotifications);
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = items.filter((n) => !n.read).length;
 
   // Close the panel on outside click or Escape
   useEffect(() => {
     if (!open) return;
-    const onMouseDown = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target))
+    const onMouseDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
         setOpen(false);
     };
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onMouseDown);

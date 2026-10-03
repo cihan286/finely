@@ -9,16 +9,26 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type TooltipContentProps,
 } from "recharts";
 import styles from "./DashboardHome.module.css";
 import { cashflow } from "@/data/mockData";
+import type { CashflowRange } from "@/types/finance";
 import { formatCurrency, formatCompactCurrency } from "@/utils/format";
 
-const RANGES = { last30Days: "Last 30 Days", thisYear: "This Year" };
+const RANGES: Record<CashflowRange, string> = {
+  last30Days: "Last 30 Days",
+  thisYear: "This Year",
+};
 // Colors come from the design tokens in globals.css. CSS `style` values can use
 // var() directly; SVG attributes can't, so the chart paths use currentColor and
 // get their color from the series className instead.
-const SERIES = {
+type SeriesKey = "income" | "expenses";
+
+const SERIES: Record<
+  SeriesKey,
+  { label: string; color: string; className: string }
+> = {
   income: {
     label: "Income",
     color: "var(--success)",
@@ -31,27 +41,34 @@ const SERIES = {
   },
 };
 
-function ChartTooltip({ active, payload, label }) {
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: TooltipContentProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className={styles.tooltip}>
       <span className={styles.tooltipLabel}>{label}</span>
-      {payload.map((item) => (
-        <div key={item.dataKey} className={styles.tooltipRow}>
-          <span
-            className={styles.legendDot}
-            style={{ backgroundColor: SERIES[item.dataKey].color }}
-          />
-          <span>{SERIES[item.dataKey].label}</span>
-          <strong>{formatCurrency(item.value)}</strong>
-        </div>
-      ))}
+      {payload.map((item) => {
+        const series = SERIES[item.dataKey as SeriesKey];
+        return (
+          <div key={String(item.dataKey)} className={styles.tooltipRow}>
+            <span
+              className={styles.legendDot}
+              style={{ backgroundColor: series.color }}
+            />
+            <span>{series.label}</span>
+            <strong>{formatCurrency(Number(item.value))}</strong>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export default function CashFlowChart() {
-  const [range, setRange] = useState("last30Days");
+  const [range, setRange] = useState<CashflowRange>("last30Days");
   const data = cashflow[range];
 
   const totals = useMemo(() => {
@@ -69,7 +86,7 @@ export default function CashFlowChart() {
         <select
           className={styles.dropdown}
           value={range}
-          onChange={(e) => setRange(e.target.value)}
+          onChange={(e) => setRange(e.target.value as CashflowRange)}
           aria-label="Cash flow period"
         >
           {Object.entries(RANGES).map(([value, label]) => (
@@ -89,14 +106,14 @@ export default function CashFlowChart() {
             {formatCurrency(totals.net, { signed: true })}
           </span>
         </div>
-        {Object.entries(SERIES).map(([key, { label, color }]) => (
+        {(Object.keys(SERIES) as SeriesKey[]).map((key) => (
           <div key={key} className={styles.chartStat}>
             <span className={styles.chartStatLabel}>
               <span
                 className={styles.legendDot}
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: SERIES[key].color }}
               />
-              {label}
+              {SERIES[key].label}
             </span>
             <span className={styles.chartStatValue}>
               {formatCurrency(totals[key])}
@@ -154,7 +171,7 @@ export default function CashFlowChart() {
               tickFormatter={formatCompactCurrency}
             />
             <Tooltip
-              content={<ChartTooltip />}
+              content={ChartTooltip}
               cursor={{ stroke: "currentColor", strokeOpacity: 0.25 }}
             />
             <Area

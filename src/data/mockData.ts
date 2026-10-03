@@ -3,13 +3,27 @@
 // no pre-formatted strings. Formatting lives in utils/format.js.
 // Everything is internally consistent (see the "Totals" section).
 
+import type {
+  Account,
+  Alert,
+  Bill,
+  Card,
+  Cashflow,
+  CashflowPoint,
+  ExpenseCategory,
+  Metric,
+  Notification,
+  Transaction,
+  User,
+} from "@/types/finance";
+
 /** "Today" for the mock world. Keeps relative labels ("Yesterday") stable. */
 export const TODAY = "2026-10-01";
 
 /* ------------------------------------------------------------------ */
 /* User & company                                                      */
 /* ------------------------------------------------------------------ */
-export const currentUser = {
+export const currentUser: User = {
   id: "usr_01",
   firstName: "Maya",
   lastName: "Carter",
@@ -19,7 +33,7 @@ export const currentUser = {
   initials: "MC",
 };
 
-export const notifications = [
+export const notifications: Notification[] = [
   {
     id: "n1",
     type: "payment",
@@ -65,7 +79,7 @@ export const notifications = [
 /* ------------------------------------------------------------------ */
 /* Accounts & cards                                                    */
 /* ------------------------------------------------------------------ */
-export const accounts = [
+export const accounts: Account[] = [
   {
     id: "acc_1",
     name: "Business Checking",
@@ -90,7 +104,7 @@ export const accounts = [
   },
 ];
 
-export const cards = [
+export const cards: Card[] = [
   {
     id: "card_1",
     brand: "Visa",
@@ -152,7 +166,7 @@ export const cards = [
 /* Expense breakdown (last 30 days)                                    */
 /* ------------------------------------------------------------------ */
 // iconKey is mapped to a lucide icon inside the component.
-export const expenseCategories = [
+export const expenseCategories: ExpenseCategory[] = [
   {
     id: "cat_payroll",
     category: "Payroll",
@@ -193,7 +207,7 @@ export const expenseCategories = [
 /* ------------------------------------------------------------------ */
 /* Totals — everything below is derived so the page can't disagree     */
 /* ------------------------------------------------------------------ */
-const round2 = (n) => Math.round(n * 100) / 100;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const INCOME_30D = 42600.0;
 export const EXPENSES_30D = round2(
@@ -204,7 +218,7 @@ export const TOTAL_BALANCE = round2(
 ); // 128,942.50
 
 // Last month's figures give the "+12.4% from last month" style deltas.
-export const metrics = [
+export const metrics: Metric[] = [
   {
     id: "balance",
     title: "Total Balance",
@@ -262,7 +276,7 @@ const MONTHS = [
 ];
 
 // Small deterministic PRNG so the chart is identical on server and client.
-function seeded(seed) {
+function seeded(seed: number): () => number {
   let t = seed;
   return () => {
     t = (t + 0x6d2b79f5) | 0;
@@ -273,7 +287,7 @@ function seeded(seed) {
 }
 
 // Splits `total` into n uneven, positive parts that sum exactly to `total`.
-function distribute(total, n, rand) {
+function distribute(total: number, n: number, rand: () => number): number[] {
   const weights = Array.from({ length: n }, () => 0.4 + rand() * 1.2);
   const weightSum = weights.reduce((a, b) => a + b, 0);
   const values = weights.map((w) => round2((w / weightSum) * total));
@@ -282,7 +296,7 @@ function distribute(total, n, rand) {
   return values;
 }
 
-function buildLast30Days() {
+function buildLast30Days(): CashflowPoint[] {
   const rand = seeded(2026);
   const income = distribute(INCOME_30D, 30, rand);
   const expenses = distribute(EXPENSES_30D, 30, rand);
@@ -297,7 +311,7 @@ function buildLast30Days() {
   });
 }
 
-export const cashflow = {
+export const cashflow: Cashflow = {
   // Daily points; sums equal INCOME_30D / EXPENSES_30D exactly.
   last30Days: buildLast30Days(),
   // Monthly points; Aug matches the "previous" figures above, Oct is month-to-date.
@@ -320,7 +334,7 @@ export const cashflow = {
 /* category totals above include more rows than are listed here.       */
 /* amount: positive = income, negative = expense                       */
 /* ------------------------------------------------------------------ */
-export const transactions = [
+export const transactions: Transaction[] = [
   {
     id: "tx_01",
     name: "Stripe payout",
@@ -434,7 +448,7 @@ export const transactions = [
 /* ------------------------------------------------------------------ */
 /* Bills & alerts                                                      */
 /* ------------------------------------------------------------------ */
-export const upcomingBills = [
+export const upcomingBills: Bill[] = [
   {
     id: "bill_1",
     name: "Google Workspace",
@@ -447,7 +461,7 @@ export const upcomingBills = [
 ];
 
 // For the upcoming "Needs attention" strip.
-export const alerts = [
+export const alerts: Alert[] = [
   {
     id: "al_1",
     severity: "warning",

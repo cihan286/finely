@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Arimo, Lexend } from "next/font/google";
 import "./globals.css";
 
@@ -11,7 +13,7 @@ const lexend = Lexend({
   subsets: ["latin"],
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: {
     default: "Finely – Financial clarity for modern businesses",
     template: "%s | Finely",
@@ -20,7 +22,7 @@ export const metadata = {
     "Track expenses automatically, see your cash flow in real time, and turn your business's financial data into clear, actionable insights.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"

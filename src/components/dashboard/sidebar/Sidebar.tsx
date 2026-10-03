@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FocusEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
@@ -25,7 +25,7 @@ const NAV_LINKS = [
 ];
 
 // "/dashboard" only matches itself; sections also match their sub-pages.
-function isActive(pathname, href) {
+function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -34,11 +34,19 @@ export default function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
 
+  // Collapse only when focus leaves the sidebar, not when it moves between items
+  const handleBlur = (e: FocusEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsExpanded(false);
+  };
+
   return (
     <aside
       className={`${styles.sidebar} ${isExpanded ? styles.expanded : styles.collapsed}`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
+      // Keyboard users expand it by tabbing into it
+      onFocus={() => setIsExpanded(true)}
+      onBlur={handleBlur}
     >
       <div className={styles.header}>
         <Logo showText={isExpanded} />
@@ -71,7 +79,18 @@ export default function Sidebar() {
   );
 }
 
-function NavLink({ href, icon, label, isExpanded, active }) {
+interface NavItemContentProps {
+  icon: ReactNode;
+  label: string;
+  isExpanded: boolean;
+}
+
+interface NavLinkProps extends NavItemContentProps {
+  href: string;
+  active: boolean;
+}
+
+function NavLink({ href, icon, label, isExpanded, active }: NavLinkProps) {
   return (
     <Link
       href={href}
@@ -83,12 +102,17 @@ function NavLink({ href, icon, label, isExpanded, active }) {
   );
 }
 
-function NavItemContent({ icon, label, isExpanded }) {
+function NavItemContent({ icon, label, isExpanded }: NavItemContentProps) {
   return (
     <>
       <span className={styles.icon}>{icon}</span>
       <span className={styles.label}>{label}</span>
-      {!isExpanded && <span className={styles.tooltip}>{label}</span>}
+      {/* Visual only: screen readers already get the label above */}
+      {!isExpanded && (
+        <span className={styles.tooltip} aria-hidden="true">
+          {label}
+        </span>
+      )}
     </>
   );
 }

@@ -1,10 +1,15 @@
+import type { ReactNode } from "react";
 import styles from "./layout.module.css";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
 import TopBar from "@/components/dashboard/topbar/TopBar";
 
 // Shared frame for every /dashboard/* page: sidebar + top bar stay mounted
 // while navigating, only {children} changes.
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <div className={styles.mainContainer}>
       <Sidebar />
