@@ -1,22 +1,7 @@
-"use client";
-
 import styles from "./Features.module.css";
-import { useState, useEffect } from "react";
 import { CloudUpload, Lock, RefreshCw, Fingerprint } from "lucide-react";
 
 export default function Features() {
-  const [width, setWidth] = useState(0);
-
-  useEffect(() => {
-    setWidth(window.innerWidth);
-    console.log(window.innerWidth);
-
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
     <div className={styles.mainContainer}>
       <div className={styles.backgroundLayer} aria-hidden="true" />
@@ -28,17 +13,11 @@ export default function Features() {
         </div>
         <div className={styles.subHeadline}>
           <span>Automate workflows, gain actionable insights, and</span>
-          {width > 650 ? (
-            <span>
-              empower your team with tools designed for modern, fast-growing
-              businesses.
-            </span>
-          ) : (
-            <div className={styles.divided}>
-              <span>empower your team with tools designed for</span>
-              <span>modern, fast-growing businesses.</span>
-            </div>
-          )}
+          {/* One line on wide screens, split in two below 650px (see CSS) */}
+          <span className={styles.lastLine}>
+            <span>empower your team with tools designed for</span>{" "}
+            <span>modern, fast-growing businesses.</span>
+          </span>
         </div>
       </div>
       <div className={styles.featuresGrid}>
