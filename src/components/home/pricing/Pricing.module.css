@@ -1,0 +1,369 @@
+.mainContainer {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  gap: clamp(1rem, 2.5vh, 2.5rem);
+  position: relative;
+  overflow: hidden;
+  background-color: var(--background);
+  transition: background-color 0.3s ease;
+}
+
+.backgroundLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: linear-gradient(-225deg, #e3fdf5 0%, #ffe6fa 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .backgroundLayer {
+    background-image: radial-gradient(
+      circle farthest-corner at 16.5% 28.1%,
+      rgba(15, 27, 49, 1) 0%,
+      rgba(0, 112, 218, 1) 90%
+    );
+  }
+}
+
+.headlineContainer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.4rem, 0.8vh, 1rem);
+}
+
+.title {
+  font-weight: bold;
+  color: var(--primary);
+  font-size: clamp(1rem, 1.9vh, 1.1rem);
+}
+
+.headline {
+  font-size: clamp(2.1rem, 4.8vh, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: bold;
+  letter-spacing: -1px;
+  line-height: 1.15;
+}
+
+.subHeadline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.4;
+  font-size: clamp(1rem, 1.9vh, 1.1rem);
+  opacity: 0.8;
+  text-align: center;
+}
+
+/* Billing toggle */
+
+.billingToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  padding: clamp(0.2rem, 0.4vh, 0.3rem);
+  margin-top: clamp(0.2rem, 0.5vh, 0.5rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  .billingToggle {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.toggleOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: clamp(0.45rem, 0.9vh, 0.65rem) 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: clamp(0.9rem, 1.7vh, 1.05rem);
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.toggleActive {
+  background: var(--primary);
+  color: #ededed;
+  opacity: 1;
+  box-shadow: 0 4px 14px -4px rgba(33, 150, 243, 0.6);
+}
+
+.savingsBadge {
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .savingsBadge {
+    background: rgba(129, 199, 132, 0.18);
+    color: #81c784;
+  }
+}
+
+/* Pricing grid */
+
+.pricingGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 1100px;
+  width: 100%;
+  padding: 0 2rem;
+  align-items: stretch;
+}
+
+.pricingCard {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.3vh, 1.1rem);
+  padding: clamp(1rem, 2.6vh, 1.85rem) clamp(1.1rem, 1.8vw, 1.6rem);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.12);
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.featuredCard {
+  border: 1px solid var(--primary);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 60px -15px rgba(33, 150, 243, 0.35);
+  transform: scale(1.03);
+  z-index: 2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pricingCard {
+    background: rgba(10, 11, 13, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.4);
+  }
+
+  .featuredCard {
+    background: rgba(10, 11, 13, 0.8);
+    border: 1px solid var(--primary);
+    box-shadow: 0 20px 60px -15px rgba(33, 150, 243, 0.45);
+  }
+}
+
+.popularBadge {
+  position: absolute;
+  top: -0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary);
+  color: #ededed;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px -2px rgba(33, 150, 243, 0.5);
+  white-space: nowrap;
+}
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.2rem, 0.4vh, 0.35rem);
+}
+
+.planName {
+  font-size: clamp(1.25rem, 2.3vh, 1.5rem);
+  font-weight: 700;
+}
+
+.planDescription {
+  font-size: clamp(0.92rem, 1.6vh, 1.05rem);
+  opacity: 0.6;
+  line-height: 1.4;
+}
+
+.priceRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.priceCurrency {
+  font-size: clamp(1.3rem, 2.3vh, 1.6rem);
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 0.35rem;
+}
+
+.priceValue {
+  font-size: clamp(2.2rem, 4.8vh, 3.1rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.pricePeriod {
+  font-size: clamp(0.9rem, 1.5vh, 1.05rem);
+  opacity: 0.5;
+  margin-bottom: 0.45rem;
+}
+
+.priceCustom {
+  font-size: clamp(2rem, 4vh, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.billedNote {
+  font-size: clamp(0.8rem, 1.3vh, 0.88rem);
+  opacity: 0.5;
+  margin-top: -0.5rem;
+}
+
+.divider {
+  height: 1px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .divider {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.4rem, 0.9vh, 0.65rem);
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: clamp(0.92rem, 1.6vh, 1.05rem);
+  line-height: 1.35;
+}
+
+.checkIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.cardCta {
+  margin-top: auto;
+  padding-top: clamp(0.2rem, 0.5vh, 0.4rem);
+}
+
+.cardCta button {
+  width: 100%;
+  justify-content: center;
+  padding: clamp(0.6rem, 1.2vh, 0.85rem) 1.25rem !important;
+  font-size: clamp(0.95rem, 1.5vh, 1.05rem) !important;
+}
+
+/* Responsive: below this width the grid stacks, so let the section grow
+   naturally instead of forcing everything into one viewport height. */
+
+@media (max-width: 1000px) {
+  .mainContainer {
+    height: auto;
+    padding: 4rem 0;
+    gap: 3rem;
+  }
+
+  .pricingGrid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .featuredCard {
+    transform: none;
+  }
+
+  .headline {
+    font-size: 2.5rem;
+  }
+
+  .subHeadline {
+    font-size: 1.15rem;
+  }
+
+  .title {
+    font-size: 1.1rem;
+  }
+
+  .pricingCard {
+    padding: 2rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .planName {
+    font-size: 1.3rem;
+  }
+
+  .planDescription {
+    font-size: 0.9rem;
+  }
+
+  .priceValue {
+    font-size: 3rem;
+  }
+
+  .priceCustom {
+    font-size: 2.2rem;
+  }
+
+  .featureItem {
+    font-size: 0.95rem;
+  }
+
+  .cardCta button {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 1rem !important;
+  }
+}
+
+@media (max-width: 550px) {
+  .mainContainer {
+    padding: 4rem 0;
+  }
+
+  .pricingGrid {
+    padding: 0 1.25rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .headline {
+    font-size: 2.2rem;
+  }
+
+  .billingToggle {
+    transform: scale(0.95);
+  }
+}

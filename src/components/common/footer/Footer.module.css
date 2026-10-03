@@ -1,0 +1,149 @@
+.footerContainer {
+  background-color: var(--background);
+  color: var(--foreground);
+  padding: 4rem 5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s ease;
+}
+
+.topSection {
+  display: flex;
+  justify-content: space-between;
+  gap: 4rem;
+  flex-wrap: wrap;
+}
+
+.brandSection {
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.brandLink {
+  max-width: max-content;
+  display: inline-flex;
+  align-items: center;
+}
+
+.description {
+  opacity: 0.7;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.socialLinks {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.socialLinks a {
+  opacity: 0.6;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.socialLinks a:hover {
+  opacity: 1;
+  color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.linksGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5rem;
+  flex: 1;
+  max-width: 800px;
+}
+
+.linkColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.columnTitle {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.link {
+  font-size: 0.95rem;
+  opacity: 0.7;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.link:hover {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.bottomSection {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bottomSection {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1150px) {
+  .footerContainer {
+    padding: 4rem 2rem 2rem;
+  }
+
+  .linksGrid {
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .topSection {
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .linksGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+    width: 100%;
+  }
+
+  .brandSection {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 550px) {
+  .footerContainer {
+    padding: 3rem 1.5rem 2rem;
+  }
+
+  .linksGrid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .bottomSection {
+    margin-top: 3rem;
+  }
+}

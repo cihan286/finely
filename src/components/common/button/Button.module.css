@@ -1,0 +1,35 @@
+.base {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  outline: none;
+  background-color: var(--primary);
+  color: #ededed;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.secondary {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  background-color: transparent;
+  outline: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.secondary:hover {
+  background-color: var(--primary);
+  color: #ededed;
+}
+
+.base:hover {
+  background-color: color-mix(in srgb, var(--primary), var(--background) 20%);
+}

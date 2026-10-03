@@ -1,0 +1,201 @@
+.sidebar {
+  height: 100vh;
+  background-color: var(--background);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  position: relative;
+  z-index: 10;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sidebar {
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.expanded {
+  width: 260px;
+}
+
+.collapsed {
+  width: 80px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  height: 80px;
+  overflow: hidden;
+}
+
+.navMenu {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.footer {
+  padding: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.navItem:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .navItem:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.active {
+  background-color: rgba(33, 150, 243, 0.1);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+  .active {
+    background-color: rgba(33, 150, 243, 0.2);
+  }
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.label {
+  white-space: nowrap;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.collapsed .label {
+  opacity: 0;
+  transform: translateX(-10px);
+  pointer-events: none;
+}
+
+/* Tooltip for collapsed state */
+.tooltip {
+  position: absolute;
+  left: 100%;
+  margin-left: 1rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #171717;
+  color: white;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  z-index: 20;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tooltip {
+    background-color: #ffffff;
+    color: #171717;
+  }
+}
+
+.collapsed .navItem:hover .tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ============================================================
+   Mobile: turn the sidebar into a bottom navigation bar.
+   It no longer takes horizontal space, so it can never push
+   the content out of the screen.
+   ============================================================ */
+@media (max-width: 768px) {
+  .sidebar,
+  .sidebar.expanded,
+  .sidebar.collapsed {
+    order: 2; /* render below the content */
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    border-right: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    transition: none;
+  }
+
+  .header {
+    display: none;
+  }
+
+  .navMenu {
+    flex: 1;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 0;
+    gap: 0.25rem;
+    overflow: visible;
+  }
+
+  .footer {
+    padding: 0;
+    border-top: none;
+  }
+
+  .navItem {
+    width: auto;
+    flex: 1;
+    justify-content: center;
+    padding: 0.7rem 0.5rem;
+  }
+
+  .label,
+  .tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .sidebar,
+  .sidebar.expanded,
+  .sidebar.collapsed {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+}
