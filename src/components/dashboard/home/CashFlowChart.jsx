@@ -15,9 +15,20 @@ import { cashflow } from "@/data/mockData";
 import { formatCurrency, formatCompactCurrency } from "@/utils/format";
 
 const RANGES = { last30Days: "Last 30 Days", thisYear: "This Year" };
+// Colors come from the design tokens in globals.css. CSS `style` values can use
+// var() directly; SVG attributes can't, so the chart paths use currentColor and
+// get their color from the series className instead.
 const SERIES = {
-  income: { label: "Income", color: "#10b981" },
-  expenses: { label: "Expenses", color: "#ef4444" },
+  income: {
+    label: "Income",
+    color: "var(--success)",
+    className: styles.incomeSeries,
+  },
+  expenses: {
+    label: "Expenses",
+    color: "var(--danger)",
+    className: styles.expensesSeries,
+  },
 };
 
 function ChartTooltip({ active, payload, label }) {
@@ -110,8 +121,14 @@ export default function CashFlowChart() {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor={color} stopOpacity={0.28} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                  <stop
+                    offset="0%"
+                    style={{ stopColor: color, stopOpacity: 0.28 }}
+                  />
+                  <stop
+                    offset="100%"
+                    style={{ stopColor: color, stopOpacity: 0 }}
+                  />
                 </linearGradient>
               ))}
             </defs>
@@ -143,14 +160,18 @@ export default function CashFlowChart() {
             <Area
               type="monotone"
               dataKey="expenses"
-              stroke={SERIES.expenses.color}
+              className={SERIES.expenses.className}
+              stroke="currentColor"
+              activeDot={{ className: SERIES.expenses.className }}
               strokeWidth={2}
               fill="url(#cf-expenses)"
             />
             <Area
               type="monotone"
               dataKey="income"
-              stroke={SERIES.income.color}
+              className={SERIES.income.className}
+              stroke="currentColor"
+              activeDot={{ className: SERIES.income.className }}
               strokeWidth={2}
               fill="url(#cf-income)"
             />

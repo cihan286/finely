@@ -3,16 +3,10 @@
   min-width: 0; /* lets the flex child shrink instead of overflowing */
   padding: 2rem 3rem;
   overflow-y: auto;
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--surface-muted);
   display: flex;
   flex-direction: column;
   gap: 2rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .contentArea {
-    background-color: rgba(0, 0, 0, 0.2);
-  }
 }
 
 .header {
@@ -31,15 +25,9 @@
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-muted);
   margin: 0;
   font-size: 0.95rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .subtitle {
-    color: #a1a1aa;
-  }
 }
 
 .headerActions {
@@ -47,46 +35,6 @@
   gap: 0.75rem;
 }
 
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btnSecondary {
-  background-color: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  color: inherit;
-}
-
-.btnSecondary:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.btnPrimary {
-  background-color: var(--primary);
-  color: #ffffff;
-}
-
-.btnPrimary:hover {
-  opacity: 0.9;
-}
-
-@media (prefers-color-scheme: dark) {
-  .btnSecondary {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .btnSecondary:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-}
 
 .metricsGrid {
   display: grid;
@@ -97,19 +45,12 @@
 .metricCard {
   background-color: var(--background);
   padding: 1.5rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .metricCard {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-  }
 }
 
 .metricHeader {
@@ -121,13 +62,7 @@
 .metricTitle {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #666;
-}
-
-@media (prefers-color-scheme: dark) {
-  .metricTitle {
-    color: #a1a1aa;
-  }
+  color: var(--text-muted);
 }
 
 .iconContainer {
@@ -153,11 +88,11 @@
 }
 
 .positive {
-  color: #10b981;
+  color: var(--success);
 }
 
 .negative {
-  color: #ef4444;
+  color: var(--danger);
 }
 
 .dashboardGrid {
@@ -174,17 +109,11 @@
 
 .card {
   background-color: var(--background);
-  border-radius: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-}
-
-@media (prefers-color-scheme: dark) {
-  .card {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
 }
 
 .cardHeader {
@@ -215,19 +144,12 @@
 
 .dropdown {
   padding: 0.4rem 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background-color: transparent;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
   color: inherit;
   font-size: 0.85rem;
   cursor: pointer;
-}
-
-@media (prefers-color-scheme: dark) {
-  .dropdown {
-    border-color: rgba(255, 255, 255, 0.1);
-    background-color: var(--background);
-  }
 }
 
 .chartCard {
@@ -238,23 +160,16 @@
 .chartPlaceholder {
   flex: 1;
   min-height: 250px;
-  border-radius: 0.5rem;
-  border: 2px dashed rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(0, 0, 0, 0.01);
-}
-
-@media (prefers-color-scheme: dark) {
-  .chartPlaceholder {
-    border-color: rgba(255, 255, 255, 0.1);
-    background-color: rgba(255, 255, 255, 0.01);
-  }
+  background-color: var(--surface-muted);
 }
 
 .placeholderText {
-  color: #888;
+  color: var(--text-subtle);
   font-size: 0.95rem;
   font-weight: 500;
 }
@@ -305,15 +220,9 @@
 .progressBarBg {
   width: 100%;
   height: 6px;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--hover);
   border-radius: 3px;
   overflow: hidden;
-}
-
-@media (prefers-color-scheme: dark) {
-  .progressBarBg {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
 }
 
 .progressBarFill {
@@ -333,18 +242,12 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .transactionItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .transactionItem {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
 }
 
 .transactionLeft {
@@ -363,20 +266,13 @@
 }
 
 .txIconIncome {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background-color: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
 .txIconExpense {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #666;
-}
-
-@media (prefers-color-scheme: dark) {
-  .txIconExpense {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #a1a1aa;
-  }
+  background-color: var(--hover);
+  color: var(--text-muted);
 }
 
 .txDetails {
@@ -392,13 +288,7 @@
 
 .txDate {
   font-size: 0.8rem;
-  color: #666;
-}
-
-@media (prefers-color-scheme: dark) {
-  .txDate {
-    color: #a1a1aa;
-  }
+  color: var(--text-muted);
 }
 
 .txAmount {
@@ -407,7 +297,7 @@
 }
 
 .positiveAmount {
-  color: #10b981;
+  color: var(--success);
 }
 
 .billList {
@@ -421,18 +311,12 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .billItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .billItem {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
 }
 
 .billLeft {
@@ -445,8 +329,8 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -465,15 +349,15 @@
 
 .billDue {
   font-size: 0.8rem;
-  color: #ef4444;
+  color: var(--danger);
   font-weight: 500;
 }
 
 .payBtn {
   background-color: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
   padding: 0.4rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -484,12 +368,6 @@
 .payBtn:hover {
   border-color: var(--primary);
   color: var(--primary);
-}
-
-@media (prefers-color-scheme: dark) {
-  .payBtn {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
 }
 
 /* ============================================================
@@ -576,9 +454,8 @@
     width: 100%;
   }
 
-  .btn {
+  .headerActions > * {
     flex: 1;
-    justify-content: center;
     white-space: nowrap;
   }
 
@@ -591,7 +468,7 @@
   .metricCard {
     padding: 1rem;
     gap: 0.75rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-md);
   }
 
   .metricTitle {
@@ -613,7 +490,7 @@
 
   .card {
     padding: 1rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-md);
   }
 
   .cardHeader {
@@ -674,7 +551,7 @@
   gap: 0.4rem;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .chartStatValue {
@@ -695,7 +572,16 @@
 .chartWrap {
   width: 100%;
   height: 280px;
-  color: #888;
+  color: var(--text-subtle);
+}
+
+/* Series colors for the chart's SVG paths (stroke="currentColor") */
+.incomeSeries {
+  color: var(--success);
+}
+
+.expensesSeries {
+  color: var(--danger);
 }
 
 .tooltip {
@@ -703,10 +589,10 @@
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.6rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background-color: var(--background);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
   font-size: 0.8rem;
   color: inherit;
 }
@@ -724,19 +610,6 @@
 .tooltipRow strong {
   margin-left: auto;
   padding-left: 0.75rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .chartStatLabel {
-    color: #a1a1aa;
-  }
-  .chartWrap {
-    color: #a1a1aa;
-  }
-  .tooltip {
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
 }
 
 @media (max-width: 768px) {

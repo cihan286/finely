@@ -70,18 +70,11 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 999px;
+  background: var(--hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
   padding: clamp(0.2rem, 0.4vh, 0.3rem);
   margin-top: clamp(0.2rem, 0.5vh, 0.5rem);
-}
-
-@media (prefers-color-scheme: dark) {
-  .billingToggle {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
 }
 
 .toggleOption {
@@ -90,36 +83,29 @@
   gap: 0.5rem;
   border: none;
   background: transparent;
-  color: inherit;
   padding: clamp(0.45rem, 0.9vh, 0.65rem) 1.25rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-weight: 600;
   font-size: clamp(0.9rem, 1.7vh, 1.05rem);
-  opacity: 0.6;
+  /* Dim the label with color, not opacity, so the savings badge stays vivid */
+  color: color-mix(in srgb, currentColor 60%, transparent);
   transition: all 0.2s ease;
 }
 
 .toggleActive {
   background: var(--primary);
-  color: #ededed;
-  opacity: 1;
-  box-shadow: 0 4px 14px -4px rgba(33, 150, 243, 0.6);
+  color: var(--on-primary);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--primary) 60%, transparent);
 }
 
 .savingsBadge {
-  background: rgba(76, 175, 80, 0.15);
-  color: #2e7d32;
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  /* pulled toward the text color for contrast: darker in light, lighter in dark */
+  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .savingsBadge {
-    background: rgba(129, 199, 132, 0.18);
-    color: #81c784;
-  }
+  border-radius: var(--radius-full);
 }
 
 /* Pricing grid */
@@ -142,34 +128,21 @@
   gap: clamp(0.6rem, 1.3vh, 1.1rem);
   padding: clamp(1rem, 2.6vh, 1.85rem) clamp(1.1rem, 1.8vw, 1.6rem);
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--background) 60%, transparent);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
   position: relative;
   transition: transform 0.2s ease;
 }
 
 .featuredCard {
   border: 1px solid var(--primary);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 20px 60px -15px rgba(33, 150, 243, 0.35);
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  box-shadow: 0 20px 60px -15px
+    color-mix(in srgb, var(--primary) 40%, transparent);
   transform: scale(1.03);
   z-index: 2;
-}
-
-@media (prefers-color-scheme: dark) {
-  .pricingCard {
-    background: rgba(10, 11, 13, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.4);
-  }
-
-  .featuredCard {
-    background: rgba(10, 11, 13, 0.8);
-    border: 1px solid var(--primary);
-    box-shadow: 0 20px 60px -15px rgba(33, 150, 243, 0.45);
-  }
 }
 
 .popularBadge {
@@ -178,12 +151,12 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--primary);
-  color: #ededed;
+  color: var(--on-primary);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.3rem 0.9rem;
-  border-radius: 999px;
-  box-shadow: 0 4px 12px -2px rgba(33, 150, 243, 0.5);
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--primary) 50%, transparent);
   white-space: nowrap;
 }
 
@@ -245,13 +218,7 @@
 .divider {
   height: 1px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  .divider {
-    background: rgba(255, 255, 255, 0.08);
-  }
+  background: var(--border-subtle);
 }
 
 .featureList {
@@ -279,7 +246,7 @@
   padding-top: clamp(0.2rem, 0.5vh, 0.4rem);
 }
 
-.cardCta button {
+.cardCta > * {
   width: 100%;
   justify-content: center;
   padding: clamp(0.6rem, 1.2vh, 0.85rem) 1.25rem !important;
@@ -342,7 +309,7 @@
     font-size: 0.95rem;
   }
 
-  .cardCta button {
+  .cardCta > * {
     padding: 0.75rem 1.5rem !important;
     font-size: 1rem !important;
   }

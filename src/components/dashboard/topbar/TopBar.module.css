@@ -7,7 +7,7 @@
   flex-shrink: 0;
   padding: 0 3rem;
   background-color: var(--background);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border);
   position: relative;
   z-index: 5;
 }
@@ -31,9 +31,9 @@
   width: 100%;
   height: 40px;
   padding: 0 0.85rem 0 2.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--hover);
   color: inherit;
   font-size: 0.9rem;
   outline: none;
@@ -64,8 +64,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -73,7 +73,7 @@
 }
 
 .iconBtn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--hover);
 }
 
 .badge {
@@ -84,7 +84,7 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 9px;
-  background-color: #ef4444;
+  background-color: var(--danger);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -100,10 +100,10 @@
   width: 360px;
   max-height: 70vh;
   overflow-y: auto;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   background-color: var(--background);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
 }
 
 .panelHeader {
@@ -144,11 +144,11 @@
   display: flex;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .unread {
-  background-color: rgba(33, 150, 243, 0.06);
+  background-color: var(--primary-soft);
 }
 
 .notifDot {
@@ -178,12 +178,12 @@
 
 .notifDesc {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .notifTime {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-subtle);
 }
 
 .user {
@@ -197,7 +197,7 @@
   height: 40px;
   border-radius: 50%;
   background-color: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 0.85rem;
   font-weight: 600;
   display: flex;
@@ -220,45 +220,7 @@
 
 .userRole {
   font-size: 0.78rem;
-  color: #666;
-}
-
-@media (prefers-color-scheme: dark) {
-  .topBar,
-  .searchInput,
-  .iconBtn,
-  .panel {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  .topBar {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  .searchInput {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  .searchInput:focus {
-    background-color: transparent;
-    border-color: var(--primary);
-  }
-  .iconBtn:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  .panel {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
-  .notifItem {
-    border-top-color: rgba(255, 255, 255, 0.08);
-  }
-  .unread {
-    background-color: rgba(33, 150, 243, 0.12);
-  }
-  .notifDesc,
-  .userRole {
-    color: #a1a1aa;
-  }
-  .notifTime {
-    color: #71717a;
-  }
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

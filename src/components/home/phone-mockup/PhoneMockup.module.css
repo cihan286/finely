@@ -44,14 +44,26 @@
   height: 58px;
 }
 
+/* The mockup is an illustration with its own palette: dark phone on a light
+   page and vice versa. All of its theme colors live in these variables. */
 .screen {
+  --phone-bg: #12141c;
+  --phone-fg: #f5f6fa;
+  --phone-card: linear-gradient(135deg, #1c2233, #232b41);
+  --phone-avatar: #232a3d;
+  --phone-tab: rgba(245, 246, 250, 0.4);
+  --phone-divider: rgba(255, 255, 255, 0.07);
+  --phone-muted: #8a90a6;
+  --phone-accent: #6c8eff;
+  --phone-positive: #4ade80;
+
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: 34px;
   overflow: hidden;
-  background: #12141c;
-  color: #f5f6fa;
+  background: var(--phone-bg);
+  color: var(--phone-fg);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: flex;
@@ -61,8 +73,12 @@
 
 @media (prefers-color-scheme: light) {
   .screen {
-    background: #f5f6fa;
-    color: #12141c;
+    --phone-bg: #f5f6fa;
+    --phone-fg: #12141c;
+    --phone-card: color-mix(in srgb, #f5f6fa, #12141c 7%);
+    --phone-avatar: color-mix(in srgb, #f5f6fa, #12141c 7%);
+    --phone-tab: #12141c;
+    --phone-divider: color-mix(in srgb, #f5f6fa, #12141c 20%);
   }
 }
 
@@ -99,25 +115,15 @@
   height: 10px;
   background: repeating-linear-gradient(
     90deg,
-    #f5f6fa 0 2px,
+    var(--phone-fg) 0 2px,
     transparent 2px 4px
   );
-}
-
-@media (prefers-color-scheme: light) {
-  .signal {
-    background: repeating-linear-gradient(
-      90deg,
-      #12141c 0 2px,
-      transparent 2px 4px
-    );
-  }
 }
 
 .battery {
   width: 20px;
   height: 10px;
-  border: 1.3px solid rgba(245, 246, 250, 0.7);
+  border: 1.3px solid color-mix(in srgb, var(--phone-fg) 70%, transparent);
   border-radius: 3px;
   position: relative;
 }
@@ -127,19 +133,8 @@
   position: absolute;
   inset: 1.5px;
   width: 70%;
-  background: #f5f6fa;
+  background: var(--phone-fg);
   border-radius: 1px;
-}
-
-@media (prefers-color-scheme: light) {
-  .battery {
-    border: 1.3px solid #12141c;
-  }
-
-  .battery::after {
-    background: #12141c;
-    inset: 1.3px;
-  }
 }
 
 .appHeader {
@@ -152,7 +147,7 @@
 
 .greeting {
   font-size: 12px;
-  color: #8a90a6;
+  color: var(--phone-muted);
   margin: 0;
 }
 
@@ -166,8 +161,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #232a3d;
-  color: #6c8eff;
+  background: var(--phone-avatar);
+  color: var(--phone-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,30 +170,17 @@
   font-weight: 600;
 }
 
-@media (prefers-color-scheme: light) {
-  .avatar {
-    background: color-mix(in srgb, #f5f6fa, #12141c 7%);
-  }
-}
-
 .balanceCard {
   margin-top: 16px;
   padding: 16px 16px 6px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #1c2233, #232b41);
+  background: var(--phone-card);
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: light) {
-  .balanceCard {
-    background: color-mix(in srgb, #f5f6fa, #12141c 7%);
-    color: #12141c;
-  }
 }
 
 .balanceLabel {
   font-size: 12px;
-  color: #8a90a6;
+  color: var(--phone-muted);
   margin: 0;
 }
 
@@ -216,14 +198,14 @@
   margin-top: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #4ade80;
+  color: var(--phone-positive);
 }
 
 .sparkline {
   width: 100%;
   height: 42px;
   margin-top: 8px;
-  color: #6c8eff;
+  color: var(--phone-accent);
   display: block;
 }
 
@@ -241,7 +223,7 @@
 .sectionLink {
   font-size: 12px;
   font-weight: 500;
-  color: #6c8eff;
+  color: var(--phone-accent);
 }
 
 .transactionList {
@@ -268,12 +250,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.06);
-  color: #8a90a6;
+  color: var(--phone-muted);
 }
 
 .transactionIcon.positive {
-  background: rgba(74, 222, 128, 0.14);
-  color: #4ade80;
+  background: color-mix(in srgb, var(--phone-positive) 14%, transparent);
+  color: var(--phone-positive);
 }
 
 .transactionInfo {
@@ -292,7 +274,7 @@
 
 .transactionTime {
   font-size: 11px;
-  color: #8a90a6;
+  color: var(--phone-muted);
   margin: 2px 0 0;
 }
 
@@ -304,7 +286,7 @@
 }
 
 .transactionAmount.positive {
-  color: #4ade80;
+  color: var(--phone-positive);
 }
 
 .tabBar {
@@ -313,7 +295,7 @@
   justify-content: space-around;
   padding-top: 12px;
   margin-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--phone-divider);
   flex-shrink: 0;
 }
 
@@ -323,21 +305,11 @@
   align-items: center;
   gap: 3px;
   font-size: 9.5px;
-  color: rgba(245, 246, 250, 0.4);
-}
-
-@media (prefers-color-scheme: light) {
-  .tab {
-    color: #12141c;
-  }
-
-  .tabBar {
-    border-top: 1px solid color-mix(in srgb, #f5f6fa, #12141c 20%);
-  }
+  color: var(--phone-tab);
 }
 
 .tabActive {
-  color: #6c8eff;
+  color: var(--phone-accent);
 }
 
 @media (max-width: 499px) {

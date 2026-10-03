@@ -1,5 +1,6 @@
 import styles from "./DashboardHome.module.css";
 import CashFlowChart from "./CashFlowChart";
+import Button from "@/components/common/button/Button";
 import {
   DollarSign,
   TrendingUp,
@@ -61,12 +62,18 @@ export default function DashboardHome() {
           </p>
         </div>
         <div className={styles.headerActions}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`}>
-            <Download size={16} /> Export
-          </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`}>
-            <Plus size={16} /> New Transfer
-          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            text="Export"
+            icon={<Download size={16} />}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            text="New Transfer"
+            icon={<Plus size={16} />}
+          />
         </div>
       </div>
 
