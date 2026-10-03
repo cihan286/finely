@@ -91,18 +91,12 @@
 .bottomSection {
   margin-top: 4rem;
   padding-top: 2rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   opacity: 0.6;
   font-size: 0.9rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .bottomSection {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
 }
 
 /* Responsive adjustments */

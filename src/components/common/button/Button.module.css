@@ -1,35 +1,52 @@
-.base {
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: none;
-  outline: none;
-  background-color: var(--primary);
-  color: #ededed;
-  transition: background-color 0.2s;
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-}
-
-.secondary {
   padding: 0.5rem 1rem;
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   border: none;
   background-color: transparent;
-  outline: none;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  color: inherit;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Variants */
+
+.primary {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.primary:hover {
+  background-color: color-mix(in srgb, var(--primary), var(--background) 20%);
 }
 
 .secondary:hover {
   background-color: var(--primary);
-  color: #ededed;
+  color: var(--on-primary);
 }
 
-.base:hover {
-  background-color: color-mix(in srgb, var(--primary), var(--background) 20%);
+.outline {
+  border: 1px solid var(--border);
+}
+
+.outline:hover {
+  background-color: var(--hover);
+}
+
+/* Sizes */
+
+/* Compact, less rounded: for app UI like the dashboard */
+.sm {
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
 }

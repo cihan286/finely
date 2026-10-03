@@ -2,14 +2,24 @@ import Link from "next/link";
 import styles from "./Button.module.css";
 
 // Renders a <Link> when given an href (navigation), a <button> otherwise (action).
+// variant: "primary" | "secondary" | "outline"   size: "md" | "sm"
 export default function Button({
   text,
   action,
   href,
-  style,
+  variant = "primary",
+  size = "md",
   icon,
   iconPosition = "left",
 }) {
+  const className = [
+    styles.button,
+    styles[variant],
+    size === "sm" && styles.sm,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const content = (
     <>
       {iconPosition === "left" && icon}
@@ -20,14 +30,14 @@ export default function Button({
 
   if (href) {
     return (
-      <Link className={styles[style]} href={href}>
+      <Link className={className} href={href}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" className={styles[style]} onClick={action}>
+    <button type="button" className={className} onClick={action}>
       {content}
     </button>
   );

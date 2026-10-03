@@ -19,7 +19,7 @@ const plans = [
     ],
     cta: "Get started",
     ctaHref: "/dashboard",
-    buttonStyle: "secondary",
+    variant: "secondary",
     featured: false,
   },
   {
@@ -36,7 +36,7 @@ const plans = [
     ],
     cta: "Get started",
     ctaHref: "/dashboard",
-    buttonStyle: "base",
+    variant: "primary",
     featured: true,
   },
   {
@@ -53,7 +53,7 @@ const plans = [
       "SLA & uptime guarantee",
     ],
     cta: "Contact sales",
-    buttonStyle: "secondary",
+    variant: "secondary",
     featured: false,
   },
 ];
@@ -154,7 +154,7 @@ export default function Pricing() {
 
             <div className={styles.cardCta}>
               <Button
-                style={plan.buttonStyle}
+                variant={plan.variant}
                 text={plan.cta}
                 href={plan.ctaHref}
                 icon={<ArrowRight size="1em" />}

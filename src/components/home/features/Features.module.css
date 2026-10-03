@@ -144,9 +144,9 @@
 
 .iconContainer {
   background-color: var(--primary);
-  color: #ededed;
+  color: var(--on-primary);
   padding: 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;

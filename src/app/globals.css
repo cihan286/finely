@@ -1,13 +1,54 @@
+/* Design tokens. Components use these instead of raw colors, so dark mode
+   only has to be defined once, in the block below. */
 :root {
+  /* Brand */
   --primary: #2196f3;
+  --primary-soft: color-mix(in srgb, var(--primary) 10%, transparent);
+  --on-primary: #ffffff;
+
+  /* Surfaces & text */
   --background: #ffffff;
   --foreground: #171717;
+  --surface-muted: rgba(0, 0, 0, 0.02);
+  --text-muted: #666666;
+  --text-subtle: #888888;
+
+  /* Lines & interaction */
+  --border: rgba(0, 0, 0, 0.1);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --hover: rgba(0, 0, 0, 0.05);
+
+  /* Status */
+  --success: #10b981;
+  --danger: #ef4444;
+
+  /* Elevation */
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.14);
+
+  /* Shape */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-full: 999px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);
+
     --background: #171717;
     --foreground: #ffffff;
+    --surface-muted: rgba(0, 0, 0, 0.2);
+    --text-muted: #a1a1aa;
+    --text-subtle: #71717a;
+
+    --border: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --hover: rgba(255, 255, 255, 0.05);
+
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
   }
 
   html {
