@@ -18,6 +18,7 @@ const plans = [
       "10GB storage",
     ],
     cta: "Get started",
+    ctaHref: "/dashboard",
     buttonStyle: "secondary",
     featured: false,
   },
@@ -34,6 +35,7 @@ const plans = [
       "Custom integrations",
     ],
     cta: "Get started",
+    ctaHref: "/dashboard",
     buttonStyle: "base",
     featured: true,
   },
@@ -56,11 +58,20 @@ const plans = [
   },
 ];
 
+// Lowest yearly discount among paid plans, so the badge holds for every plan
+const yearlySavings = Math.min(
+  ...plans
+    .filter((plan) => plan.monthlyPrice !== null)
+    .map((plan) =>
+      Math.floor((1 - plan.yearlyPrice / plan.monthlyPrice) * 100),
+    ),
+);
+
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState("monthly");
 
   return (
-    <div className={styles.mainContainer}>
+    <section id="pricing" className={styles.mainContainer}>
       <div className={styles.backgroundLayer} aria-hidden="true" />
       <div className={styles.headlineContainer}>
         <span className={styles.title}>Pricing</span>
@@ -89,7 +100,7 @@ export default function Pricing() {
             onClick={() => setBillingCycle("yearly")}
           >
             Yearly
-            <span className={styles.savingsBadge}>Save 20%</span>
+            <span className={styles.savingsBadge}>Save {yearlySavings}%</span>
           </button>
         </div>
       </div>
@@ -145,6 +156,7 @@ export default function Pricing() {
               <Button
                 style={plan.buttonStyle}
                 text={plan.cta}
+                href={plan.ctaHref}
                 icon={<ArrowRight size="1em" />}
                 iconPosition="right"
               />
@@ -152,6 +164,6 @@ export default function Pricing() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

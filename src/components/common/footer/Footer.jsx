@@ -20,8 +20,8 @@ export default function Footer() {
             <Logo />
           </Link>
           <p className={styles.description}>
-            Making the world a better place through constructing elegant
-            hierarchies.
+            Expense tracking, cash flow and insights for growing businesses,
+            all in one place.
           </p>
           <div className={styles.socialLinks}>
             <Link href="/" aria-label="Facebook">
@@ -44,21 +44,18 @@ export default function Footer() {
 
         <div className={styles.linksGrid}>
           <div className={styles.linkColumn}>
-            <span className={styles.columnTitle}>Solutions</span>
-            <Link href="/" className={styles.link}>
-              Marketing
+            <span className={styles.columnTitle}>Product</span>
+            <Link href="/#features" className={styles.link}>
+              Expense tracking
             </Link>
-            <Link href="/" className={styles.link}>
-              Analytics
+            <Link href="/#features" className={styles.link}>
+              Cash flow
             </Link>
-            <Link href="/" className={styles.link}>
-              Automation
-            </Link>
-            <Link href="/" className={styles.link}>
-              Commerce
-            </Link>
-            <Link href="/" className={styles.link}>
+            <Link href="/#features" className={styles.link}>
               Insights
+            </Link>
+            <Link href="/#pricing" className={styles.link}>
+              Pricing
             </Link>
           </div>
 

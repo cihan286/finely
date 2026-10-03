@@ -29,7 +29,7 @@ export default function PhoneMockup() {
         <div className={styles.appHeader}>
           <div>
             <p className={styles.greeting}>Good afternoon</p>
-            <p className={styles.name}>Maya Chen</p>
+            <p className={styles.name}>Maya Carter</p>
           </div>
           <div className={styles.avatar}>MC</div>
         </div>

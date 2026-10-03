@@ -1,9 +1,9 @@
 import styles from "./Features.module.css";
-import { CloudUpload, Lock, RefreshCw, Fingerprint } from "lucide-react";
+import { RefreshCw, LineChart, PieChart, ShieldCheck } from "lucide-react";
 
 export default function Features() {
   return (
-    <div className={styles.mainContainer}>
+    <section id="features" className={styles.mainContainer}>
       <div className={styles.backgroundLayer} aria-hidden="true" />
       <div className={styles.headlineContainer}>
         <span className={styles.title}>Features</span>
@@ -23,53 +23,56 @@ export default function Features() {
       <div className={styles.featuresGrid}>
         <div className={styles.featureCard}>
           <div className={styles.iconContainer}>
-            <CloudUpload />
-          </div>
-          <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Push to deploy</span>
-            <span className={styles.featureDescription}>
-              Morbi viverra dui mi arcu sed. Tellus semper adipiscing
-              suspendisse semper morbi. Odio urna massa nunc massa.
-            </span>
-          </div>
-        </div>
-        <div className={styles.featureCard}>
-          <div className={styles.iconContainer}>
-            <Lock />
-          </div>
-          <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>SSL certificates</span>
-            <span className={styles.featureDescription}>
-              Sit quis amet rutrum tellus ullamcorper ultricies libero dolor
-              eget. Sem sodales gravida quam turpis enim lacus amet.
-            </span>
-          </div>
-        </div>
-        <div className={styles.featureCard}>
-          <div className={styles.iconContainer}>
             <RefreshCw />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Simple queues</span>
+            <span className={styles.featureTitle}>
+              Automatic expense tracking
+            </span>
             <span className={styles.featureDescription}>
-              Quisque est vel vulputate cursus. Risus proin diam nunc commodo.
-              Lobortis auctor congue commodo diam neque.
+              Connect your accounts and cards once. Every transaction is
+              imported and categorized for you, so your books stay current
+              without manual entry.
             </span>
           </div>
         </div>
         <div className={styles.featureCard}>
           <div className={styles.iconContainer}>
-            <Fingerprint />
+            <LineChart />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Advanced security</span>
+            <span className={styles.featureTitle}>Real-time cash flow</span>
             <span className={styles.featureDescription}>
-              Arcu egestas dolor vel iaculis in ipsum mauris. Tincidunt mattis
-              aliquet hac quis. Id hac maecenas ac donec pharetra eget.
+              See money coming in and going out as it happens. Spot shortfalls
+              early and plan payroll, bills and spending with confidence.
+            </span>
+          </div>
+        </div>
+        <div className={styles.featureCard}>
+          <div className={styles.iconContainer}>
+            <PieChart />
+          </div>
+          <div className={styles.textContainer}>
+            <span className={styles.featureTitle}>Actionable insights</span>
+            <span className={styles.featureDescription}>
+              Understand where your money goes by category and vendor, and get
+              alerted when spending spikes or a bill is about to come due.
+            </span>
+          </div>
+        </div>
+        <div className={styles.featureCard}>
+          <div className={styles.iconContainer}>
+            <ShieldCheck />
+          </div>
+          <div className={styles.textContainer}>
+            <span className={styles.featureTitle}>Secure by default</span>
+            <span className={styles.featureDescription}>
+              Your financial data is encrypted, and role-based access means
+              each team member sees only what they need.
             </span>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

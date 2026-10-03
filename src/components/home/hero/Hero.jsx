@@ -29,10 +29,10 @@ export default function Hero() {
         </Link>
 
         <div className={styles.navigationLinks}>
-          <Link className={styles.navLink} href={"/"}>
+          <Link className={styles.navLink} href="#features">
             Features
           </Link>
-          <Link className={styles.navLink} href={"/"}>
+          <Link className={styles.navLink} href="#pricing">
             Pricing
           </Link>
           <Link className={styles.navLink} href={"/"}>
@@ -42,10 +42,11 @@ export default function Hero() {
 
         <div className={styles.navActions}>
           <div className={`${styles.authCtas} ${styles.desktopAuth}`}>
-            <Button style="base" text="Start for free" />
+            <Button style="base" text="Start for free" href="/dashboard" />
             <Button
               style="secondary"
               text="Log in"
+            href="/dashboard"
               icon={<ArrowRight size="1em" />}
               iconPosition="right"
             />
@@ -72,14 +73,14 @@ export default function Hero() {
       >
         <Link
           className={styles.mobileNavLink}
-          href={"/"}
+          href="#features"
           onClick={handleMenuClose}
         >
           Features
         </Link>
         <Link
           className={styles.mobileNavLink}
-          href={"/"}
+          href="#pricing"
           onClick={handleMenuClose}
         >
           Pricing
@@ -92,10 +93,11 @@ export default function Hero() {
           About
         </Link>
         <div className={`${styles.authCtas} ${styles.mobileAuth}`}>
-          <Button style="base" text="Start for free" />
+          <Button style="base" text="Start for free" href="/dashboard" />
           <Button
             style="secondary"
             text="Log in"
+            href="/dashboard"
             icon={<ArrowRight size="1em" />}
             iconPosition="right"
           />
@@ -112,10 +114,11 @@ export default function Hero() {
             and turn complex financial data into actionable insights.
           </p>
           <div className={styles.ctas}>
-            <Button style="base" text="Get Started" />
+            <Button style="base" text="Get Started" href="/dashboard" />
             <Button
               style="secondary"
               text="Learn More"
+              href="#features"
               icon={<ArrowRight size="1em" />}
               iconPosition="right"
             />
