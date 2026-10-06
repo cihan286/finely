@@ -47,6 +47,9 @@ export const auth = betterAuth({
           google: {
             clientId: googleClientId,
             clientSecret: googleClientSecret,
+            // Always ask which Google account to use: business users often
+            // have a work and a personal account in the same browser.
+            prompt: "select_account",
           },
         }
       : {},
