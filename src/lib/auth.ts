@@ -19,6 +19,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { createDefaultCategories } from "@/lib/data/default-categories";
+import { createCompanySettings } from "@/lib/data/settings";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
@@ -123,9 +124,22 @@ export const auth = betterAuth({
       // don't check ownership at sign-up) and take their place on the team.
       requireEmailVerificationOnInvitation: true,
       organizationHooks: {
-        // New companies start with a ready-made set of categories
+        // New companies start with a ready-made set of categories, and the
+        // timezone of the browser they were created in (sent as metadata
+        // by CreateOrganizationForm)
         afterCreateOrganization: async ({ organization }) => {
-          await createDefaultCategories(organization.id);
+          let metadata = organization.metadata;
+          if (typeof metadata === "string") {
+            try {
+              metadata = JSON.parse(metadata);
+            } catch {
+              metadata = null; // unreadable: use the default timezone
+            }
+          }
+          await Promise.all([
+            createDefaultCategories(organization.id),
+            createCompanySettings(organization.id, metadata?.timezone),
+          ]);
         },
       },
     }),

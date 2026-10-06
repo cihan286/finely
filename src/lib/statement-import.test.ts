@@ -3,10 +3,12 @@ import { parseCsv } from "@/utils/csv";
 import {
   columnLetter,
   detectDateFormat,
+  duplicateKey,
   guessMapping,
   interpretRows,
   parseStatementAmount,
   parseStatementDate,
+  removeExisting,
 } from "./statement-import";
 
 describe("parseStatementAmount", () => {
@@ -148,5 +150,27 @@ describe("guessMapping + interpretRows", () => {
   test("long descriptions are shortened to 120 characters", () => {
     const rows = parseCsv(`2026-10-01,${"x".repeat(200)},-1`);
     expect(interpretRows(rows, guessMapping(rows)).rows[0].name).toHaveLength(120);
+  });
+});
+
+describe("removeExisting", () => {
+  const key = (r: { day: string; amount: number; name: string }) =>
+    duplicateKey(r.day, r.amount, r.name);
+  const coffee = { day: "2026-10-01", amount: -4.5, name: "Coffee" };
+  const rent = { day: "2026-10-01", amount: -1200, name: "Rent" };
+
+  test("drops lines that are already there, ignoring case", () => {
+    const existing = [duplicateKey("2026-10-01", -1200, "RENT")];
+    expect(removeExisting([coffee, rent], existing, key)).toEqual([coffee]);
+  });
+
+  test("identical lines: only as many are dropped as already exist", () => {
+    const existing = [key(coffee)];
+    expect(removeExisting([coffee, coffee, coffee], existing, key)).toEqual([coffee, coffee]);
+  });
+
+  test("a different day or amount is a different transaction", () => {
+    const existing = [duplicateKey("2026-10-02", -4.5, "Coffee"), duplicateKey("2026-10-01", -4.75, "Coffee")];
+    expect(removeExisting([coffee], existing, key)).toEqual([coffee]);
   });
 });

@@ -319,7 +319,7 @@ function ImportForm({
             <tbody>
               {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
                 <tr key={i}>
-                  <td>{formatDate(`${row.date}T12:00:00`)}</td>
+                  <td>{formatDate(row.date)}</td>
                   <td className={styles.name}>{row.name}</td>
                   <td className={styles.muted}>
                     {row.category && knownCategories.has(row.category.toLowerCase())

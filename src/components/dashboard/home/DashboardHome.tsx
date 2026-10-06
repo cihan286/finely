@@ -283,7 +283,7 @@ export default function DashboardHome({
                           <div className={styles.txDetails}>
                             <span className={styles.txName}>{tx.name}</span>
                             <span className={styles.txDate}>
-                              {formatRelativeDate(tx.date)} · {tx.category}
+                              {formatRelativeDate(tx.day, summary.today)} · {tx.category}
                             </span>
                           </div>
                         </div>

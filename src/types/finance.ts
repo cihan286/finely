@@ -126,7 +126,10 @@ export interface Transaction {
   category: string;
   /** Positive = income, negative = expense */
   amount: number;
+  /** The exact moment (UTC) */
   date: ISODateTime;
+  /** The calendar day it happened on, in the company's timezone */
+  day: ISODate;
   status: TransactionStatus;
   /** The account's ID */
   account: string;

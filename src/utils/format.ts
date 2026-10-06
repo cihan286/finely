@@ -8,7 +8,8 @@
 // For developers: the only place display formatting should happen.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ISODateTime, Metric } from "@/types/finance";
+import { addDays } from "@/lib/dates";
+import type { ISODate, Metric } from "@/types/finance";
 
 // Short month names for dates like "Sep 28"
 const MONTHS = [
@@ -87,15 +88,17 @@ export function getMetricChange({
   };
 }
 
-/** "Today" / "Yesterday" / "Sep 28" / "Sep 28, 2025" (in an earlier year) */
-export function formatRelativeDate(iso: ISODateTime): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  if (sameDay(date, now)) return "Today";
-  if (sameDay(date, new Date(now.getTime() - 86_400_000))) return "Yesterday";
-  if (date.getFullYear() !== now.getFullYear()) return formatDate(date);
-  return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+/**
+ * "Today" / "Yesterday" / "Sep 28" / "Sep 28, 2025" (in an earlier year).
+ * Both are calendar days in the company's timezone; the server provides
+ * `today`, so the browser's own clock and timezone don't matter.
+ */
+export function formatRelativeDate(day: ISODate, today: ISODate): string {
+  if (day === today) return "Today";
+  if (day === addDays(today, -1)) return "Yesterday";
+  if (day.slice(0, 4) !== today.slice(0, 4)) return formatDate(day);
+  const [, month, date] = day.split("-").map(Number);
+  return `${MONTHS[month - 1]} ${date}`;
 }
 
 /** Date -> "Oct 8" */
@@ -104,8 +107,8 @@ export function formatShortDate(date: Date | string): string {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
-/** Date -> "Oct 8, 2026" */
-export function formatDate(date: Date | string): string {
-  const d = new Date(date);
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+/** "2026-10-08" -> "Oct 8, 2026" (a calendar day; no timezone involved) */
+export function formatDate(day: ISODate): string {
+  const [year, month, date] = day.slice(0, 10).split("-").map(Number);
+  return `${MONTHS[month - 1]} ${date}, ${year}`;
 }

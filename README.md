@@ -116,6 +116,8 @@ src/
 │   ├── session.ts          getSession() / requireUser() / requireOrganization()
 │   ├── roles.ts            Team roles (owner, admin, member) and their labels
 │   ├── statement-import.ts Reading bank statement CSVs (dates, amounts, columns)
+│   ├── dates.ts            Calendar days in a company's timezone
+│   ├── dashboard-summary.ts The dashboard's calculations (tested)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
 ├── data/mockData.ts        Mock notifications (the only mock data left)
@@ -171,6 +173,15 @@ whose message is safe to show on screen. Members can add and edit
 transactions; owners and admins can also delete them and manage accounts and
 categories (`canManageFinances()` in `src/lib/roles.ts`).
 
+**Dates and timezones.** Each company has a timezone (Settings; new
+companies get their creator's). Moments are stored in UTC; a transaction's
+calendar day is its moment in the company's timezone, worked out on the
+server (`day` on every transaction, `localDay()` in `src/lib/dates.ts`). A
+date entered without a time is stored as noon that day in the company's
+timezone. Browser code only formats day strings (`formatDate`,
+`formatRelativeDate` with the server's `today`), so the viewer's own
+timezone never shifts a date.
+
 **Money.** Amounts are stored as `numeric(14,2)` (exact cents) and come back
 as plain numbers. An account's balance is its opening balance plus its
 completed transactions; pending ones don't count yet.
@@ -213,10 +224,6 @@ Up to 2,000 lines per file.
 
 ## Known limitations
 
-- Days are counted in UTC: "the last 30 days", the chart's days and months,
-  and dates entered without a time (stored at noon UTC). Near midnight this
-  can be a day off from a company's local date. A per-company timezone
-  setting would fix it (see `lib/data/dashboard.ts`).
 - The top bar's notifications and search are placeholders, and the sidebar's
   Insights page doesn't exist yet. Bills and payment cards aren't built.
 - Several footer links, "About" and "Contact sales" have no destination yet.

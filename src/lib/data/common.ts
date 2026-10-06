@@ -8,13 +8,19 @@
 // wrong, we stop with a short message that can be shown on screen.
 //
 // For developers: server-only. getFinanceContext() is the one place the
-// company ID comes from — never accept an organization ID from the browser.
+// company ID (and its timezone) comes from — never accept an organization ID
+// from the browser.
 // DataError messages are safe to show to users; any other error is a bug.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
+import { cache } from "react";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { companySettings } from "@/db/finance";
 import { requireOrganization } from "@/lib/session";
 import { canManageFinances } from "@/lib/roles";
+import type { ISODate } from "@/types/finance";
 
 /** A problem the person can fix, with a message that's safe to show them. */
 export class DataError extends Error {
@@ -33,16 +39,30 @@ export function errorMessage(error: unknown): string {
   throw error;
 }
 
+/** A company's timezone ("UTC" until set). Read once per request. */
+export const getCompanyTimeZone = cache(async (organizationId: string) => {
+  const [row] = await db
+    .select({ timezone: companySettings.timezone })
+    .from(companySettings)
+    .where(eq(companySettings.organizationId, organizationId));
+  return row?.timezone ?? "UTC";
+});
+
 /**
- * The signed-in user and the company whose data they may use. With
- * `manage: true`, also requires the owner or admin role.
+ * The signed-in user, the company whose data they may use and its timezone.
+ * With `manage: true`, also requires the owner or admin role.
  */
 export async function getFinanceContext({ manage = false } = {}) {
   const { user, organization, role } = await requireOrganization();
   if (manage && !canManageFinances(role)) {
     throw new DataError("Only owners and admins can do this.");
   }
-  return { userId: user.id, organizationId: organization.id, role };
+  return {
+    userId: user.id,
+    organizationId: organization.id,
+    role,
+    timeZone: await getCompanyTimeZone(organization.id),
+  };
 }
 
 /** Whether a database error means "this value already exists" */
@@ -105,6 +125,20 @@ export function money(value: unknown, field: string): number {
     throw new DataError(`${field} is too large.`);
   }
   return Math.round(amount * 100) / 100;
+}
+
+/** A calendar day, e.g. "2026-10-01" */
+export function isoDay(value: unknown, field: string): ISODate {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    // Real days only: "2026-13-01" is invalid, "2026-02-30" becomes March 2
+    Number.isNaN(Date.parse(`${value}T00:00:00Z`)) ||
+    new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value
+  ) {
+    throw new DataError(`${field} must be a valid date.`);
+  }
+  return value;
 }
 
 /** A date (and optional time) in ISO format, e.g. "2026-10-01T14:41:00" */

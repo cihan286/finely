@@ -1,20 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings page (finely.com/dashboard/settings)
 //
-// In plain words: where you manage your company's team — who's in it, their
-// roles, and invitations — and its bank accounts. Owners and admins can
-// invite and remove people, and add and remove bank accounts.
+// In plain words: where you manage your company — its timezone, its team
+// (who's in it, their roles, and invitations) and its bank accounts. Owners
+// and admins can change the timezone, invite and remove people, and add and
+// remove bank accounts.
 //
 // For developers: loads the active company with requireOrganization() and
-// its accounts with listAccounts(), and hands plain lists to the
-// TeamSettings and AccountSettings components. /dashboard/settings#accounts
+// its settings and accounts from lib/data/, and hands plain values to the
+// CompanySettings, TeamSettings and AccountSettings components. /dashboard/settings#accounts
 // jumps to the bank accounts.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import AccountSettings from "@/components/dashboard/settings/AccountSettings";
+import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import { listAccounts } from "@/lib/data/accounts";
+import { getCompanySettings } from "@/lib/data/settings";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import styles from "./page.module.css";
@@ -27,7 +30,16 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
-  const accounts = await listAccounts();
+  const [accounts, settings] = await Promise.all([
+    listAccounts(),
+    getCompanySettings(),
+  ]);
+  // Every timezone this server knows (UTC first), plus the saved one
+  const timeZones = [
+    "UTC",
+    ...Intl.supportedValuesOf("timeZone").filter((zone) => zone !== "UTC"),
+  ];
+  if (!timeZones.includes(settings.timeZone)) timeZones.push(settings.timeZone);
 
   // Owner first, then admins, then members; alphabetical within each role
   const order = { owner: 0, admin: 1, member: 2 } as Record<string, number>;
@@ -57,9 +69,14 @@ export default async function SettingsPage() {
       <div>
         <h1 className={styles.title}>Settings</h1>
         <p className={styles.subtitle}>
-          Manage the team and bank accounts at {organization.name}.
+          Manage {organization.name}&apos;s timezone, team and bank accounts.
         </p>
       </div>
+      <CompanySettings
+        canManage={canManageFinances(role)}
+        timeZone={settings.timeZone}
+        timeZones={timeZones}
+      />
       <TeamSettings
         role={role}
         members={members}
