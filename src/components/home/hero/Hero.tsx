@@ -42,11 +42,11 @@ export default function Hero() {
 
         <div className={styles.navActions}>
           <div className={`${styles.authCtas} ${styles.desktopAuth}`}>
-            <Button variant="primary" text="Start for free" href="/dashboard" />
+            <Button variant="primary" text="Start for free" href="/signup" />
             <Button
               variant="secondary"
               text="Log in"
-            href="/dashboard"
+            href="/login"
               icon={<ArrowRight size="1em" />}
               iconPosition="right"
             />
@@ -93,11 +93,11 @@ export default function Hero() {
           About
         </Link>
         <div className={`${styles.authCtas} ${styles.mobileAuth}`}>
-          <Button variant="primary" text="Start for free" href="/dashboard" />
+          <Button variant="primary" text="Start for free" href="/signup" />
           <Button
             variant="secondary"
             text="Log in"
-            href="/dashboard"
+            href="/login"
             icon={<ArrowRight size="1em" />}
             iconPosition="right"
           />
@@ -114,7 +114,7 @@ export default function Hero() {
             and turn complex financial data into actionable insights.
           </p>
           <div className={styles.ctas}>
-            <Button variant="primary" text="Get Started" href="/dashboard" />
+            <Button variant="primary" text="Get Started" href="/signup" />
             <Button
               variant="secondary"
               text="Learn More"

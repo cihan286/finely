@@ -14,7 +14,6 @@ import type {
   Metric,
   Notification,
   Transaction,
-  User,
 } from "@/types/finance";
 
 /** "Today" for the mock world. Keeps relative labels ("Yesterday") stable. */
@@ -23,16 +22,6 @@ export const TODAY = "2026-10-01";
 /* ------------------------------------------------------------------ */
 /* User & company                                                      */
 /* ------------------------------------------------------------------ */
-export const currentUser: User = {
-  id: "usr_01",
-  firstName: "Maya",
-  lastName: "Carter",
-  email: "maya@northpeak.io",
-  role: "Finance Lead",
-  company: "Northpeak Studio",
-  initials: "MC",
-};
-
 export const notifications: Notification[] = [
   {
     id: "n1",

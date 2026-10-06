@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, Search } from "lucide-react";
 import styles from "./TopBar.module.css";
-import {
-  currentUser,
-  notifications as initialNotifications,
-} from "@/data/mockData";
+import { notifications as initialNotifications } from "@/data/mockData";
+import { getInitials } from "@/utils/format";
 
-export default function TopBar() {
+interface TopBarProps {
+  user: { name: string; email: string };
+}
+
+export default function TopBar({ user }: TopBarProps) {
   const [items, setItems] = useState(initialNotifications);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -97,13 +99,13 @@ export default function TopBar() {
 
         <div className={styles.user}>
           <div className={styles.avatar} aria-hidden="true">
-            {currentUser.initials}
+            {getInitials(user.name)}
           </div>
           <div className={styles.userInfo}>
             <span className={styles.userName}>
-              {currentUser.firstName} {currentUser.lastName}
+              {user.name}
             </span>
-            <span className={styles.userRole}>{currentUser.role}</span>
+            <span className={styles.userRole}>{user.email}</span>
           </div>
         </div>
       </div>

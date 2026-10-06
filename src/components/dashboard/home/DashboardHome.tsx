@@ -18,7 +18,6 @@ import {
   Clock,
 } from "lucide-react";
 import {
-  currentUser,
   metrics,
   expenseCategories,
   transactions,
@@ -50,14 +49,14 @@ const categoryIcons = {
 
 const recentTransactions = transactions.slice(0, 5);
 
-export default function DashboardHome() {
+export default function DashboardHome({ firstName }: { firstName: string }) {
   return (
     <main className={styles.contentArea}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Dashboard Overview</h1>
           <p className={styles.subtitle}>
-            Welcome back, {currentUser.firstName}. Here is what is happening
+            Welcome back, {firstName}. Here is what is happening
             today.
           </p>
         </div>

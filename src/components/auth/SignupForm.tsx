@@ -1,0 +1,97 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Button from "@/components/common/button/Button";
+import { authClient } from "@/lib/auth-client";
+import Field from "./Field";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
+import GoogleButton from "./GoogleButton";
+import styles from "./AuthForm.module.css";
+
+export default function SignupForm({
+  googleEnabled,
+}: {
+  googleEnabled: boolean;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    setError(null);
+    setLoading(true);
+
+    // Signs the user in right away on success
+    const { error } = await authClient.signUp.email({
+      name: String(data.get("name")).trim(),
+      email: String(data.get("email")),
+      password: String(data.get("password")),
+    });
+
+    if (error) {
+      setError(error.message ?? "Could not create your account. Please try again.");
+      setLoading(false);
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
+  };
+
+  return (
+    <>
+      {googleEnabled && (
+        <>
+          <GoogleButton label="Sign up with Google" onError={setError} />
+          <div className={styles.divider}>or</div>
+        </>
+      )}
+
+      <form className={styles.form} onSubmit={handleSubmit}>
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
+
+        <Field
+          label="Full name"
+          name="name"
+          autoComplete="name"
+          placeholder="Maya Carter"
+          required
+        />
+        <Field
+          label="Work email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          required
+        />
+        <Field
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+          required
+        />
+
+        <div className={styles.submit}>
+          <Button
+            type="submit"
+            text={loading ? "Creating account…" : "Create account"}
+            size="sm"
+            fullWidth
+            disabled={loading}
+          />
+        </div>
+      </form>
+    </>
+  );
+}
