@@ -25,13 +25,9 @@ import {
   ArrowDownRight,
   FileUp,
   Plus,
-  Laptop,
-  Megaphone,
-  Users,
-  Building2,
-  MoreHorizontal,
   Landmark,
 } from "lucide-react";
+import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { DashboardSummary } from "@/lib/data/dashboard";
 import {
   formatCurrency,
@@ -40,21 +36,12 @@ import {
   getMetricChange,
 } from "@/utils/format";
 
-// Which icon belongs to which summary tile / spending category
+// Which icon belongs to which summary tile
 const metricIcons = {
   dollar: DollarSign,
   income: TrendingUp,
   expenses: TrendingDown,
   net: ArrowRightLeft,
-};
-
-const categoryIcons = {
-  laptop: Laptop,
-  megaphone: Megaphone,
-  users: Users,
-  building: Building2,
-  income: TrendingUp,
-  more: MoreHorizontal,
 };
 
 // Names shown for each kind of account
@@ -205,7 +192,7 @@ export default function DashboardHome({
               ) : (
                 <div className={styles.expenseList}>
                   {expenseCategories.map((expense) => {
-                    const Icon = categoryIcons[expense.iconKey];
+                    const Icon = CATEGORY_ICONS[expense.iconKey].icon;
                     // This category's share of all spending (bar length)
                     const share = (expense.amount / expensesTotal) * 100;
                     return (

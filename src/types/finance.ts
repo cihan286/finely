@@ -55,11 +55,15 @@ export interface Card {
 
 // Which icon to show next to each category
 export const CATEGORY_ICON_KEYS = [
+  "income",
   "users",
   "building",
   "laptop",
   "megaphone",
-  "income",
+  "plane",
+  "utensils",
+  "receipt",
+  "briefcase",
   "more",
 ] as const;
 export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];

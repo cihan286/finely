@@ -29,6 +29,13 @@
       "when": 1791298653259,
       "tag": "0003_company_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791299388312,
+      "tag": "0004_category_name_case",
+      "breakpoints": true
     }
   ]
 }

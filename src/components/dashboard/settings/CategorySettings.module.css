@@ -1,0 +1,108 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Category settings styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to categories: the add/edit form
+   (name, type, icon, color), the "Money in / Money out" groups and the
+   colored icon next to each category. The cards, lists and messages come
+   from TeamSettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Name, type, icon, color and buttons in one row */
+.form {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.nameField {
+  flex: 1 1 180px;
+}
+
+/* The shared input style grows with "flex: 1", which in a column would
+   squash the box's height */
+.field input,
+.field select {
+  flex: none;
+}
+
+.color {
+  width: 48px;
+  height: 40px;
+  padding: 0.2rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  cursor: pointer;
+}
+
+/* "Money in" / "Money out" */
+.group + .group {
+  margin-top: 1.5rem;
+}
+
+.groupTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  margin-bottom: 0.75rem;
+}
+
+.none {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowButtons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.editButton {
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.825rem;
+  font-weight: 500;
+}
+
+.editButton:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.editButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

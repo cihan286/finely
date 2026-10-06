@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // What happens when a form on the Settings page is submitted
 //
-// In plain words: changes the company's timezone, or adds or removes one of
-// its bank accounts, then reloads the page so it's up to date. If something's wrong, we send
+// In plain words: changes the company's timezone, adds or removes one of its
+// bank accounts, or adds, changes or deletes a category, then reloads the
+// page so it's up to date. If something's wrong, we send
 // back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -14,9 +15,18 @@
 import { refresh } from "next/cache";
 import type { ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
+import {
+  createCategory,
+  deleteCategory,
+  updateCategory,
+} from "@/lib/data/categories";
 import { errorMessage } from "@/lib/data/common";
 import { updateTimeZone } from "@/lib/data/settings";
-import type { AccountType } from "@/types/finance";
+import type {
+  AccountType,
+  CategoryIconKey,
+  CategoryKind,
+} from "@/types/finance";
 
 const field = (formData: FormData, name: string) => {
   const value = formData.get(name);
@@ -65,4 +75,33 @@ export async function submitCompanySettings(
   }
   refresh();
   return { error: null, success: `The company's timezone is now ${timeZone}.` };
+}
+
+/**
+ * Adds a category, changes one (intent=update) or deletes one
+ * (intent=delete). Owners and admins only.
+ */
+export async function submitCategory(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const intent = field(formData, "intent");
+  const id = field(formData, "id");
+  const name = field(formData, "name").trim();
+  const input = {
+    name,
+    kind: field(formData, "kind") as CategoryKind,
+    color: field(formData, "color"),
+    iconKey: field(formData, "iconKey") as CategoryIconKey,
+  };
+  try {
+    if (intent === "delete") await deleteCategory(id);
+    else if (intent === "update") await updateCategory(id, input);
+    else await createCategory(input);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  const done = { delete: "deleted", update: "saved" }[intent] ?? "added";
+  return { error: null, success: `${name} was ${done}.` };
 }

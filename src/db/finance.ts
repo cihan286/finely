@@ -16,14 +16,14 @@
 // `npm run db:generate` and `npm run db:migrate`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
   timestamp,
   numeric,
   index,
-  unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./schema";
 
@@ -93,10 +93,12 @@ export const category = pgTable(
     ...timestamps,
   },
   (table) => [
-    // No two categories with the same name in one company
-    unique("category_organization_name_unique").on(
+    // No two categories with the same name in one company, ignoring
+    // upper/lower case ("Payroll" and "payroll" would be confusing, and
+    // imports match category names that way)
+    uniqueIndex("category_organization_name_unique").on(
       table.organizationId,
-      table.name,
+      sql`lower(${table.name})`,
     ),
   ],
 );

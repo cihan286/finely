@@ -2,21 +2,24 @@
 // Settings page (finely.com/dashboard/settings)
 //
 // In plain words: where you manage your company — its timezone, its team
-// (who's in it, their roles, and invitations) and its bank accounts. Owners
-// and admins can change the timezone, invite and remove people, and add and
-// remove bank accounts.
+// (who's in it, their roles, and invitations), its bank accounts and its
+// categories. Owners and admins can change all of these; members can see
+// them.
 //
 // For developers: loads the active company with requireOrganization() and
 // its settings and accounts from lib/data/, and hands plain values to the
-// CompanySettings, TeamSettings and AccountSettings components. /dashboard/settings#accounts
-// jumps to the bank accounts.
+// CompanySettings, TeamSettings, AccountSettings and CategorySettings
+// components. /dashboard/settings#accounts and #categories jump to those
+// sections.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import AccountSettings from "@/components/dashboard/settings/AccountSettings";
+import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import { listAccounts } from "@/lib/data/accounts";
+import { listCategories } from "@/lib/data/categories";
 import { getCompanySettings } from "@/lib/data/settings";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -30,8 +33,9 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
-  const [accounts, settings] = await Promise.all([
+  const [accounts, categories, settings] = await Promise.all([
     listAccounts(),
+    listCategories(),
     getCompanySettings(),
   ]);
   // Every timezone this server knows (UTC first), plus the saved one
@@ -69,7 +73,8 @@ export default async function SettingsPage() {
       <div>
         <h1 className={styles.title}>Settings</h1>
         <p className={styles.subtitle}>
-          Manage {organization.name}&apos;s timezone, team and bank accounts.
+          Manage {organization.name}&apos;s timezone, team, bank accounts and
+          categories.
         </p>
       </div>
       <CompanySettings
@@ -84,6 +89,10 @@ export default async function SettingsPage() {
         emailEnabled={Boolean(process.env.RESEND_API_KEY)}
       />
       <AccountSettings canManage={canManageFinances(role)} accounts={accounts} />
+      <CategorySettings
+        canManage={canManageFinances(role)}
+        categories={categories}
+      />
     </main>
   );
 }
