@@ -15,6 +15,13 @@
       "when": 1791279931065,
       "tag": "0001_organizations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791294884056,
+      "tag": "0002_finance",
+      "breakpoints": true
     }
   ]
 }

@@ -2,11 +2,13 @@
 // Team roles
 //
 // In plain words: everyone in a company has a role. The owner (who created it)
-// and admins can manage the team — invite people and remove them. Members can
-// use Finely but can't change the team.
+// and admins can manage the team — invite people and remove them — and the
+// company's finances: bank accounts, categories, and deleting transactions.
+// Members can add and edit transactions but can't change the team.
 //
-// For developers: these only decide what the interface shows. The real
-// permission checks happen on the server, inside Better Auth.
+// For developers: the interface uses these to decide what to show. The team
+// checks are enforced on the server by Better Auth, and the finance checks by
+// the data functions in lib/data/.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Role = "owner" | "admin" | "member";
@@ -25,5 +27,10 @@ export function roleLabel(role: string): string {
 
 /** Whether this role may invite and remove people */
 export function canManageTeam(role: string): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/** Whether this role may manage accounts and categories and delete transactions */
+export function canManageFinances(role: string): boolean {
   return role === "owner" || role === "admin";
 }

@@ -18,6 +18,7 @@ import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { createDefaultCategories } from "@/lib/data/default-categories";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
@@ -121,6 +122,12 @@ export const auth = betterAuth({
       // Without this, someone could sign up with a colleague's address (we
       // don't check ownership at sign-up) and take their place on the team.
       requireEmailVerificationOnInvitation: true,
+      organizationHooks: {
+        // New companies start with a ready-made set of categories
+        afterCreateOrganization: async ({ organization }) => {
+          await createDefaultCategories(organization.id);
+        },
+      },
     }),
     // nextCookies lets server actions set auth cookies; it must stay last.
     nextCookies(),
