@@ -2,7 +2,7 @@
 // Cash flow chart
 //
 // In plain words: the chart on the dashboard that compares money coming in
-// (green) with money going out (red), with totals above it. A dropdown switches
+// (blue) with money going out (orange), with totals above it. A dropdown switches
 // between the last 30 days and this year. Hovering over the chart shows the
 // exact amounts for that day or month.
 //
@@ -44,12 +44,12 @@ const SERIES: Record<
 > = {
   income: {
     label: "Income",
-    color: "var(--success)",
+    color: "var(--series-income)",
     className: styles.incomeSeries,
   },
   expenses: {
     label: "Expenses",
-    color: "var(--danger)",
+    color: "var(--series-expenses)",
     className: styles.expensesSeries,
   },
 };
@@ -197,7 +197,7 @@ export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
             />
             <Area
               type="monotone"
-              // Red line: money going out
+              // Orange line: money going out
               dataKey="expenses"
               className={SERIES.expenses.className}
               stroke="currentColor"
@@ -207,7 +207,7 @@ export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
             />
             <Area
               type="monotone"
-              // Green line: money coming in
+              // Blue line: money coming in
               dataKey="income"
               className={SERIES.income.className}
               stroke="currentColor"

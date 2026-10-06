@@ -32,6 +32,12 @@
   --warning: #f59e0b;
   --danger: #ef4444;
 
+  /* Chart series. Identity colors, not status: income and expenses are
+     different things, not "good" and "bad". Checked for color-blind
+     separation and contrast in both modes. */
+  --series-income: #2a78d6;
+  --series-expenses: #eb6834;
+
   /* Elevation */
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.14);
@@ -53,6 +59,9 @@
     --surface-muted: rgba(0, 0, 0, 0.2);
     --text-muted: #a1a1aa;
     --text-subtle: #71717a;
+
+    --series-income: #3987e5;
+    --series-expenses: #d95926;
 
     --border: rgba(255, 255, 255, 0.1);
     --border-subtle: rgba(255, 255, 255, 0.08);
