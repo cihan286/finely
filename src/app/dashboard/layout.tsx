@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import styles from "./layout.module.css";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
 import TopBar from "@/components/dashboard/topbar/TopBar";
+import VerifyEmailBanner from "@/components/dashboard/verify-banner/VerifyEmailBanner";
 import { requireOrganization } from "@/lib/session";
 
 // Shared frame for every /dashboard/* page: sidebar + top bar stay mounted
@@ -35,6 +36,8 @@ export default async function DashboardLayout({
           user={{ name: user.name, email: user.email }}
           organizationName={organization.name}
         />
+        {/* Reminder until the email address is verified */}
+        {!user.emailVerified && <VerifyEmailBanner email={user.email} />}
         {children}
       </div>
     </div>

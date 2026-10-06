@@ -3,8 +3,9 @@
 //
 // In plain words: the link in an invitation opens this page. If you aren't
 // logged in, it asks you to log in or create an account first (with the email
-// the invitation was sent to) and brings you back here. Then it shows which
-// company invited you, with buttons to accept or decline. If the invitation
+// the invitation was sent to) and brings you back here. If your email isn't
+// verified yet, it asks you to do that first. Then it shows which company
+// invited you, with buttons to accept or decline. If the invitation
 // has expired, was already used, or belongs to a different email address, it
 // explains that instead.
 //
@@ -17,6 +18,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import InvitationActions from "@/components/auth/InvitationActions";
+import ResendVerificationButton from "@/components/auth/ResendVerificationButton";
 import SwitchAccountButton from "@/components/auth/SwitchAccountButton";
 import styles from "@/components/auth/AuthForm.module.css";
 import { auth } from "@/lib/auth";
@@ -61,6 +63,31 @@ export default async function AcceptInvitationPage({
             Create an account
           </Link>
         </div>
+      </>
+    );
+  }
+
+  // Joining a team requires a verified email (see lib/auth.ts). Until then
+  // Better Auth won't even reveal the invitation, so check this first.
+  if (!session.user.emailVerified) {
+    return (
+      <>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Verify your email to join your team</h1>
+          <p className={styles.subtitle}>
+            We sent a verification link to <strong>{session.user.email}</strong>.
+            Click it, and you&apos;ll come right back here to accept the
+            invitation.
+          </p>
+        </div>
+        <p className={styles.footer}>
+          Didn&apos;t get it?{" "}
+          <ResendVerificationButton
+            email={session.user.email}
+            callbackURL={here}
+            className={styles.linkButton}
+          />
+        </p>
       </>
     );
   }

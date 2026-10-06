@@ -43,12 +43,15 @@ interface TeamSettingsProps {
   role: string;
   members: MemberRow[];
   invitations: InvitationRow[];
+  /** Whether emails are really sent (Resend is set up) */
+  emailEnabled: boolean;
 }
 
 export default function TeamSettings({
   role,
   members,
   invitations,
+  emailEnabled,
 }: TeamSettingsProps) {
   const router = useRouter();
   const canManage = canManageTeam(role);
@@ -156,10 +159,10 @@ export default function TeamSettings({
               disabled={busy !== null}
             />
           </form>
-          {process.env.NODE_ENV !== "production" && (
+          {!emailEnabled && (
             <p className={styles.devNote}>
-              Development: until email sending is set up, invitation links are
-              printed in the terminal running the server.
+              Email sending isn&apos;t set up (no RESEND_API_KEY), so invitation
+              links are printed in the terminal running the server.
             </p>
           )}
         </section>

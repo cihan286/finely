@@ -53,7 +53,12 @@ export default async function SettingsPage() {
           Manage the team at {organization.name}.
         </p>
       </div>
-      <TeamSettings role={role} members={members} invitations={invitations} />
+      <TeamSettings
+        role={role}
+        members={members}
+        invitations={invitations}
+        emailEnabled={Boolean(process.env.RESEND_API_KEY)}
+      />
     </main>
   );
 }

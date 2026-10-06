@@ -48,6 +48,8 @@ export default function SignupForm({
       name: String(data.get("name")).trim(),
       email: String(data.get("email")),
       password: String(data.get("password")),
+      // Where the link in the verification email will take them
+      callbackURL: next,
     });
 
     if (error) {

@@ -18,8 +18,16 @@ import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { queueEmail } from "@/lib/email/send";
+import {
+  invitationEmail,
+  passwordResetEmail,
+  verifyEmailEmail,
+} from "@/lib/email/templates";
+import { roleLabel } from "@/lib/roles";
 
-// The site's own address, used to build links in emails (e.g. invitations)
+// The site's own address, used to build links in emails (e.g. invitations).
+// In production, set BETTER_AUTH_URL to the real address (https://…).
 const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
 // Google sign-in credentials, read from the secret .env.local file
@@ -39,9 +47,19 @@ export const auth = betterAuth({
     // Called when someone asks to reset their password. `url` is the
     // one-time link that lets them choose a new one (valid for one hour).
     sendResetPassword: async ({ user, url }) => {
-      // TODO: send this by email (e.g. with Resend) before going live.
-      // Until then the link is printed in the server terminal.
-      console.info(`\n[password reset] ${user.email}\n${url}\n`);
+      queueEmail(passwordResetEmail(user.email, user.name, url));
+    },
+  },
+
+  // "Verify your email address": sent automatically after signing up with a
+  // password (Google already confirms the address). People can use Finely
+  // before verifying, but need a verified email to join a team.
+  emailVerification: {
+    sendOnSignUp: true,
+    // Clicking the link in the email also logs the person in
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      queueEmail(verifyEmailEmail(user.email, user.name, url));
     },
   },
 
@@ -88,13 +106,21 @@ export const auth = betterAuth({
     organization({
       // Called when someone is invited. The link opens our accept page.
       sendInvitationEmail: async (invite) => {
-        const { id, email, role, inviter } = invite;
-        // TODO: send this by email (e.g. with Resend) before going live.
-        // Until then the link is printed in the server terminal.
-        console.info(
-          `\n[invitation] ${email} invited to "${invite.organization.name}" as ${role} by ${inviter.user.email}\n${appUrl}/accept-invitation/${id}\n`,
+        queueEmail(
+          invitationEmail({
+            to: invite.email,
+            inviterName: invite.inviter.user.name,
+            inviterEmail: invite.inviter.user.email,
+            organizationName: invite.organization.name,
+            role: roleLabel(invite.role).toLowerCase(),
+            url: `${appUrl}/accept-invitation/${invite.id}`,
+          }),
         );
       },
+      // Only people who proved they own the invited email address can join.
+      // Without this, someone could sign up with a colleague's address (we
+      // don't check ownership at sign-up) and take their place on the team.
+      requireEmailVerificationOnInvitation: true,
     }),
     // nextCookies lets server actions set auth cookies; it must stay last.
     nextCookies(),
