@@ -14,8 +14,13 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { nextCookies } from "better-auth/next-js";
+import { organization } from "better-auth/plugins";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+
+// The site's own address, used to build links in emails (e.g. invitations)
+const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
 // Google sign-in credentials, read from the secret .env.local file
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -54,8 +59,46 @@ export const auth = betterAuth({
         }
       : {},
 
-  // nextCookies lets server actions set auth cookies; it must stay last.
-  plugins: [nextCookies()],
+  // When someone logs in, open the company they belong to (the oldest
+  // membership first), so the dashboard knows whose data to show.
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const [membership] = await db
+            .select({ organizationId: schema.member.organizationId })
+            .from(schema.member)
+            .where(eq(schema.member.userId, session.userId))
+            .orderBy(asc(schema.member.createdAt))
+            .limit(1);
+          return {
+            data: {
+              ...session,
+              activeOrganizationId: membership?.organizationId ?? null,
+            },
+          };
+        },
+      },
+    },
+  },
+
+  plugins: [
+    // Business accounts ("organizations"): each company has members with a
+    // role — owner, admin or member — and can invite people by email.
+    organization({
+      // Called when someone is invited. The link opens our accept page.
+      sendInvitationEmail: async (invite) => {
+        const { id, email, role, inviter } = invite;
+        // TODO: send this by email (e.g. with Resend) before going live.
+        // Until then the link is printed in the server terminal.
+        console.info(
+          `\n[invitation] ${email} invited to "${invite.organization.name}" as ${role} by ${inviter.user.email}\n${appUrl}/accept-invitation/${id}\n`,
+        );
+      },
+    }),
+    // nextCookies lets server actions set auth cookies; it must stay last.
+    nextCookies(),
+  ],
 });
 
 // The shape of a logged-in session (user + session details), for TypeScript

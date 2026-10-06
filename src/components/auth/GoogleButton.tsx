@@ -20,9 +20,15 @@ import styles from "./AuthForm.module.css";
 interface GoogleButtonProps {
   label: string;
   onError: (message: string) => void;
+  /** Where to land after signing in with Google */
+  callbackURL?: string;
 }
 
-export default function GoogleButton({ label, onError }: GoogleButtonProps) {
+export default function GoogleButton({
+  label,
+  onError,
+  callbackURL = "/dashboard",
+}: GoogleButtonProps) {
   // True while we're sending the visitor to Google (disables the button)
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +37,7 @@ export default function GoogleButton({ label, onError }: GoogleButtonProps) {
     // Redirects to Google; on success Google sends the user back to callbackURL
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/dashboard",
+      callbackURL,
     });
     if (error) {
       onError(error.message ?? "Could not connect to Google. Please try again.");

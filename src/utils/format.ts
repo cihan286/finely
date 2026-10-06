@@ -106,6 +106,12 @@ export function formatRelativeDate(iso: ISODateTime): string {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** Date -> "Oct 8" */
+export function formatShortDate(date: Date | string): string {
+  const d = new Date(date);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
 /** "today" / "tomorrow" / "in 3 days" */
 export function formatDueLabel(isoDate: ISODate): string {
   const diff = dayDiff(today(), new Date(`${isoDate}T00:00:00`));

@@ -24,9 +24,15 @@ interface LoginFormProps {
   googleEnabled: boolean;
   /** Shown above the form, e.g. after a password reset */
   notice?: string;
+  /** Where to go after logging in (e.g. back to an invitation) */
+  next?: string;
 }
 
-export default function LoginForm({ googleEnabled, notice }: LoginFormProps) {
+export default function LoginForm({
+  googleEnabled,
+  notice,
+  next = "/dashboard",
+}: LoginFormProps) {
   const router = useRouter();
   // The error message to show (e.g. "Invalid email or password"), if any
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +57,9 @@ export default function LoginForm({ googleEnabled, notice }: LoginFormProps) {
       setLoading(false);
       return;
     }
-    // Success: go to the dashboard, and refresh so it loads the new login
-    router.push("/dashboard");
+    // Success: continue (usually to the dashboard), and refresh so the next
+    // page loads with the new login
+    router.push(next);
     router.refresh();
   };
 
@@ -61,7 +68,11 @@ export default function LoginForm({ googleEnabled, notice }: LoginFormProps) {
       {/* Google option first, then an "or" divider, when Google is set up */}
       {googleEnabled && (
         <>
-          <GoogleButton label="Continue with Google" onError={setError} />
+          <GoogleButton
+            label="Continue with Google"
+            onError={setError}
+            callbackURL={next}
+          />
           <div className={styles.divider}>or</div>
         </>
       )}
