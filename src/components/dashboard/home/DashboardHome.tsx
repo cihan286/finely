@@ -9,6 +9,7 @@
 // the browser. Figures come from data/mockData.ts until real data exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import Link from "next/link";
 import styles from "./DashboardHome.module.css";
 import CashFlowChart from "./CashFlowChart";
 import Button from "@/components/common/button/Button";
@@ -184,7 +185,9 @@ export default function DashboardHome({
         <div className={`${styles.card} ${styles.transactionsCard}`}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Recent Activity</h2>
-            <button className={styles.viewAllBtn}>View all</button>
+            <Link href="/dashboard/transactions" className={styles.viewAllBtn}>
+              View all
+            </Link>
           </div>
           <div className={styles.transactionList}>
             {recentTransactions.map((tx) => {

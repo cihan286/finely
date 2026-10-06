@@ -112,6 +112,12 @@ export function formatShortDate(date: Date | string): string {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** Date -> "Oct 8, 2026" */
+export function formatDate(date: Date | string): string {
+  const d = new Date(date);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
 /** "today" / "tomorrow" / "in 3 days" */
 export function formatDueLabel(isoDate: ISODate): string {
   const diff = dayDiff(today(), new Date(`${isoDate}T00:00:00`));

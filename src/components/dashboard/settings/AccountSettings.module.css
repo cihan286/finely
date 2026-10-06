@@ -1,0 +1,52 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bank account settings styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to bank accounts: the add form's
+   layout and the balance next to each account. The cards, lists and
+   messages come from TeamSettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Name, type, last 4 digits, opening balance and button in one row */
+.addForm {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  /* The shared input style grows with "flex: 1", which in a column would
+     squash the box's height */
+  flex: none;
+}
+
+.balance {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Screens narrower than 760px: two fields per row, button below */
+@media (max-width: 760px) {
+  .addForm {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .addForm > :first-child,
+  .addForm > button {
+    grid-column: 1 / -1;
+  }
+}

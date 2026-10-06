@@ -25,6 +25,15 @@ export class DataError extends Error {
 }
 
 /**
+ * For server actions: the message to show for a DataError. Any other error
+ * (a bug, or Next.js redirecting to /login) is passed on unchanged.
+ */
+export function errorMessage(error: unknown): string {
+  if (error instanceof DataError) return error.message;
+  throw error;
+}
+
+/**
  * The signed-in user and the company whose data they may use. With
  * `manage: true`, also requires the owner or admin role.
  */

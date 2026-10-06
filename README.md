@@ -95,7 +95,8 @@ src/
 │   └── dashboard/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
 │       ├── page.tsx        Dashboard overview
-│       └── settings/       Team settings: members and invitations
+│       ├── transactions/   Transactions list, filters, add/edit window
+│       └── settings/       Team members, invitations and bank accounts
 ├── components/
 │   ├── common/             Shared across the app (Button, Logo, Footer)
 │   ├── home/               Landing page sections
@@ -176,6 +177,13 @@ Better Auth: after changing auth plugins, run
 `npx auth generate --config src/lib/auth.ts --output src/db/schema.ts`
 instead of editing them by hand.
 
+**Forms.** Forms save through server actions (`actions.ts` next to the page)
+that call `src/lib/data/` and return an `ActionState` (`src/lib/action-state.ts`)
+with an error or success message. Submit them with `onSubmit` +
+`startTransition` rather than `<form action>`: React clears `<form action>`
+fields after every submit, which would wipe what was typed when the server
+returns an error (see `TransactionDialog.tsx`).
+
 **Server vs. client components.** Components are Server Components by default.
 Add `"use client"` only to components that need state, effects or browser
 APIs, and keep those as small as possible (see `CashFlowChart.tsx`).
@@ -186,7 +194,10 @@ APIs, and keep those as small as possible (see `CashFlowChart.tsx`).
   dates stay stable. This has to become the real current date once real data
   is connected.
 - Several footer links, "About" and "Contact sales" have no destination yet.
-- Every company sees the same mock financial data for now. The real tables
-  and data functions exist (`src/lib/data/`), but no page uses them yet.
+- The dashboard overview still shows the same mock financial data to every
+  company. Transactions and bank accounts are real (Transactions page and
+  Settings), but the overview doesn't read them yet.
+- Categories can't be edited in the app yet; every company gets a default
+  set.
 - Not built yet: changing a member's role, leaving or renaming a company,
   and switching between several companies.

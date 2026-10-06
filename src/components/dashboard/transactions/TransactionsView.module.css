@@ -1,0 +1,357 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Transactions list styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the page title, the filter bar, the table of
+   transactions, paging links and the "add a bank account first" message,
+   plus how they rearrange on smaller screens.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  flex: 1;
+  min-width: 0; /* lets the flex child shrink instead of overflowing */
+  padding: 2rem 3rem;
+  overflow-y: auto;
+  background-color: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Cards (same look as the dashboard's cards) */
+
+.card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+
+/* Filter bar */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.input {
+  height: 38px;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.searchBox {
+  position: relative;
+  flex: 1 1 220px;
+}
+
+.searchBox .input {
+  width: 100%;
+  padding-left: 2.25rem;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.dateField {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
+
+.filterActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clearLink {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.clearLink:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
+/* Table */
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  padding: 0 0.75rem 0.75rem;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.85rem 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+/* The whole row is clickable: the description's link stretches over it */
+.row {
+  position: relative;
+}
+
+.row:hover {
+  background-color: var(--hover);
+}
+
+.rowLink {
+  font-weight: 600;
+}
+
+.rowLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.rowLink:focus-visible {
+  outline: none;
+}
+
+.rowLink:focus-visible::after {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.dateCell {
+  color: var(--text-muted);
+}
+
+.nameCell {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.categoryDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--success) 12%, transparent);
+  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
+}
+
+.pending {
+  background-color: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+}
+
+.amountCell {
+  text-align: right !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.income {
+  color: var(--success);
+}
+
+.noResults {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem 0;
+}
+
+/* Paging */
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pageInfo {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pageLinks {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pageLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.pageLink:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* "Add a bank account first" */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
+
+.emptyTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.emptyText {
+  max-width: 420px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+/* Screens narrower than 768px (phones and tablets) */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  /* Account and status columns are hidden to make room */
+  .wideOnly {
+    display: none;
+  }
+
+  .nameCell {
+    max-width: 160px;
+  }
+
+  .dateField,
+  .filters > select {
+    flex: 1 1 140px;
+  }
+
+  .dateField .input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Screens narrower than 560px (phones): the category column is hidden too,
+   so date, description and amount fit without scrolling */
+@media (max-width: 560px) {
+  .mediumUp {
+    display: none;
+  }
+}
