@@ -1,3 +1,12 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Phone picture on the home page
+//
+// In plain words: a drawing of a phone showing a preview of the Finely app —
+// a balance, a small chart and recent payments. It's an illustration made
+// entirely in code (no image file), so it stays sharp and switches between
+// light and dark mode. The figures are made up for display.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { ReactNode } from "react";
 import styles from "./PhoneMockup.module.css";
 import {
@@ -13,11 +22,13 @@ import {
 export default function PhoneMockup() {
   return (
     <div className={styles.frame}>
+      {/* The phone's side buttons */}
       <span className={styles.buttonVolumeUp} />
       <span className={styles.buttonVolumeDown} />
       <span className={styles.buttonPower} />
 
       <div className={styles.screen}>
+        {/* Top of the screen: clock, camera notch, signal and battery */}
         <div className={styles.statusBar}>
           <span>9:41</span>
           <div className={styles.island} />
@@ -35,6 +46,7 @@ export default function PhoneMockup() {
           <div className={styles.avatar}>MC</div>
         </div>
 
+        {/* Balance card with a small line chart */}
         <div className={styles.balanceCard}>
           <p className={styles.balanceLabel}>Total balance</p>
           <p className={styles.balanceValue}>$128,942.50</p>
@@ -85,6 +97,7 @@ export default function PhoneMockup() {
           />
         </div>
 
+        {/* App menu at the bottom of the screen */}
         <div className={styles.tabBar}>
           <Tab icon={<Home size={19} />} label="Home" active />
           <Tab icon={<CreditCard size={19} />} label="Cards" />
@@ -96,6 +109,7 @@ export default function PhoneMockup() {
   );
 }
 
+// One row in the "Recent activity" list
 interface TransactionProps {
   icon: ReactNode;
   name: string;
@@ -135,6 +149,7 @@ function Transaction({
   );
 }
 
+// One icon in the bottom menu
 interface TabProps {
   icon: ReactNode;
   label: string;

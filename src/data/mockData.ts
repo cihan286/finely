@@ -1,7 +1,16 @@
-// Single source of truth for the dashboard mock data.
-// Shapes mirror what a real API would return: raw numbers and ISO dates,
-// no pre-formatted strings. Formatting lives in utils/format.js.
-// Everything is internally consistent (see the "Totals" section).
+// ─────────────────────────────────────────────────────────────────────────────
+// Sample (mock) data for the dashboard
+//
+// In plain words: the dashboard needs numbers to show — balances, income,
+// expenses, transactions, bills. Until Finely connects to real bank data,
+// these made-up but realistic figures fill the screens. Everything adds up:
+// the totals are calculated from the details, so the pages never disagree.
+//
+// For developers: single source of truth for the dashboard mock data. Shapes
+// mirror what a real API would return (types in types/finance.ts): raw numbers
+// and ISO dates, no pre-formatted strings. Formatting lives in utils/format.ts.
+// Replace these exports with real data fetching once the backend exists.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import type {
   Account,
@@ -20,7 +29,7 @@ import type {
 export const TODAY = "2026-10-01";
 
 /* ------------------------------------------------------------------ */
-/* User & company                                                      */
+/* Notifications (the bell in the top bar)                             */
 /* ------------------------------------------------------------------ */
 export const notifications: Notification[] = [
   {
@@ -68,6 +77,7 @@ export const notifications: Notification[] = [
 /* ------------------------------------------------------------------ */
 /* Accounts & cards                                                    */
 /* ------------------------------------------------------------------ */
+// The business's bank accounts and what's in each
 export const accounts: Account[] = [
   {
     id: "acc_1",
@@ -93,6 +103,7 @@ export const accounts: Account[] = [
   },
 ];
 
+// Company payment cards: physical cards for people, virtual cards per purpose
 export const cards: Card[] = [
   {
     id: "card_1",
@@ -196,8 +207,10 @@ export const expenseCategories: ExpenseCategory[] = [
 /* ------------------------------------------------------------------ */
 /* Totals — everything below is derived so the page can't disagree     */
 /* ------------------------------------------------------------------ */
+// Rounds to whole cents, e.g. 10.004 -> 10.00
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// Money in and out over the last 30 days, and the total across all accounts
 export const INCOME_30D = 42600.0;
 export const EXPENSES_30D = round2(
   expenseCategories.reduce((sum, c) => sum + c.amount, 0),
@@ -249,6 +262,7 @@ export const metrics: Metric[] = [
 /* ------------------------------------------------------------------ */
 /* Cash flow chart                                                     */
 /* ------------------------------------------------------------------ */
+// Short month names used for the chart's labels
 const MONTHS = [
   "Jan",
   "Feb",
@@ -285,6 +299,8 @@ function distribute(total: number, n: number, rand: () => number): number[] {
   return values;
 }
 
+// Builds one chart point per day for the last 30 days. Each day gets a
+// different amount, but the 30 days add up exactly to the monthly totals above.
 function buildLast30Days(): CashflowPoint[] {
   const rand = seeded(2026);
   const income = distribute(INCOME_30D, 30, rand);
@@ -437,6 +453,7 @@ export const transactions: Transaction[] = [
 /* ------------------------------------------------------------------ */
 /* Bills & alerts                                                      */
 /* ------------------------------------------------------------------ */
+// Bills that are due soon, shown on the dashboard with a Pay button
 export const upcomingBills: Bill[] = [
   {
     id: "bill_1",

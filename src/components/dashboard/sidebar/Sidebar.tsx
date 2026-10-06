@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard sidebar (the menu on the left)
+//
+// In plain words: the dashboard's main menu — Dashboard, Transactions,
+// Insights, Settings and Log out. It's narrow (icons only) and widens to show
+// labels when you hover over it or move into it with the Tab key. The current
+// page is highlighted. On phones it becomes a bar along the bottom.
+//
+// For developers: a client component ("use client") because it tracks hover,
+// keyboard focus and the current address.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type FocusEvent, type ReactNode } from "react";
@@ -14,6 +26,7 @@ import {
   LogOut,
 } from "lucide-react";
 
+// The menu entries: address, label and icon
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
@@ -32,10 +45,12 @@ function isActive(pathname: string, href: string) {
 }
 
 export default function Sidebar() {
+  // Whether the menu is currently wide (showing labels)
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
+  // Log out, then go to the login page
   const handleLogOut = async () => {
     await authClient.signOut();
     router.push("/login");

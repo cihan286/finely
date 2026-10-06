@@ -96,6 +96,10 @@ Each component lives in its own folder next to its `.module.css` file.
 
 ## Conventions
 
+**File headers.** Every file starts with a short header explaining what it is
+"in plain words" (for anyone, including non-developers) and, where useful,
+notes "for developers". Keep these up to date, and add one to new files.
+
 **Colors and styling.** Don't hard-code colors in components. Use the tokens in
 `src/app/globals.css` (`--primary`, `--text-muted`, `--border`, `--success`, …).
 Dark mode is defined once there, so components using tokens get it for free.

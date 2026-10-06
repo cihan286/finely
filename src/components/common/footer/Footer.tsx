@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Footer
+//
+// In plain words: the bottom section of the home page — the logo and a short
+// description, social media links, link columns (Product, Support, Company,
+// Legal) and the copyright line.
+//
+// For developers: several links still point to "/" because their pages
+// (About, Blog, Terms…) don't exist yet.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import styles from "./Footer.module.css";
 import Link from "next/link";
 import Logo from "../logo/Logo";
@@ -10,6 +21,7 @@ import {
 } from "react-icons/fa6";
 
 export default function Footer() {
+  // Keeps the copyright year current automatically
   const currentYear = new Date().getFullYear();
 
   return (
@@ -23,6 +35,7 @@ export default function Footer() {
             Expense tracking, cash flow and insights for growing businesses,
             all in one place.
           </p>
+          {/* Social media icons (the accounts don't exist yet) */}
           <div className={styles.socialLinks}>
             <Link href="/" aria-label="Facebook">
               <FaFacebook size={20} />
@@ -42,6 +55,7 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Four columns of links */}
         <div className={styles.linksGrid}>
           <div className={styles.linkColumn}>
             <span className={styles.columnTitle}>Product</span>
@@ -103,6 +117,7 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Copyright line */}
       <div className={styles.bottomSection}>
         <p>© {currentYear} Finely, Inc. All rights reserved.</p>
       </div>

@@ -1,9 +1,20 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Features section of the home page
+//
+// In plain words: explains what Finely does in four short blocks — automatic
+// expense tracking, real-time cash flow, insights, and security — each with an
+// icon. Visitors reach it via the "Features" link at the top.
+//
+// For developers: id="features" is the target of the "#features" links.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import styles from "./Features.module.css";
 import { RefreshCw, LineChart, PieChart, ShieldCheck } from "lucide-react";
 
 export default function Features() {
   return (
     <section id="features" className={styles.mainContainer}>
+      {/* Soft blue glow behind the section (decoration only) */}
       <div className={styles.backgroundLayer} aria-hidden="true" />
       <div className={styles.headlineContainer}>
         <span className={styles.title}>Features</span>
@@ -20,6 +31,7 @@ export default function Features() {
           </span>
         </div>
       </div>
+      {/* The four feature blocks: two columns on wide screens, one on phones */}
       <div className={styles.featuresGrid}>
         <div className={styles.featureCard}>
           <div className={styles.iconContainer}>

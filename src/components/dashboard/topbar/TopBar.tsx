@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard top bar
+//
+// In plain words: the bar across the top of every dashboard page — a search
+// box, the notifications bell (with a count of unread messages and a panel
+// that opens on click), and the logged-in user's initials, name and email.
+//
+// For developers: a client component ("use client") because the notifications
+// panel opens, closes and marks messages as read. The user comes from the
+// dashboard layout, which reads it from the session. Search isn't wired up yet.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -11,10 +23,13 @@ interface TopBarProps {
 }
 
 export default function TopBar({ user }: TopBarProps) {
+  // The notifications (sample data for now), whether the panel is open, and a
+  // reference to the bell area so we can tell clicks inside it from outside
   const [items, setItems] = useState(initialNotifications);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  // The number shown on the red badge
   const unreadCount = items.filter((n) => !n.read).length;
 
   // Close the panel on outside click or Escape
@@ -35,11 +50,13 @@ export default function TopBar({ user }: TopBarProps) {
     };
   }, [open]);
 
+  // "Mark all as read": clears the unread highlight and the badge
   const markAllRead = () =>
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
 
   return (
     <header className={styles.topBar}>
+      {/* Search box (not connected to search yet) */}
       <div className={styles.searchWrap}>
         <Search size={16} className={styles.searchIcon} />
         <input
@@ -51,6 +68,7 @@ export default function TopBar({ user }: TopBarProps) {
       </div>
 
       <div className={styles.actions}>
+        {/* Bell button and its notifications panel */}
         <div className={styles.bellWrap} ref={wrapRef}>
           <button
             className={styles.iconBtn}
@@ -97,6 +115,7 @@ export default function TopBar({ user }: TopBarProps) {
           )}
         </div>
 
+        {/* The logged-in user: initials circle, name and email */}
         <div className={styles.user}>
           <div className={styles.avatar} aria-hidden="true">
             {getInitials(user.name)}

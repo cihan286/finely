@@ -1,6 +1,17 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Formatting helpers
+//
+// In plain words: the data stores plain numbers and dates (like 2400 and
+// 2026-10-01). These helpers turn them into friendly text for the screen,
+// like "$2,400.00", "$12k", "Yesterday" or "due in 3 days".
+//
+// For developers: the only place display formatting should happen.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { TODAY } from "@/data/mockData";
 import type { ISODate, ISODateTime, Metric } from "@/types/finance";
 
+// Short month names for dates like "Sep 28"
 const MONTHS = [
   "Jan",
   "Feb",
@@ -47,6 +58,7 @@ export function getInitials(name: string): string {
   return (first + last).toUpperCase() || "?";
 }
 
+// 1234 -> "1,234"
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
@@ -68,13 +80,17 @@ export function getMetricChange({
   };
 }
 
+// Date math helpers: how many calendar days lie between two dates, counted
+// from midnight so the time of day doesn't matter
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const dayDiff = (from: Date, to: Date) =>
   Math.round(
     (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86400000,
   );
+// "Today" comes from the mock data for now (see TODAY in data/mockData.ts)
 const today = () => new Date(`${TODAY}T00:00:00`);
 
+// 14:41 -> "2:41 PM"
 function formatTime(d: Date): string {
   const h = d.getHours();
   const m = String(d.getMinutes()).padStart(2, "0");

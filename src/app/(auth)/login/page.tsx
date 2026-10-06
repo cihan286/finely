@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Login page (finely.com/login)
+//
+// In plain words: where existing users log in with their email and password
+// (or Google). After a successful password reset, people land here and see a
+// "Your password was changed" message.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,7 +23,9 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ reset?: string }>;
 }) {
+  // Already logged in? Skip this page and go to the dashboard
   if (await getSession()) redirect("/dashboard");
+  // "?reset=success" in the address means the user just changed their password
   const { reset } = await searchParams;
 
   return (

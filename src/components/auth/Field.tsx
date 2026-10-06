@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Form field (label + input box)
+//
+// In plain words: one labeled input box in a form, like "Email" or "Password".
+// Password boxes get an eye button to show or hide what you've typed.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser. Accepts every normal <input> attribute
+// (name, type, required, autoComplete…) and passes them through.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
@@ -20,8 +31,11 @@ export default function Field({
   type = "text",
   ...inputProps
 }: FieldProps) {
+  // A unique ID links the label to its box, so clicking the label focuses the
+  // box and screen readers announce the label
   const id = useId();
   const hintId = `${id}-hint`;
+  // Whether the password is currently shown as plain text
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
 
@@ -41,6 +55,7 @@ export default function Field({
           aria-describedby={hint ? hintId : undefined}
           {...inputProps}
         />
+        {/* The show/hide eye button, only on password fields */}
         {isPassword && (
           <button
             type="button"

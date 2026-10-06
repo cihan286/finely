@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// "Forgot your password?" form
+//
+// In plain words: asks for an email address and requests a password reset
+// link for it. Afterwards it always shows the same confirmation, whether or not
+// that email has an account — so nobody can use it to check who's registered.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -7,11 +18,13 @@ import Field from "./Field";
 import styles from "./AuthForm.module.css";
 
 export default function ForgotPasswordForm() {
+  // Whether the request went through (then the confirmation replaces the form)
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    // Stop the browser from reloading the page; we send the request ourselves
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setError(null);
@@ -19,6 +32,7 @@ export default function ForgotPasswordForm() {
 
     const { error } = await authClient.requestPasswordReset({
       email: String(data.get("email")),
+      // The page the emailed link will open
       redirectTo: "/reset-password",
     });
 

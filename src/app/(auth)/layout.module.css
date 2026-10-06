@@ -1,3 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Login / sign-up page frame
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Centers the logo and the form card on a background
+   with a soft blue glow.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -36,6 +44,7 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* Screens narrower than 480px (phones) */
 @media (max-width: 480px) {
   .page {
     justify-content: flex-start;

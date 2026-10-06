@@ -1,3 +1,12 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dashboard overview styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the summary tiles, cards, spending bars,
+   payment and bill lists, and the cash flow chart, plus how they rearrange
+   on smaller screens.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .contentArea {
   flex: 1;
   min-width: 0; /* lets the flex child shrink instead of overflowing */
@@ -101,6 +110,7 @@
   gap: 1.5rem;
 }
 
+/* Screens narrower than 1100px (tablets and small laptops) */
 @media (max-width: 1100px) {
   .dashboardGrid {
     grid-template-columns: 1fr;
@@ -523,6 +533,7 @@
   }
 }
 
+/* Screens narrower than 380px (phones) */
 @media (max-width: 380px) {
   .metricValue {
     font-size: 1.05rem;
@@ -612,6 +623,7 @@
   padding-left: 0.75rem;
 }
 
+/* Screens narrower than 768px (phones and tablets) */
 @media (max-width: 768px) {
   .chartStats {
     gap: 0.75rem 1.5rem;
