@@ -63,7 +63,9 @@ export default function CreateOrganizationForm() {
   };
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    // method="post": if it is sent before the page has finished loading, the
+    // fields (such as the password) must not end up in the address bar
+    <form className={styles.form} method="post" onSubmit={handleSubmit}>
       {error && (
         <p className={styles.error} role="alert">
           {error}
