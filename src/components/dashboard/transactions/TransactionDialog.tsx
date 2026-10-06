@@ -36,7 +36,7 @@ interface TransactionDialogProps {
   canDelete: boolean;
   /** The list's address, to return to when the window closes */
   closeHref: string;
-  /** Today's date ("2026-10-01"), the default for new transactions */
+  /** Today in the company's timezone ("2026-10-01"), the default date */
   today: string;
 }
 
@@ -154,7 +154,7 @@ function TransactionForm({
           <input
             name="date"
             type="date"
-            defaultValue={transaction ? transaction.date.slice(0, 10) : today}
+            defaultValue={transaction?.day ?? today}
             className={forms.input}
             required
           />

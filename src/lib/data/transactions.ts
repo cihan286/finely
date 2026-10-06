@@ -10,14 +10,22 @@
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
 // category IDs coming from the browser are checked to belong to the company
-// before anything is saved.
+// before anything is saved. Days (filters, form dates, each transaction's
+// `day`) are calendar days in the company's timezone; a day without a time
+// is stored as noon on that day there.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, count, desc, eq, gte, ilike, isNull, lt, lte, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, lt, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { category, financialAccount, transaction } from "@/db/finance";
-import { MAX_IMPORT_ROWS, type StatementRow } from "@/lib/statement-import";
+import { addDays, localDay, startOfDay, zonedTime } from "@/lib/dates";
+import {
+  duplicateKey,
+  MAX_IMPORT_ROWS,
+  removeExisting,
+  type StatementRow,
+} from "@/lib/statement-import";
 import {
   TRANSACTION_STATUSES,
   type ISODate,
@@ -29,6 +37,7 @@ import {
   DataError,
   dateTime,
   getFinanceContext,
+  isoDay,
   money,
   oneOf,
   optionalText,
@@ -42,7 +51,13 @@ export interface TransactionInput {
   name: string;
   /** Positive = income, negative = expense */
   amount: number;
-  date: ISODateTime;
+  /** The day it happened, in the company's timezone */
+  date: ISODate;
+  /**
+   * When editing: the transaction's current moment. Kept as it is when the
+   * day didn't change, so imported times aren't lost.
+   */
+  originalDate?: ISODateTime | null;
   status: TransactionStatus;
   notes?: string | null;
 }
@@ -88,28 +103,21 @@ function selectTransactions() {
 type TransactionRow = Awaited<ReturnType<typeof selectTransactions>>[number];
 
 // Turns a database row into the shape the components use
-function toTransactionDetails({
-  categoryName,
-  occurredAt,
-  ...row
-}: TransactionRow): TransactionDetails {
+function toTransactionDetails(
+  { categoryName, occurredAt, ...row }: TransactionRow,
+  timeZone: string,
+): TransactionDetails {
   return {
     ...row,
     category: categoryName ?? "Uncategorized",
     date: occurredAt.toISOString(),
+    day: localDay(occurredAt, timeZone),
     status: row.status as TransactionStatus,
   };
 }
 
 // "50%_off" -> "50\%\_off", so search text is matched literally
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
-
-// The day after an ISO date, e.g. "2026-10-01" -> Oct 2 at midnight
-function dayAfter(isoDate: ISODate, field: string): Date {
-  const date = dateTime(isoDate, field);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date;
-}
 
 /**
  * One page of the company's transactions, newest first, plus how many match
@@ -118,7 +126,7 @@ function dayAfter(isoDate: ISODate, field: string): Date {
 export async function listTransactions(
   filters: TransactionFilters = {},
 ): Promise<{ transactions: TransactionDetails[]; total: number }> {
-  const { organizationId } = await getFinanceContext();
+  const { organizationId, timeZone } = await getFinanceContext();
 
   const conditions: SQL[] = [eq(transaction.organizationId, organizationId)];
   const search = optionalText(filters.search, "Search", 100);
@@ -133,11 +141,14 @@ export async function listTransactions(
   } else if (filters.categoryId) {
     conditions.push(eq(transaction.categoryId, filters.categoryId));
   }
+  // From the start of the first day to the end of the last, over there
   if (filters.from) {
-    conditions.push(gte(transaction.occurredAt, dateTime(filters.from, "Start date")));
+    const from = isoDay(filters.from, "Start date");
+    conditions.push(gte(transaction.occurredAt, startOfDay(from, timeZone)));
   }
   if (filters.to) {
-    conditions.push(lt(transaction.occurredAt, dayAfter(filters.to, "End date")));
+    const to = isoDay(filters.to, "End date");
+    conditions.push(lt(transaction.occurredAt, startOfDay(addDays(to, 1), timeZone)));
   }
   const where = and(...conditions);
 
@@ -154,18 +165,21 @@ export async function listTransactions(
     db.select({ total: count() }).from(transaction).where(where),
   ]);
 
-  return { transactions: rows.map(toTransactionDetails), total };
+  return {
+    transactions: rows.map((row) => toTransactionDetails(row, timeZone)),
+    total,
+  };
 }
 
 /** One transaction, or null if the company has no transaction with this ID */
 export async function getTransaction(
   id: string,
 ): Promise<TransactionDetails | null> {
-  const { organizationId } = await getFinanceContext();
+  const { organizationId, timeZone } = await getFinanceContext();
   const [row] = await selectTransactions().where(
-      and(eq(transaction.id, id), eq(transaction.organizationId, organizationId)),
-    );
-  return row ? toTransactionDetails(row) : null;
+    and(eq(transaction.id, id), eq(transaction.organizationId, organizationId)),
+  );
+  return row ? toTransactionDetails(row, timeZone) : null;
 }
 
 // Checks what was typed into the transaction form, including that the chosen
@@ -173,6 +187,7 @@ export async function getTransaction(
 async function parseTransactionInput(
   input: TransactionInput,
   organizationId: string,
+  timeZone: string,
 ) {
   const accountId = requiredText(input.accountId, "Account");
   const categoryId = optionalText(input.categoryId, "Category", 120);
@@ -198,12 +213,20 @@ async function parseTransactionInput(
   const amount = money(input.amount, "Amount");
   if (amount === 0) throw new DataError("Amount can't be zero.");
 
+  // Keep the exact moment when the day didn't change; otherwise noon that day
+  const day = isoDay(input.date, "Date");
+  const original = input.originalDate ? dateTime(input.originalDate, "Date") : null;
+  const occurredAt =
+    original && localDay(original, timeZone) === day
+      ? original
+      : zonedTime(day, "12:00", timeZone);
+
   return {
     accountId,
     categoryId,
     name: requiredText(input.name, "Name"),
     amount,
-    occurredAt: dateTime(input.date, "Date"),
+    occurredAt,
     status: oneOf(input.status, TRANSACTION_STATUSES, "Status"),
     notes: optionalText(input.notes, "Notes"),
   };
@@ -213,8 +236,8 @@ async function parseTransactionInput(
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<string> {
-  const { organizationId, userId } = await getFinanceContext();
-  const values = await parseTransactionInput(input, organizationId);
+  const { organizationId, userId, timeZone } = await getFinanceContext();
+  const values = await parseTransactionInput(input, organizationId, timeZone);
   const [row] = await db
     .insert(transaction)
     .values({ ...values, organizationId, createdById: userId })
@@ -224,8 +247,8 @@ export async function createTransaction(
 
 /** Changes a transaction. */
 export async function updateTransaction(id: string, input: TransactionInput) {
-  const { organizationId } = await getFinanceContext();
-  const values = await parseTransactionInput(input, organizationId);
+  const { organizationId, timeZone } = await getFinanceContext();
+  const values = await parseTransactionInput(input, organizationId, timeZone);
   const updated = await db
     .update(transaction)
     .set(values)
@@ -252,11 +275,6 @@ export async function deleteTransaction(id: string) {
 /* Importing a bank statement                                          */
 /* ------------------------------------------------------------------ */
 
-// Transactions that count as "the same" when importing: same day, amount and
-// description (ignoring upper/lower case)
-const duplicateKey = (day: string, amount: number, name: string) =>
-  `${day}|${amount.toFixed(2)}|${name.toLowerCase()}`;
-
 /**
  * Adds many transactions to one account at once, e.g. from a bank statement
  * file. Lines already in the account (same day, amount and description) are
@@ -269,7 +287,7 @@ export async function importTransactions(
   accountId: string,
   rows: StatementRow[],
 ): Promise<{ imported: number; skipped: number }> {
-  const { organizationId, userId } = await getFinanceContext();
+  const { organizationId, userId, timeZone } = await getFinanceContext();
 
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new DataError("There's nothing to import.");
@@ -299,19 +317,17 @@ export async function importTransactions(
   // Check every line again: the browser's preview can't be trusted
   const parsed = rows.map((row, index) => {
     const line = (message: string) => new DataError(`Row ${index + 1}: ${message}`);
-    if (typeof row?.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
-      throw line("The date is invalid.");
-    }
     try {
+      const day = isoDay(row?.date, "Date");
       const amount = money(row.amount, "Amount");
       if (amount === 0) throw new DataError("Amount can't be zero.");
       const categoryName = optionalText(row.category, "Category", 120);
       return {
-        day: row.date,
+        day,
         name: requiredText(row.name, "Description"),
         amount,
-        // Noon UTC falls on the same calendar day in almost every timezone
-        occurredAt: dateTime(`${row.date}T12:00:00.000Z`, "Date"),
+        // Statements list days, not times: noon that day, in the company's timezone
+        occurredAt: zonedTime(day, "12:00", timeZone),
         categoryId: categoryName ? (categoryIds.get(categoryName.toLowerCase()) ?? null) : null,
       };
     } catch (error) {
@@ -333,28 +349,15 @@ export async function importTransactions(
       and(
         eq(transaction.organizationId, organizationId),
         eq(transaction.accountId, accountId),
-        gte(transaction.occurredAt, dateTime(`${days[0]}T00:00:00.000Z`, "Date")),
-        lte(transaction.occurredAt, dateTime(`${days.at(-1)}T23:59:59.999Z`, "Date")),
+        gte(transaction.occurredAt, startOfDay(days[0], timeZone)),
+        lt(transaction.occurredAt, startOfDay(addDays(days.at(-1)!, 1), timeZone)),
       ),
     );
-  // How many of each "same" transaction the account already has. A file may
-  // legitimately contain two identical lines (two coffees on one day), so only
-  // as many lines are skipped as already exist.
-  const alreadyThere = new Map<string, number>();
-  for (const t of existing) {
-    const key = duplicateKey(t.occurredAt.toISOString().slice(0, 10), t.amount, t.name);
-    alreadyThere.set(key, (alreadyThere.get(key) ?? 0) + 1);
-  }
-
-  const toInsert = parsed.filter((p) => {
-    const key = duplicateKey(p.day, p.amount, p.name);
-    const left = alreadyThere.get(key) ?? 0;
-    if (left > 0) {
-      alreadyThere.set(key, left - 1);
-      return false;
-    }
-    return true;
-  });
+  const toInsert = removeExisting(
+    parsed,
+    existing.map((t) => duplicateKey(localDay(t.occurredAt, timeZone), t.amount, t.name)),
+    (p) => duplicateKey(p.day, p.amount, p.name),
+  );
 
   if (toInsert.length > 0) {
     // In chunks, sent together so the database saves all of them or none

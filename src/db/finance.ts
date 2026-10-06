@@ -2,7 +2,8 @@
 // Database tables for a company's money: accounts, categories, transactions
 //
 // In plain words: these are the tables that hold each company's financial
-// data. `financial_account` is a bank account (or cash box) the company keeps
+// data. `company_settings` holds preferences such as the company's timezone,
+// `financial_account` is a bank account (or cash box) the company keeps
 // money in, `category` is a label such as "Payroll" or "Marketing", and
 // `transaction` is one payment in or out of an account. Every row belongs to
 // exactly one company, so companies never see each other's data.
@@ -42,6 +43,17 @@ const timestamps = {
     .$onUpdate(() => new Date())
     .notNull(),
 };
+
+// A company's preferences. Companies without a row use the defaults.
+export const companySettings = pgTable("company_settings", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  // IANA timezone name, e.g. "Europe/Istanbul". Decides which calendar day a
+  // transaction falls on and when "today" starts.
+  timezone: text("timezone").default("UTC").notNull(),
+  ...timestamps,
+});
 
 // A bank account (or cash) the company holds money in. The current balance is
 // the opening balance plus all of the account's transactions.

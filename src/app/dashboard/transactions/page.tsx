@@ -18,8 +18,10 @@ import type { Metadata } from "next";
 import TransactionsView, {
   type TransactionsQuery,
 } from "@/components/dashboard/transactions/TransactionsView";
+import { todayIn } from "@/lib/dates";
 import { listAccounts } from "@/lib/data/accounts";
 import { listCategories } from "@/lib/data/categories";
+import { getCompanyTimeZone } from "@/lib/data/common";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -63,7 +65,7 @@ export default async function TransactionsPage({
     ? { imported: Number(imported), skipped: Number(single(params.skipped)) || 0 }
     : null;
 
-  const [{ transactions, total }, accounts, categories, editing] =
+  const [{ transactions, total }, accounts, categories, editing, timeZone] =
     await Promise.all([
       listTransactions({
         search: query.q,
@@ -77,11 +79,13 @@ export default async function TransactionsPage({
       listAccounts(),
       listCategories(),
       editId ? getTransaction(editId) : null,
+      getCompanyTimeZone(organization.id),
     ]);
 
   return (
     <TransactionsView
       organizationName={organization.name}
+      today={todayIn(timeZone)}
       canManage={canManageFinances(role)}
       query={query}
       pageSize={PAGE_SIZE}

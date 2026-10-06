@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// What happens when a bank account form on the Settings page is submitted
+// What happens when a form on the Settings page is submitted
 //
-// In plain words: adds or removes one of the company's bank accounts, then
-// reloads the page so the list is up to date. If something's wrong, we send
+// In plain words: changes the company's timezone, or adds or removes one of
+// its bank accounts, then reloads the page so it's up to date. If something's wrong, we send
 // back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -15,6 +15,7 @@ import { refresh } from "next/cache";
 import type { ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
 import { errorMessage } from "@/lib/data/common";
+import { updateTimeZone } from "@/lib/data/settings";
 import type { AccountType } from "@/types/finance";
 
 const field = (formData: FormData, name: string) => {
@@ -49,4 +50,19 @@ export async function submitAccount(
   }
   refresh();
   return { error: null, success: `${name} was ${removing ? "removed" : "added"}.` };
+}
+
+/** Changes the company's timezone (owners and admins only). */
+export async function submitCompanySettings(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const timeZone = field(formData, "timezone");
+  try {
+    await updateTimeZone(timeZone);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return { error: null, success: `The company's timezone is now ${timeZone}.` };
 }

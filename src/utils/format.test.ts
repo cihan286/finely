@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   formatCompactCurrency,
   formatCurrency,
+  formatDate,
+  formatRelativeDate,
   getInitials,
   getMetricChange,
 } from "./format";
@@ -56,4 +58,18 @@ describe("getMetricChange", () => {
       "No activity in the previous 30 days",
     );
   });
+});
+
+test("formatDate", () => {
+  expect(formatDate("2026-10-08")).toBe("Oct 8, 2026");
+  expect(formatDate("2026-01-01")).toBe("Jan 1, 2026");
+});
+
+test("formatRelativeDate", () => {
+  const today = "2026-10-06";
+  expect(formatRelativeDate("2026-10-06", today)).toBe("Today");
+  expect(formatRelativeDate("2026-10-05", today)).toBe("Yesterday");
+  expect(formatRelativeDate("2026-09-28", today)).toBe("Sep 28");
+  expect(formatRelativeDate("2025-12-31", today)).toBe("Dec 31, 2025");
+  expect(formatRelativeDate("2026-12-31", "2027-01-01")).toBe("Yesterday");
 });

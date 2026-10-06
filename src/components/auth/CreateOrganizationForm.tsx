@@ -3,7 +3,8 @@
 //
 // In plain words: the one question asked after signing up — the company's
 // name. Submitting it creates the company with you as its owner, and opens
-// the dashboard.
+// the dashboard. Your device's timezone becomes the company's (it can be
+// changed in Settings).
 //
 // For developers: a client component ("use client") because it handles typing
 // and the submit in the browser. The company's unique "slug" is generated
@@ -48,6 +49,8 @@ export default function CreateOrganizationForm() {
     const { error } = await authClient.organization.create({
       name,
       slug: makeSlug(name),
+      // Read by the afterCreateOrganization hook in lib/auth.ts
+      metadata: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     });
 
     if (error) {

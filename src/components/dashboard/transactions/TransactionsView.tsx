@@ -65,6 +65,8 @@ function hrefFor(
 
 interface TransactionsViewProps {
   organizationName: string;
+  /** Today in the company's timezone */
+  today: string;
   /** Whether you may delete transactions and add bank accounts */
   canManage: boolean;
   query: TransactionsQuery;
@@ -97,6 +99,7 @@ function importMessage({ imported, skipped }: { imported: number; skipped: numbe
 
 export default function TransactionsView({
   organizationName,
+  today,
   canManage,
   query,
   pageSize,
@@ -284,7 +287,7 @@ export default function TransactionsView({
                     <tbody>
                       {transactions.map((tx) => (
                         <tr key={tx.id} className={styles.row}>
-                          <td className={styles.dateCell}>{formatDate(tx.date)}</td>
+                          <td className={styles.dateCell}>{formatDate(tx.day)}</td>
                           <td className={styles.nameCell}>
                             {/* The link covers the whole row (see CSS) */}
                             <Link
@@ -376,7 +379,7 @@ export default function TransactionsView({
           categories={categories}
           canDelete={canManage}
           closeHref={listHref}
-          today={new Date().toISOString().slice(0, 10)}
+          today={today}
         />
       )}
     </main>

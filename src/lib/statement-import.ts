@@ -5,8 +5,9 @@
 // Dates can be written 2026-10-31, 10/31/2026 or 31.10.2026; amounts can be
 // "-1,234.56", "1.234,56", "(45.00)" or "$12"; some banks have one amount
 // column (negative = money out), others separate "money in" and "money out"
-// columns. This file guesses which column is which and turns each line of
-// the statement into a transaction — or explains why a line can't be used.
+// columns. This file guesses which column is which, turns each line of the
+// statement into a transaction — or explains why a line can't be used — and
+// recognizes lines that were already imported.
 //
 // For developers: pure functions, used in the browser (to preview an import)
 // and the shapes it produces are checked again on the server by
@@ -307,4 +308,36 @@ export function interpretRows(
     });
   }
   return { rows: result, problems };
+}
+
+/* ------------------------------------------------------------------ */
+/* Skipping lines that were imported before                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What makes two transactions "the same" when importing: same day, amount
+ * and description (ignoring upper/lower case).
+ */
+export const duplicateKey = (day: ISODate, amount: number, name: string) =>
+  `${day}|${amount.toFixed(2)}|${name.toLowerCase()}`;
+
+/**
+ * The incoming lines, minus the ones already there. A statement can contain
+ * two identical lines (two coffees on one day), so for each key only as many
+ * lines are dropped as already exist.
+ */
+export function removeExisting<T>(
+  incoming: T[],
+  existingKeys: string[],
+  keyOf: (item: T) => string,
+): T[] {
+  const remaining = new Map<string, number>();
+  for (const key of existingKeys) remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  return incoming.filter((item) => {
+    const key = keyOf(item);
+    const left = remaining.get(key) ?? 0;
+    if (left === 0) return true;
+    remaining.set(key, left - 1);
+    return false;
+  });
 }

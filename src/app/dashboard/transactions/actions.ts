@@ -48,22 +48,15 @@ function toTransactionInput(formData: FormData): TransactionInput {
   const amount = Math.abs(Number(field(formData, "amount")));
   const sign = field(formData, "direction") === "in" ? 1 : -1;
 
-  // The form only asks for a day. Keep the original time when the day didn't
-  // change; otherwise use noon UTC, which falls on the same calendar day in
-  // almost every timezone.
-  const day = field(formData, "date");
-  const originalDate = field(formData, "originalDate");
-  const date =
-    originalDate && originalDate.slice(0, 10) === day
-      ? originalDate
-      : `${day}T12:00:00.000Z`;
-
   return {
     accountId: field(formData, "accountId"),
     categoryId: field(formData, "categoryId") || null,
     name: field(formData, "name"),
     amount: sign * amount,
-    date,
+    // The form asks for a day; when editing, the current moment is sent too
+    // so its time is kept if the day stays the same (see lib/data/)
+    date: field(formData, "date"),
+    originalDate: field(formData, "originalDate") || null,
     status: field(formData, "status") as TransactionStatus,
     notes: field(formData, "notes"),
   };
