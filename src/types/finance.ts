@@ -88,10 +88,10 @@ export interface ExpenseCategory {
 }
 
 // Which icon to show on each summary tile
-export type MetricIconKey = "dollar" | "income" | "expenses" | "card";
+export type MetricIconKey = "dollar" | "income" | "expenses" | "net";
 
-// A summary tile at the top of the dashboard (e.g. Total Balance), with last
-// month's value so we can show the change
+// A summary tile at the top of the dashboard (e.g. Total Balance), with the
+// value for the previous 30 days so we can show the change
 export interface Metric {
   id: string;
   title: string;
