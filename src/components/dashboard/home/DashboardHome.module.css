@@ -611,11 +611,11 @@ a.transactionItem:hover .txName {
 
 /* Series colors for the chart's SVG paths (stroke="currentColor") */
 .incomeSeries {
-  color: var(--success);
+  color: var(--series-income);
 }
 
 .expensesSeries {
-  color: var(--danger);
+  color: var(--series-expenses);
 }
 
 .tooltip {

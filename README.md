@@ -6,8 +6,8 @@ actionable insights.
 
 **Status:** early development. The landing page, sign-up/login, business
 accounts (companies with teams and invitations), bank accounts, transactions
-(added by hand or imported from a bank's CSV) and the dashboard built from
-them all work with real data. Notifications in the top bar are still mock
+(added by hand or imported from a bank's CSV), categories, the dashboard
+and the Insights page all work with real data. Notifications in the top bar are still mock
 data.
 
 ## How accounts work
@@ -99,7 +99,8 @@ src/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
 │       ├── page.tsx        Dashboard overview
 │       ├── transactions/   Transactions list, filters, add/edit and CSV import
-│       └── settings/       Team members, invitations and bank accounts
+│       ├── insights/       Trends over 3/6/12 months, vendors, unusual charges
+│       └── settings/       Timezone, team, bank accounts and categories
 ├── components/
 │   ├── common/             Shared across the app (Button, Logo, Footer)
 │   ├── home/               Landing page sections
@@ -118,6 +119,7 @@ src/
 │   ├── statement-import.ts Reading bank statement CSVs (dates, amounts, columns)
 │   ├── dates.ts            Calendar days in a company's timezone
 │   ├── dashboard-summary.ts The dashboard's calculations (tested)
+│   ├── insights.ts         The Insights page's calculations (tested)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
 ├── data/mockData.ts        Mock notifications (the only mock data left)
@@ -137,6 +139,8 @@ notes "for developers". Keep these up to date, and add one to new files.
 
 **Colors and styling.** Don't hard-code colors in components. Use the tokens in
 `src/app/globals.css` (`--primary`, `--text-muted`, `--border`, `--success`, …).
+Charts use `--series-income` and `--series-expenses` for money in and out on
+every page; `--success`/`--danger` mean good/bad and aren't series colors.
 Dark mode is defined once there, so components using tokens get it for free.
 The only exceptions are decorative backgrounds and the phone mockup
 illustration.
@@ -224,8 +228,11 @@ Up to 2,000 lines per file.
 
 ## Known limitations
 
-- The top bar's notifications and search are placeholders, and the sidebar's
-  Insights page doesn't exist yet. Bills and payment cards aren't built.
+- The top bar's notifications and search are placeholders. Bills and payment
+  cards aren't built.
+- Vendors (Insights) are transactions with the same description, ignoring
+  case. Bank descriptions with changing reference numbers ("STRIPE ST-ABC1",
+  "STRIPE ST-XYZ2") count as different vendors.
 - Several footer links, "About" and "Contact sales" have no destination yet.
 - Not built yet: changing a member's role, leaving or renaming a company,
   and switching between several companies.

@@ -1,0 +1,476 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Insights styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the period switch, the totals, the monthly
+   chart with its legend, tooltip and table, the category bars, the vendor
+   table and the unusual-charge warnings, plus how they rearrange on
+   smaller screens.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  flex: 1;
+  min-width: 0;
+  padding: 2rem 3rem;
+  overflow-y: auto;
+  background-color: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+/* Period switch: 3 / 6 / 12 months */
+.periods {
+  display: flex;
+  gap: 0.25rem;
+  align-self: flex-start;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--hover);
+}
+
+.period {
+  padding: 0.4rem 0.85rem;
+  border-radius: calc(var(--radius-sm) - 0.15rem);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.period:hover {
+  color: var(--foreground);
+}
+
+.periodActive {
+  background-color: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Cards (same look as the dashboard's cards) */
+
+.card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Totals */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--background);
+  box-shadow: var(--shadow-sm);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.statHint {
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+}
+
+.positive {
+  color: var(--success);
+}
+
+.negative {
+  color: var(--danger);
+}
+
+/* Monthly chart */
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Bars are shown as small squares in the legend */
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.incomeSwatch {
+  background-color: var(--series-income);
+}
+
+.expensesSwatch {
+  background-color: var(--series-expenses);
+}
+
+/* color is inherited by the chart's axis labels and grid (currentColor) */
+.chartWrap {
+  width: 100%;
+  height: 280px;
+  color: var(--text-subtle);
+}
+
+.incomeSeries {
+  color: var(--series-income);
+}
+
+.expensesSeries {
+  color: var(--series-expenses);
+}
+
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tooltipLabel {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tooltipRow strong {
+  color: var(--foreground);
+}
+
+/* Tooltip rows are keyed with a short line in the series color */
+.lineKey {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.incomeKey {
+  background-color: var(--series-income);
+}
+
+.expensesKey {
+  background-color: var(--series-expenses);
+}
+
+/* "Show as a table" */
+.tableView {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.tableView summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.tableView .table {
+  margin-top: 0.75rem;
+}
+
+/* Tables (monthly figures, vendors) */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  padding: 0 0.5rem 0.6rem;
+}
+
+.table td {
+  padding: 0.6rem 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+.number {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.vendorName {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.vendorName a:hover {
+  color: var(--primary);
+}
+
+/* Category bars */
+
+.categoryList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.categoryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.categoryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.categoryName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.categoryIcon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.categoryAmount {
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--hover);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* Unusual charges */
+
+.alertList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9rem;
+}
+
+.alertList li:first-child .alert {
+  border-top: none;
+  padding-top: 0;
+}
+
+.alert:hover strong:first-child {
+  color: var(--primary);
+}
+
+.alertIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: color-mix(in srgb, var(--warning), var(--foreground) 30%);
+}
+
+.alertText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+/* Nothing to show yet */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+}
+
+.empty .muted {
+  max-width: 460px;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* Screens narrower than 1100px: one column of cards, two of totals */
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Screens narrower than 768px (phones and tablets) */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .stats {
+    gap: 0.75rem;
+  }
+
+  .stat {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .statValue {
+    font-size: 1.2rem;
+  }
+
+  .chartWrap {
+    height: 220px;
+  }
+
+  .vendorName {
+    max-width: 120px;
+  }
+}

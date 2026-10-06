@@ -58,8 +58,6 @@ export interface DashboardSummary {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// How many categories the breakdown lists before grouping the rest
-const TOP_CATEGORIES = 4;
 // Color for spending without a category, and for "N more categories"
 const NEUTRAL_COLOR = "#94a3b8";
 
@@ -191,8 +189,14 @@ export function buildDashboardSummary({
   };
 }
 
-/** The biggest categories, largest first, then everything else together */
-export function topCategories(spending: CategorySpending[]): ExpenseCategory[] {
+/**
+ * The biggest categories, largest first. If there are more than `top + 1`,
+ * the smallest are grouped together as "N more categories".
+ */
+export function topCategories(
+  spending: CategorySpending[],
+  top = 4,
+): ExpenseCategory[] {
   const categories: ExpenseCategory[] = spending
     .map((s) => ({
       id: s.categoryId ?? "uncategorized",
@@ -202,11 +206,11 @@ export function topCategories(spending: CategorySpending[]): ExpenseCategory[] {
       color: s.color ?? NEUTRAL_COLOR,
     }))
     .sort((a, b) => b.amount - a.amount);
-  // Five fit; with six or more, the smallest are grouped
-  if (categories.length <= TOP_CATEGORIES + 1) return categories;
-  const rest = categories.slice(TOP_CATEGORIES);
+  // One more than `top` fits as it is; beyond that, the smallest are grouped
+  if (categories.length <= top + 1) return categories;
+  const rest = categories.slice(top);
   return [
-    ...categories.slice(0, TOP_CATEGORIES),
+    ...categories.slice(0, top),
     {
       id: "everything-else",
       category: `${rest.length} more categories`,
