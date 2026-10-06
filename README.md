@@ -18,12 +18,17 @@ from **Settings** and remove them; **members** can use Finely but can't change
 the team. Someone who signs up through an invitation link joins that company
 instead of creating their own.
 
+New users get a "verify your email" email. They can use Finely right away (a
+banner reminds them), but need a verified email to accept a team invitation.
+Google sign-ins are verified automatically.
+
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org) (App Router) with React 19 and the React Compiler
 - TypeScript (strict mode)
 - [Better Auth](https://www.better-auth.com) for authentication (email + password, Google)
 - [Neon](https://neon.tech) Postgres with [Drizzle ORM](https://orm.drizzle.team)
+- [Resend](https://resend.com) for emails (verification, password reset, invitations)
 - CSS Modules with shared design tokens
 - [Recharts](https://recharts.org) for charts
 - [Lucide](https://lucide.dev) for icons ([react-icons](https://react-icons.github.io/react-icons/) for brand logos)
@@ -44,6 +49,9 @@ Requirements: Node.js 20.9 or newer and a [Neon](https://neon.tech) database
    - `BETTER_AUTH_SECRET`: a random secret; the file shows a command that makes one
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: optional, for "Continue with
      Google". The button stays hidden until both are set.
+   - `RESEND_API_KEY` / `EMAIL_FROM`: optional in development. Without a key,
+     emails (with their links) are printed in the terminal instead of sent.
+     `EMAIL_FROM` must use a domain verified in Resend.
 
 3. Create the database tables:
 
@@ -96,6 +104,7 @@ src/
 ├── db/                     Database connection and schema (Drizzle)
 ├── lib/
 │   ├── auth.ts             Better Auth server config
+│   ├── email/              Sending emails (Resend) and their templates
 │   ├── auth-client.ts      Auth functions for client components
 │   ├── session.ts          getSession() / requireUser() / requireOrganization()
 │   ├── roles.ts            Team roles (owner, admin, member) and their labels
@@ -163,13 +172,6 @@ APIs, and keep those as small as possible (see `CashFlowChart.tsx`).
   dates stay stable. This has to become the real current date once real data
   is connected.
 - Several footer links, "About" and "Contact sales" have no destination yet.
-- Password reset emails aren't sent yet: the reset link is printed in the
-  terminal running the server. An email service (e.g. Resend) is needed
-  before launch.
-- Invitation emails aren't sent yet either: the invitation link is printed in
-  the terminal too.
-- Email addresses aren't verified on sign-up yet. Once they are, set
-  `requireEmailVerificationOnInvitation: true` in `src/lib/auth.ts`.
 - Every company sees the same mock financial data for now.
 - Not built yet: changing a member's role, leaving or renaming a company,
   and switching between several companies.
