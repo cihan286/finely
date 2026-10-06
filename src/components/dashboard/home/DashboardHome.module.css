@@ -3,8 +3,8 @@
 
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. Covers the summary tiles, cards, spending bars,
-   payment and bill lists, and the cash flow chart, plus how they rearrange
-   on smaller screens.
+   transaction and account lists, the cash flow chart and the "get started"
+   panel, plus how they rearrange on smaller screens.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .contentArea {
@@ -255,6 +255,10 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+a.transactionItem:hover .txName {
+  color: var(--primary);
+}
+
 .transactionItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
@@ -310,74 +314,105 @@
   color: var(--success);
 }
 
-.billList {
+.accountList {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.billItem {
+.accountItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.billItem:last-child {
+.accountItem:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.billLeft {
+.accountLeft {
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0;
 }
 
-.billIcon {
+.accountIcon {
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   border-radius: 8px;
-  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
-  color: var(--danger);
+  background-color: var(--primary-soft);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.billDetails {
+.accountDetails {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 
-.billName {
+.accountName {
   font-weight: 600;
   font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.billDue {
+.accountType {
   font-size: 0.8rem;
-  color: var(--danger);
-  font-weight: 500;
+  color: var(--text-muted);
 }
 
-.payBtn {
-  background-color: transparent;
-  border: 1px solid var(--border);
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+.accountBalance {
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: inherit;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.payBtn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+/* "No spending in the last 30 days" and similar */
+.emptyText {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* "Get started" panel for a company without bank accounts */
+.gettingStarted {
+  gap: 1.25rem;
+  max-width: 720px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-left: 1.25rem;
+}
+
+.steps li {
+  padding-left: 0.35rem;
+}
+
+.steps strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.steps span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 /* ============================================================
@@ -399,42 +434,35 @@
 }
 
 .expenseHeader,
-.transactionLeft,
-.billLeft {
+.transactionLeft {
   gap: 0.75rem;
 }
 
 .expenseCategory,
 .transactionLeft,
-.billLeft,
-.txDetails,
-.billDetails {
+.txDetails {
   min-width: 0;
 }
 
 .expenseIcon,
-.txIcon,
-.billIcon {
+.txIcon {
   flex-shrink: 0;
 }
 
 .expenseName,
-.txName,
-.billName {
+.txName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .expenseAmount,
-.txAmount,
-.payBtn {
+.txAmount {
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.transactionItem,
-.billItem {
+.transactionItem {
   gap: 0.75rem;
 }
 
@@ -522,14 +550,9 @@
   }
 
   .txIcon,
-  .billIcon {
+  .accountIcon {
     width: 32px;
     height: 32px;
-  }
-
-  .payBtn {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.8rem;
   }
 }
 

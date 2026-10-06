@@ -5,9 +5,10 @@ businesses track expenses, follow their cash flow and turn financial data into
 actionable insights.
 
 **Status:** early development. The landing page, sign-up/login, business
-accounts (companies with teams and invitations) and the dashboard UI are built.
-Accounts and companies are real; the dashboard's financial figures are still
-mock data.
+accounts (companies with teams and invitations), bank accounts, transactions
+(added by hand or imported from a bank's CSV) and the dashboard built from
+them all work with real data. Notifications in the top bar are still mock
+data.
 
 ## How accounts work
 
@@ -115,7 +116,7 @@ src/
 │   ├── statement-import.ts Reading bank statement CSVs (dates, amounts, columns)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
-├── data/mockData.ts        Mock data, shaped like the future API
+├── data/mockData.ts        Mock notifications (the only mock data left)
 ├── types/finance.ts        Types for accounts, transactions, bills, …
 └── utils/
     ├── format.ts           Currency, number and date formatting
@@ -205,13 +206,13 @@ Up to 2,000 lines per file.
 
 ## Known limitations
 
-- "Today" is fixed to 2026-10-01 in `mockData.ts` so the mock data's relative
-  dates stay stable. This has to become the real current date once real data
-  is connected.
+- Days are counted in UTC: "the last 30 days", the chart's days and months,
+  and dates entered without a time (stored at noon UTC). Near midnight this
+  can be a day off from a company's local date. A per-company timezone
+  setting would fix it (see `lib/data/dashboard.ts`).
+- The top bar's notifications and search are placeholders, and the sidebar's
+  Insights page doesn't exist yet. Bills and payment cards aren't built.
 - Several footer links, "About" and "Contact sales" have no destination yet.
-- The dashboard overview still shows the same mock financial data to every
-  company. Transactions and bank accounts are real (Transactions page and
-  Settings), but the overview doesn't read them yet.
 - Categories can't be edited in the app yet; every company gets a default
   set.
 - Not built yet: changing a member's role, leaving or renaming a company,

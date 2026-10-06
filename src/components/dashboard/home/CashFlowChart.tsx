@@ -7,7 +7,8 @@
 // exact amounts for that day or month.
 //
 // For developers: a client component ("use client") because of the dropdown
-// and hover tooltip. Drawn with the Recharts library.
+// and hover tooltip. Drawn with the Recharts library. The data comes from
+// getDashboardSummary() (lib/data/dashboard.ts) via the dashboard page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -24,8 +25,7 @@ import {
   type TooltipContentProps,
 } from "recharts";
 import styles from "./DashboardHome.module.css";
-import { cashflow } from "@/data/mockData";
-import type { CashflowRange } from "@/types/finance";
+import type { Cashflow, CashflowRange } from "@/types/finance";
 import { formatCurrency, formatCompactCurrency } from "@/utils/format";
 
 // The time ranges in the dropdown, and the text shown for each
@@ -81,7 +81,7 @@ function ChartTooltip({
   );
 }
 
-export default function CashFlowChart() {
+export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
   // Which time range is selected, and that range's data points
   const [range, setRange] = useState<CashflowRange>("last30Days");
   const data = cashflow[range];

@@ -3,13 +3,12 @@
 //
 // In plain words: the data stores plain numbers and dates (like 2400 and
 // 2026-10-01). These helpers turn them into friendly text for the screen,
-// like "$2,400.00", "$12k", "Yesterday" or "due in 3 days".
+// like "$2,400.00", "$12k", "Yesterday" or "Oct 1, 2026".
 //
 // For developers: the only place display formatting should happen.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { TODAY } from "@/data/mockData";
-import type { ISODate, ISODateTime, Metric } from "@/types/finance";
+import type { ISODateTime, Metric } from "@/types/finance";
 
 // Short month names for dates like "Sep 28"
 const MONTHS = [
@@ -63,7 +62,10 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
-/** Month-over-month delta label + whether it counts as "good" (green). */
+/**
+ * The change against the previous 30 days, e.g. "+12.4% vs. previous 30
+ * days", and whether it counts as "good" (green).
+ */
 export function getMetricChange({
   value,
   previousValue,
@@ -73,37 +75,27 @@ export function getMetricChange({
   isPositive: boolean;
 } {
   if (value === previousValue) return { text: "No change", isPositive: true };
-  const pct = ((value - previousValue) / previousValue) * 100;
+  // Nothing to compare with: a percentage of zero is meaningless
+  if (previousValue === 0) {
+    return { text: "No activity in the previous 30 days", isPositive: true };
+  }
+  // Math.abs, so going from -100 to -50 counts as +50% (an improvement)
+  const pct = ((value - previousValue) / Math.abs(previousValue)) * 100;
   return {
-    text: `${pct > 0 ? "+" : ""}${pct.toFixed(1)}% from last month`,
+    text: `${pct > 0 ? "+" : ""}${pct.toFixed(1)}% vs. previous 30 days`,
     isPositive: higherIsBetter ? pct > 0 : pct < 0,
   };
 }
 
-// Date math helpers: how many calendar days lie between two dates, counted
-// from midnight so the time of day doesn't matter
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const dayDiff = (from: Date, to: Date) =>
-  Math.round(
-    (startOfDay(to).getTime() - startOfDay(from).getTime()) / 86400000,
-  );
-// "Today" comes from the mock data for now (see TODAY in data/mockData.ts)
-const today = () => new Date(`${TODAY}T00:00:00`);
-
-// 14:41 -> "2:41 PM"
-function formatTime(d: Date): string {
-  const h = d.getHours();
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h % 12 || 12}:${m} ${h >= 12 ? "PM" : "AM"}`;
-}
-
-/** "Today, 2:41 PM" / "Yesterday" / "Sep 28" */
+/** "Today" / "Yesterday" / "Sep 28" / "Sep 28, 2025" (in an earlier year) */
 export function formatRelativeDate(iso: ISODateTime): string {
-  const d = new Date(iso);
-  const diff = dayDiff(d, today());
-  if (diff === 0) return `Today, ${formatTime(d)}`;
-  if (diff === 1) return "Yesterday";
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const date = new Date(iso);
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (sameDay(date, now)) return "Today";
+  if (sameDay(date, new Date(now.getTime() - 86_400_000))) return "Yesterday";
+  if (date.getFullYear() !== now.getFullYear()) return formatDate(date);
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /** Date -> "Oct 8" */
@@ -116,12 +108,4 @@ export function formatShortDate(date: Date | string): string {
 export function formatDate(date: Date | string): string {
   const d = new Date(date);
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-}
-
-/** "today" / "tomorrow" / "in 3 days" */
-export function formatDueLabel(isoDate: ISODate): string {
-  const diff = dayDiff(today(), new Date(`${isoDate}T00:00:00`));
-  if (diff <= 0) return "today";
-  if (diff === 1) return "tomorrow";
-  return `in ${diff} days`;
 }
