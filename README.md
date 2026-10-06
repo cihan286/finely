@@ -78,6 +78,8 @@ Open [http://localhost:3000](http://localhost:3000), create an account at
 | `npm run start`     | Serve the production build                   |
 | `npm run lint`      | Run ESLint                                   |
 | `npm run typecheck` | Check types without building                 |
+| `npm test`          | Run the automated tests once (Vitest)        |
+| `npm run test:watch` | Re-run the tests on every change            |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations to the database    |
 | `npm run db:studio` | Browse the database in Drizzle Studio        |
@@ -187,6 +189,11 @@ with an error or success message. Submit them with `onSubmit` +
 `startTransition` rather than `<form action>`: React clears `<form action>`
 fields after every submit, which would wipe what was typed when the server
 returns an error (see `TransactionDialog.tsx`).
+
+**Tests.** Calculations live in pure functions (no database, no React) so
+they can be tested: put a `*.test.ts` file next to the code (e.g.
+`src/lib/statement-import.test.ts`) and run `npm test`. Pages and database
+queries are checked by running the app.
 
 **Server vs. client components.** Components are Server Components by default.
 Add `"use client"` only to components that need state, effects or browser
