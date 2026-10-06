@@ -2,8 +2,9 @@
 // Dashboard top bar
 //
 // In plain words: the bar across the top of every dashboard page — a search
-// box, the notifications bell (with a count of unread messages and a panel
-// that opens on click), and the logged-in user's initials, name and email.
+// box, the company you're working in, the notifications bell (with a count of
+// unread messages and a panel that opens on click), and the logged-in user's
+// initials, name and email.
 //
 // For developers: a client component ("use client") because the notifications
 // panel opens, closes and marks messages as read. The user comes from the
@@ -13,16 +14,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell, Search } from "lucide-react";
+import { Bell, Building2, Search } from "lucide-react";
 import styles from "./TopBar.module.css";
 import { notifications as initialNotifications } from "@/data/mockData";
 import { getInitials } from "@/utils/format";
 
 interface TopBarProps {
   user: { name: string; email: string };
+  /** The company the user is working in */
+  organizationName: string;
 }
 
-export default function TopBar({ user }: TopBarProps) {
+export default function TopBar({ user, organizationName }: TopBarProps) {
   // The notifications (sample data for now), whether the panel is open, and a
   // reference to the bell area so we can tell clicks inside it from outside
   const [items, setItems] = useState(initialNotifications);
@@ -68,6 +71,12 @@ export default function TopBar({ user }: TopBarProps) {
       </div>
 
       <div className={styles.actions}>
+        {/* The company you're working in */}
+        <div className={styles.company} title={organizationName}>
+          <Building2 size={16} aria-hidden="true" />
+          <span className={styles.companyName}>{organizationName}</span>
+        </div>
+
         {/* Bell button and its notifications panel */}
         <div className={styles.bellWrap} ref={wrapRef}>
           <button

@@ -152,6 +152,49 @@
   font-size: 0.8rem;
 }
 
+/* Button-looking links (e.g. "Log in" on the invitation page) */
+.primaryLink,
+.secondaryLink {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.primaryLink {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.primaryLink:hover {
+  background-color: color-mix(in srgb, var(--primary), var(--background) 20%);
+}
+
+.secondaryLink {
+  border: 1px solid var(--border);
+}
+
+.secondaryLink:hover {
+  background-color: var(--hover);
+}
+
+/* A button that looks like a link */
+.linkButton {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
 .footer {
   margin-top: 1.5rem;
   text-align: center;

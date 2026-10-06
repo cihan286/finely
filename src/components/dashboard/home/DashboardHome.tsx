@@ -62,7 +62,15 @@ const categoryIcons = {
 // Only the five newest payments fit in "Recent Activity"
 const recentTransactions = transactions.slice(0, 5);
 
-export default function DashboardHome({ firstName }: { firstName: string }) {
+interface DashboardHomeProps {
+  firstName: string;
+  organizationName: string;
+}
+
+export default function DashboardHome({
+  firstName,
+  organizationName,
+}: DashboardHomeProps) {
   return (
     <main className={styles.contentArea}>
       {/* Page title, welcome line and action buttons */}
@@ -70,8 +78,8 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
         <div>
           <h1 className={styles.title}>Dashboard Overview</h1>
           <p className={styles.subtitle}>
-            Welcome back, {firstName}. Here is what is happening
-            today.
+            Welcome back, {firstName}. Here is what is happening at{" "}
+            {organizationName} today.
           </p>
         </div>
         <div className={styles.headerActions}>

@@ -8,6 +8,13 @@
       "when": 1791020189055,
       "tag": "0000_init_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791279931065,
+      "tag": "0001_organizations",
+      "breakpoints": true
     }
   ]
 }

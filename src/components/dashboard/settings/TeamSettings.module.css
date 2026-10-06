@@ -1,0 +1,247 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Team settings styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the invite form, the member and invitation
+   lists, role badges and the messages shown after an action.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 820px;
+}
+
+/* Cards (same look as the dashboard's cards) */
+
+.card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 1.5rem;
+}
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1.25rem;
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cardHint {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--hover);
+  color: var(--text-muted);
+}
+
+/* Invite form: email, role and button in one row */
+
+.inviteForm {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.input,
+.select {
+  height: 40px;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.devNote {
+  margin-top: 0.85rem;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+/* Member / invitation rows */
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.avatarMuted {
+  background-color: var(--hover);
+  color: var(--text-muted);
+}
+
+.who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.name,
+.email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.you {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.email {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
+
+.rowAction {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.825rem;
+  font-weight: 500;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.rowAction:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.rowAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Messages */
+
+.error,
+.success,
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.error {
+  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: color-mix(in srgb, var(--danger), var(--foreground) 25%);
+}
+
+.success {
+  background-color: color-mix(in srgb, var(--success) 12%, transparent);
+  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
+}
+
+.notice {
+  background-color: var(--hover);
+  color: var(--text-muted);
+}
+
+/* Visually hidden, but read by screen readers (labels for the invite form) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Screens narrower than 640px (phones): stack the invite form */
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .inviteForm {
+    flex-direction: column;
+  }
+
+  /* In a column, "flex: 1" would squash the email box's height */
+  .input {
+    flex: none;
+  }
+}

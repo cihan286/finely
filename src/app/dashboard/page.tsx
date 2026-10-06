@@ -8,7 +8,7 @@
 
 import type { Metadata } from "next";
 import DashboardHome from "@/components/dashboard/home/DashboardHome";
-import { requireUser } from "@/lib/session";
+import { requireOrganization } from "@/lib/session";
 
 // Browser tab title: "Dashboard | Finely"
 export const metadata: Metadata = {
@@ -16,7 +16,13 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  // Protects the page: visitors who aren't logged in are sent to /login
-  const user = await requireUser();
-  return <DashboardHome firstName={user.name.split(" ")[0]} />;
+  // Protects the page: visitors who aren't logged in are sent to /login, and
+  // people without a company to /onboarding
+  const { user, organization } = await requireOrganization();
+  return (
+    <DashboardHome
+      firstName={user.name.split(" ")[0]}
+      organizationName={organization.name}
+    />
+  );
 }

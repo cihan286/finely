@@ -22,7 +22,8 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Which addresses this check applies to: /dashboard and everything under it
+// Which addresses this check applies to: /dashboard and everything under it,
+// and the company setup page
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/onboarding"],
 };

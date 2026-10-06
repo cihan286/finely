@@ -61,6 +61,27 @@
   gap: 1rem;
 }
 
+/* The company name pill next to the bell */
+.company {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 220px;
+  height: 40px;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.companyName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bellWrap {
   position: relative;
 }
@@ -253,6 +274,15 @@
   }
 
   .userInfo {
+    display: none;
+  }
+
+  /* No room for the company name on phones; the icon stays */
+  .company {
+    padding: 0 0.7rem;
+  }
+
+  .companyName {
     display: none;
   }
 }

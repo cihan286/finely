@@ -12,15 +12,23 @@ import { redirect } from "next/navigation";
 import SignupForm from "@/components/auth/SignupForm";
 import styles from "@/components/auth/AuthForm.module.css";
 import { isGoogleEnabled } from "@/lib/auth";
+import { safeNextPath } from "@/lib/redirect";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Create your account",
 };
 
-export default async function SignupPage() {
-  // Already logged in? Skip this page and go to the dashboard
-  if (await getSession()) redirect("/dashboard");
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // "?next=…" is where to return after signing up (e.g. an invitation)
+  const next = safeNextPath((await searchParams).next);
+
+  // Already logged in? Skip this page
+  if (await getSession()) redirect(next ?? "/dashboard");
 
   return (
     <>
@@ -31,11 +39,14 @@ export default async function SignupPage() {
         </p>
       </div>
 
-      <SignupForm googleEnabled={isGoogleEnabled} />
+      <SignupForm googleEnabled={isGoogleEnabled} next={next} />
 
       <p className={styles.footer}>
         Already have an account?{" "}
-        <Link href="/login" className={styles.link}>
+        <Link
+          href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+          className={styles.link}
+        >
           Log in
         </Link>
       </p>

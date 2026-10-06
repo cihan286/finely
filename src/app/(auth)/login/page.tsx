@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import LoginForm from "@/components/auth/LoginForm";
 import styles from "@/components/auth/AuthForm.module.css";
 import { isGoogleEnabled } from "@/lib/auth";
+import { safeNextPath } from "@/lib/redirect";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -21,12 +22,15 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string }>;
+  searchParams: Promise<{ reset?: string; next?: string }>;
 }) {
-  // Already logged in? Skip this page and go to the dashboard
-  if (await getSession()) redirect("/dashboard");
-  // "?reset=success" in the address means the user just changed their password
-  const { reset } = await searchParams;
+  // "?reset=success" in the address means the user just changed their password;
+  // "?next=…" is where to return afterwards (e.g. an invitation)
+  const { reset, next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext);
+
+  // Already logged in? Skip this page
+  if (await getSession()) redirect(next ?? "/dashboard");
 
   return (
     <>
@@ -37,6 +41,7 @@ export default async function LoginPage({
 
       <LoginForm
         googleEnabled={isGoogleEnabled}
+        next={next}
         notice={
           reset === "success"
             ? "Your password was changed. Log in with your new password."
@@ -46,7 +51,10 @@ export default async function LoginPage({
 
       <p className={styles.footer}>
         New to Finely?{" "}
-        <Link href="/signup" className={styles.link}>
+        <Link
+          href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+          className={styles.link}
+        >
           Create an account
         </Link>
       </p>

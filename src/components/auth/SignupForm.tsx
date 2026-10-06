@@ -3,7 +3,7 @@
 //
 // In plain words: the form for creating an account — full name, work email and
 // a password of at least 8 characters. On success the new user is logged in and
-// taken to the dashboard. If the email is already registered, an error appears.
+// taken to company setup (or back to the invitation they came from). If the email is already registered, an error appears.
 //
 // For developers: a client component ("use client") because it reacts to
 // typing and clicks in the browser.
@@ -20,11 +20,16 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
 import GoogleButton from "./GoogleButton";
 import styles from "./AuthForm.module.css";
 
+interface SignupFormProps {
+  googleEnabled: boolean;
+  /** Where to go after signing up; by default, company setup */
+  next?: string;
+}
+
 export default function SignupForm({
   googleEnabled,
-}: {
-  googleEnabled: boolean;
-}) {
+  next = "/onboarding",
+}: SignupFormProps) {
   const router = useRouter();
   // The error message to show, if any
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +55,9 @@ export default function SignupForm({
       setLoading(false);
       return;
     }
-    // Success: go to the dashboard, and refresh so it loads the new login
-    router.push("/dashboard");
+    // Success: continue to company setup (or e.g. back to an invitation),
+    // and refresh so the next page loads with the new login
+    router.push(next);
     router.refresh();
   };
 
@@ -60,7 +66,11 @@ export default function SignupForm({
       {/* Google option first, then an "or" divider, when Google is set up */}
       {googleEnabled && (
         <>
-          <GoogleButton label="Sign up with Google" onError={setError} />
+          <GoogleButton
+            label="Sign up with Google"
+            onError={setError}
+            callbackURL={next}
+          />
           <div className={styles.divider}>or</div>
         </>
       )}
