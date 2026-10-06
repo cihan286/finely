@@ -6,8 +6,9 @@
 // uses them to catch mistakes, such as a missing amount or a misspelled field,
 // before the app ever runs.
 //
-// For developers: the mock data implements these today; a real API should
-// return the same shapes (raw numbers, ISO dates).
+// For developers: both the mock data and the real data functions (lib/data/)
+// return these shapes (raw numbers, ISO dates). The lists of allowed values
+// (ACCOUNT_TYPES, …) are also used to check what people type into forms.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Dates are stored as text in a standard format (ISO 8601), e.g. 2026-10-01
@@ -24,12 +25,17 @@ export interface Notification {
   read: boolean;
 }
 
-// A bank account (checking, savings, or money set aside for taxes)
+// The kinds of bank account: everyday, savings, or money set aside for taxes
+export const ACCOUNT_TYPES = ["checking", "savings", "reserve"] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+// A bank account and how much is in it
 export interface Account {
   id: string;
   name: string;
-  type: "checking" | "savings" | "reserve";
-  last4: string;
+  type: AccountType;
+  /** Last four digits of the account number; null if it has none */
+  last4: string | null;
   balance: number;
   apy?: number;
 }
@@ -47,13 +53,30 @@ export interface Card {
   spent: number;
 }
 
-// Which icon to show next to each spending category
-export type CategoryIconKey =
-  | "users"
-  | "building"
-  | "laptop"
-  | "megaphone"
-  | "more";
+// Which icon to show next to each category
+export const CATEGORY_ICON_KEYS = [
+  "users",
+  "building",
+  "laptop",
+  "megaphone",
+  "income",
+  "more",
+] as const;
+export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];
+
+// Whether a category is for money coming in or going out
+export const CATEGORY_KINDS = ["income", "expense"] as const;
+export type CategoryKind = (typeof CATEGORY_KINDS)[number];
+
+// A label a company gives its transactions, e.g. "Payroll" or "Sales"
+export interface Category {
+  id: string;
+  name: string;
+  kind: CategoryKind;
+  /** Hex color for charts, e.g. "#8b5cf6" */
+  color: string;
+  iconKey: CategoryIconKey;
+}
 
 // A spending category (e.g. Payroll) and how much went to it
 export interface ExpenseCategory {
@@ -92,16 +115,27 @@ export type CashflowRange = "last30Days" | "thisYear";
 
 export type Cashflow = Record<CashflowRange, CashflowPoint[]>;
 
+export const TRANSACTION_STATUSES = ["completed", "pending"] as const;
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
 // A single payment in or out of an account
 export interface Transaction {
   id: string;
   name: string;
+  /** The category's name ("Uncategorized" if it has none) */
   category: string;
   /** Positive = income, negative = expense */
   amount: number;
   date: ISODateTime;
-  status: "completed" | "pending";
+  status: TransactionStatus;
+  /** The account's ID */
   account: string;
+}
+
+// A transaction with everything an edit form needs
+export interface TransactionDetails extends Transaction {
+  categoryId: string | null;
+  notes: string | null;
 }
 
 // A bill that has to be paid by a certain date

@@ -56,6 +56,7 @@ const categoryIcons = {
   megaphone: Megaphone,
   users: Users,
   building: Building2,
+  income: TrendingUp,
   more: MoreHorizontal,
 };
 

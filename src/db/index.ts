@@ -6,12 +6,14 @@
 // imports `db` from here.
 //
 // For developers: Drizzle over Neon's HTTP driver (no interactive transactions).
-// Table definitions live in ./schema.ts.
+// Table definitions live in ./schema.ts (auth and companies, generated) and
+// ./finance.ts (the companies' financial data).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
+import * as authSchema from "./schema";
+import * as financeSchema from "./finance";
 
 // The database address and password come from the secret .env.local file.
 // Without it nothing can work, so stop right away with a clear message.
@@ -22,4 +24,6 @@ if (!url) {
   );
 }
 
-export const db = drizzle(neon(url), { schema });
+export const db = drizzle(neon(url), {
+  schema: { ...authSchema, ...financeSchema },
+});
