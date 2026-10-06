@@ -4,16 +4,6 @@
 export type ISODate = string; // "2026-10-01"
 export type ISODateTime = string; // "2026-10-01T14:41:00"
 
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  company: string;
-  initials: string;
-}
-
 export interface Notification {
   id: string;
   type: "payment" | "alert" | "bill" | "card" | "system";

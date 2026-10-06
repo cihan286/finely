@@ -18,6 +18,15 @@
   outline-offset: 2px;
 }
 
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
 /* Variants */
 
 .primary {
@@ -25,7 +34,7 @@
   color: var(--on-primary);
 }
 
-.primary:hover {
+.primary:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--primary), var(--background) 20%);
 }
 

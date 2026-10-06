@@ -13,6 +13,11 @@ interface ButtonProps {
   size?: "md" | "sm";
   icon?: ReactNode;
   iconPosition?: "left" | "right";
+  /** "submit" for form buttons; ignored when href is set */
+  type?: "button" | "submit";
+  disabled?: boolean;
+  /** Stretch to the width of the container */
+  fullWidth?: boolean;
 }
 
 // Renders a <Link> when given an href (navigation), a <button> otherwise (action).
@@ -24,11 +29,15 @@ export default function Button({
   size = "md",
   icon,
   iconPosition = "left",
+  type = "button",
+  disabled = false,
+  fullWidth = false,
 }: ButtonProps) {
   const className = [
     styles.button,
     styles[variant],
     size === "sm" && styles.sm,
+    fullWidth && styles.fullWidth,
   ]
     .filter(Boolean)
     .join(" ");
@@ -50,7 +59,12 @@ export default function Button({
   }
 
   return (
-    <button type="button" className={className} onClick={action}>
+    <button
+      type={type}
+      className={className}
+      onClick={action}
+      disabled={disabled}
+    >
       {content}
     </button>
   );

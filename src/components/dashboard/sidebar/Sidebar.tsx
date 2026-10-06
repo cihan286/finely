@@ -2,7 +2,8 @@
 
 import { useState, type FocusEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import styles from "./Sidebar.module.css";
 import Logo from "@/components/common/logo/Logo";
 import {
@@ -33,6 +34,13 @@ function isActive(pathname: string, href: string) {
 export default function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogOut = async () => {
+    await authClient.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   // Collapse only when focus leaves the sidebar, not when it moves between items
   const handleBlur = (e: FocusEvent<HTMLElement>) => {
@@ -67,7 +75,7 @@ export default function Sidebar() {
 
       <div className={styles.footer}>
         {/* Stays a button: logging out is an action, not a page */}
-        <button className={styles.navItem}>
+        <button className={styles.navItem} onClick={handleLogOut}>
           <NavItemContent
             icon={<LogOut size={20} />}
             label="Log out"
