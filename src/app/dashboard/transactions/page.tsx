@@ -3,12 +3,14 @@
 //
 // In plain words: the full list of the company's payments in and out, with
 // search, filters and pages of 25. "Add transaction" and clicking a row open
-// a window to add or edit one.
+// a window to add or edit one; "Import CSV" opens a window to import a bank
+// statement.
 //
 // For developers: everything the page shows lives in the address (search
 // params), so filtered views and open edit windows can be linked to and the
-// back button works: ?q, account, category, from, to, page, plus ?new=1 or
-// ?edit=<id> for the window. Values from the address are tidied here before
+// back button works: ?q, account, category, from, to, page, plus ?new=1,
+// ?edit=<id> or ?import=1 for the windows, and ?imported=&skipped= for the
+// message after an import. Values from the address are tidied here before
 // they reach lib/data/, which checks them again.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,11 @@ export default async function TransactionsPage({
     page: Math.max(Math.trunc(Number(single(params.page))) || 1, 1),
   };
   const editId = single(params.edit);
+  // After an import: how many were added and how many skipped
+  const imported = single(params.imported);
+  const importResult = /^\d+$/.test(imported)
+    ? { imported: Number(imported), skipped: Number(single(params.skipped)) || 0 }
+    : null;
 
   const [{ transactions, total }, accounts, categories, editing] =
     await Promise.all([
@@ -82,13 +89,19 @@ export default async function TransactionsPage({
       total={total}
       accounts={accounts}
       categories={categories}
-      // ?new=1 opens an empty form; ?edit=<id> opens that transaction
+      importResult={importResult}
+      // ?new=1 opens an empty form; ?edit=<id> opens that transaction;
+      // ?import=1 opens the import window
       dialog={
         editing
           ? { mode: "edit", transaction: editing }
-          : single(params.new) && accounts.length > 0
-            ? { mode: "new" }
-            : null
+          : accounts.length === 0
+            ? null
+            : single(params.new)
+              ? { mode: "new" }
+              : single(params.import)
+                ? { mode: "import" }
+                : null
       }
     />
   );

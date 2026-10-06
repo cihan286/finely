@@ -4,7 +4,8 @@
 // In plain words: when someone presses Save (or Delete) in the transaction
 // window, the browser sends the form here. We turn the form's fields into a
 // transaction — "money out" amounts become negative — save it, and go back to
-// the list. If something's wrong, we send back a message to show instead.
+// the list. Importing a bank statement sends all of its lines here at once.
+// If something's wrong, we send back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
 // POST request, so all checks happen in lib/data/, never only in the form.
@@ -18,9 +19,11 @@ import { errorMessage } from "@/lib/data/common";
 import {
   createTransaction,
   deleteTransaction,
+  importTransactions,
   updateTransaction,
   type TransactionInput,
 } from "@/lib/data/transactions";
+import type { StatementRow } from "@/lib/statement-import";
 import type { TransactionStatus } from "@/types/finance";
 
 const LIST_PATH = "/dashboard/transactions";
@@ -88,4 +91,21 @@ export async function submitTransaction(
   }
   // Outside the try: redirect() works by throwing
   redirect(returnPath(formData.get("returnTo")));
+}
+
+/**
+ * Imports a bank statement's lines into one account, then shows the list
+ * with a message saying how many were added and skipped.
+ */
+export async function importStatement(
+  accountId: string,
+  rows: StatementRow[],
+): Promise<ActionState> {
+  let result;
+  try {
+    result = await importTransactions(accountId, rows);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  redirect(`${LIST_PATH}?imported=${result.imported}&skipped=${result.skipped}`);
 }

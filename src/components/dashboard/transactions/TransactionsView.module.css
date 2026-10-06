@@ -38,6 +38,21 @@
   font-size: 0.95rem;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Message after an import */
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  background-color: color-mix(in srgb, var(--success) 12%, transparent);
+  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
+}
+
 /* Cards (same look as the dashboard's cards) */
 
 .card {

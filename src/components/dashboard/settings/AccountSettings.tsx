@@ -15,7 +15,7 @@
 
 "use client";
 
-import { startTransition, useActionState, useRef, type FormEvent } from "react";
+import { startTransition, useActionState, useRef, type SubmitEvent } from "react";
 import { Landmark, Plus } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { submitAccount } from "@/app/dashboard/settings/actions";
@@ -56,7 +56,7 @@ export default function AccountSettings({
     initialActionState,
   );
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     if (
