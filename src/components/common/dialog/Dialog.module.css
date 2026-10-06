@@ -1,0 +1,67 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dialog styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the window itself, the dimmed page behind it,
+   and the title row with the close (×) button.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.dialog {
+  margin: auto;
+  width: min(520px, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-lg);
+}
+
+.large {
+  width: min(780px, calc(100% - 2rem));
+}
+
+/* The dimmed page behind the window */
+.dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.closeButton {
+  display: flex;
+  padding: 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.closeButton:hover {
+  background-color: var(--hover);
+  color: var(--foreground);
+}
+
+/* Screens narrower than 480px (phones) */
+@media (max-width: 480px) {
+  .content {
+    padding: 1.25rem 1rem;
+  }
+}

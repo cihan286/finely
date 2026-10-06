@@ -95,7 +95,7 @@ src/
 │   └── dashboard/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
 │       ├── page.tsx        Dashboard overview
-│       ├── transactions/   Transactions list, filters, add/edit window
+│       ├── transactions/   Transactions list, filters, add/edit and CSV import
 │       └── settings/       Team members, invitations and bank accounts
 ├── components/
 │   ├── common/             Shared across the app (Button, Logo, Footer)
@@ -112,11 +112,14 @@ src/
 │   ├── auth-client.ts      Auth functions for client components
 │   ├── session.ts          getSession() / requireUser() / requireOrganization()
 │   ├── roles.ts            Team roles (owner, admin, member) and their labels
+│   ├── statement-import.ts Reading bank statement CSVs (dates, amounts, columns)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
 ├── data/mockData.ts        Mock data, shaped like the future API
 ├── types/finance.ts        Types for accounts, transactions, bills, …
-└── utils/format.ts         Currency, number and date formatting
+└── utils/
+    ├── format.ts           Currency, number and date formatting
+    └── csv.ts              Turning CSV text into rows and cells
 ```
 
 Each component lives in its own folder next to its `.module.css` file.
@@ -187,6 +190,18 @@ returns an error (see `TransactionDialog.tsx`).
 **Server vs. client components.** Components are Server Components by default.
 Add `"use client"` only to components that need state, effects or browser
 APIs, and keep those as small as possible (see `CashFlowChart.tsx`).
+
+## Importing bank statements
+
+On the Transactions page, **Import CSV** reads a bank's CSV export in the
+browser, guesses which columns hold the date, description and amount (one
+signed column, or separate money in / money out columns), and shows a
+preview before anything is saved. Dates can be year-month-day,
+month/day/year or day/month/year; amounts can use `1,234.56` or `1.234,56`.
+On import, lines already in the account (same day, amount and description)
+are skipped, so importing the same statement twice is harmless. Category
+names in the file are matched to the company's categories, ignoring case.
+Up to 2,000 lines per file.
 
 ## Known limitations
 

@@ -1,20 +1,27 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Transactions list (the content of /dashboard/transactions)
 //
-// In plain words: the page title with an "Add transaction" button, a filter
-// bar (search, account, category, dates), the table of transactions, and
-// links to the previous and next page. Clicking a transaction opens it for
+// In plain words: the page title with "Import CSV" and "Add transaction"
+// buttons, a filter bar (search, account, category, dates), the table of
+// transactions, and links to the previous and next page. Clicking a transaction opens it for
 // editing. Before the company has a bank account, it explains that one has to
 // be added first.
 //
-// For developers: a server component; only TransactionDialog runs in the
-// browser. The filter bar is a GET form (next/form), so filtering just
+// For developers: a server component; only the windows (TransactionDialog,
+// ImportDialog) run in the browser. The filter bar is a GET form (next/form), so filtering just
 // changes the address and the page re-renders on the server.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Form from "next/form";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Landmark, Plus, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileUp,
+  Landmark,
+  Plus,
+  Search,
+} from "lucide-react";
 import Button from "@/components/common/button/Button";
 import type {
   Account,
@@ -22,6 +29,7 @@ import type {
   TransactionDetails,
 } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/utils/format";
+import ImportDialog from "./ImportDialog";
 import TransactionDialog from "./TransactionDialog";
 import styles from "./TransactionsView.module.css";
 
@@ -40,7 +48,11 @@ export interface TransactionsQuery {
 /** The address of this page with some values changed (empty ones are left out) */
 function hrefFor(
   query: TransactionsQuery,
-  changes: Partial<TransactionsQuery> & { new?: string; edit?: string } = {},
+  changes: Partial<TransactionsQuery> & {
+    new?: string;
+    edit?: string;
+    import?: string;
+  } = {},
 ): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries({ ...query, ...changes })) {
@@ -63,8 +75,24 @@ interface TransactionsViewProps {
   total: number;
   accounts: Account[];
   categories: Category[];
-  /** Which add/edit window is open, if any */
-  dialog: { mode: "new" } | { mode: "edit"; transaction: TransactionDetails } | null;
+  /** After an import: how many transactions were added and skipped */
+  importResult: { imported: number; skipped: number } | null;
+  /** Which window is open, if any */
+  dialog:
+    | { mode: "new" }
+    | { mode: "edit"; transaction: TransactionDetails }
+    | { mode: "import" }
+    | null;
+}
+
+// "Imported 42 transactions. 3 were already there and were skipped."
+function importMessage({ imported, skipped }: { imported: number; skipped: number }) {
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const added = imported === 0
+    ? "No new transactions were imported."
+    : `Imported ${plural(imported, "transaction")}.`;
+  if (skipped === 0) return added;
+  return `${added} ${plural(skipped, "transaction")} ${skipped === 1 ? "was" : "were"} already there and ${skipped === 1 ? "was" : "were"} skipped.`;
 }
 
 export default function TransactionsView({
@@ -76,6 +104,7 @@ export default function TransactionsView({
   total,
   accounts,
   categories,
+  importResult,
   dialog,
 }: TransactionsViewProps) {
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
@@ -100,15 +129,30 @@ export default function TransactionsView({
           </p>
         </div>
         {accounts.length > 0 && (
-          <Button
-            href={hrefFor(query, { new: "1" })}
-            variant="primary"
-            size="sm"
-            text="Add transaction"
-            icon={<Plus size={16} />}
-          />
+          <div className={styles.headerActions}>
+            <Button
+              href={hrefFor(query, { import: "1" })}
+              variant="outline"
+              size="sm"
+              text="Import CSV"
+              icon={<FileUp size={16} />}
+            />
+            <Button
+              href={hrefFor(query, { new: "1" })}
+              variant="primary"
+              size="sm"
+              text="Add transaction"
+              icon={<Plus size={16} />}
+            />
+          </div>
         )}
       </div>
+
+      {importResult && (
+        <p className={styles.notice} role="status">
+          {importMessage(importResult)}
+        </p>
+      )}
 
       {accounts.length === 0 ? (
         // Transactions need an account to belong to
@@ -316,7 +360,14 @@ export default function TransactionsView({
         </>
       )}
 
-      {dialog && (
+      {dialog?.mode === "import" && (
+        <ImportDialog
+          accounts={accounts}
+          categories={categories}
+          closeHref={listHref}
+        />
+      )}
+      {dialog && dialog.mode !== "import" && (
         <TransactionDialog
           // A fresh form for each transaction opened
           key={dialog.mode === "edit" ? dialog.transaction.id : "new"}

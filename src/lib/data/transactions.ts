@@ -3,8 +3,9 @@
 //
 // In plain words: lists the company's payments in and out — newest first,
 // searchable and filterable by account, category and date — and lets people
-// add and edit them. Everyone on the team can add and edit transactions; only
-// owners and admins can delete them.
+// add and edit them, one by one or many at once from a bank statement file.
+// Everyone on the team can add, import and edit transactions; only owners and
+// admins can delete them.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
@@ -13,9 +14,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, count, desc, eq, gte, ilike, isNull, lt, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, lt, lte, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { category, financialAccount, transaction } from "@/db/finance";
+import { MAX_IMPORT_ROWS, type StatementRow } from "@/lib/statement-import";
 import {
   TRANSACTION_STATUSES,
   type ISODate,
@@ -244,4 +246,134 @@ export async function deleteTransaction(id: string) {
     )
     .returning({ id: transaction.id });
   if (deleted.length === 0) throw new DataError("Transaction not found.");
+}
+
+/* ------------------------------------------------------------------ */
+/* Importing a bank statement                                          */
+/* ------------------------------------------------------------------ */
+
+// Transactions that count as "the same" when importing: same day, amount and
+// description (ignoring upper/lower case)
+const duplicateKey = (day: string, amount: number, name: string) =>
+  `${day}|${amount.toFixed(2)}|${name.toLowerCase()}`;
+
+/**
+ * Adds many transactions to one account at once, e.g. from a bank statement
+ * file. Lines already in the account (same day, amount and description) are
+ * skipped, so importing the same statement twice adds nothing the second
+ * time. Category names are matched to the company's categories, ignoring
+ * upper/lower case; unknown ones are left uncategorized. Either every line is
+ * saved or none is.
+ */
+export async function importTransactions(
+  accountId: string,
+  rows: StatementRow[],
+): Promise<{ imported: number; skipped: number }> {
+  const { organizationId, userId } = await getFinanceContext();
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new DataError("There's nothing to import.");
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new DataError(
+      `A file can have at most ${MAX_IMPORT_ROWS} transactions. Split it into smaller files.`,
+    );
+  }
+
+  const [accountMatches, categories] = await Promise.all([
+    db.$count(
+      financialAccount,
+      and(
+        eq(financialAccount.id, accountId),
+        eq(financialAccount.organizationId, organizationId),
+      ),
+    ),
+    db
+      .select({ id: category.id, name: category.name })
+      .from(category)
+      .where(eq(category.organizationId, organizationId)),
+  ]);
+  if (accountMatches === 0) throw new DataError("Account not found.");
+  const categoryIds = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
+
+  // Check every line again: the browser's preview can't be trusted
+  const parsed = rows.map((row, index) => {
+    const line = (message: string) => new DataError(`Row ${index + 1}: ${message}`);
+    if (typeof row?.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+      throw line("The date is invalid.");
+    }
+    try {
+      const amount = money(row.amount, "Amount");
+      if (amount === 0) throw new DataError("Amount can't be zero.");
+      const categoryName = optionalText(row.category, "Category", 120);
+      return {
+        day: row.date,
+        name: requiredText(row.name, "Description"),
+        amount,
+        // Noon UTC falls on the same calendar day in almost every timezone
+        occurredAt: dateTime(`${row.date}T12:00:00.000Z`, "Date"),
+        categoryId: categoryName ? (categoryIds.get(categoryName.toLowerCase()) ?? null) : null,
+      };
+    } catch (error) {
+      if (error instanceof DataError) throw line(error.message);
+      throw error;
+    }
+  });
+
+  // What the account already has in the file's date range
+  const days = parsed.map((p) => p.day).sort();
+  const existing = await db
+    .select({
+      name: transaction.name,
+      amount: transaction.amount,
+      occurredAt: transaction.occurredAt,
+    })
+    .from(transaction)
+    .where(
+      and(
+        eq(transaction.organizationId, organizationId),
+        eq(transaction.accountId, accountId),
+        gte(transaction.occurredAt, dateTime(`${days[0]}T00:00:00.000Z`, "Date")),
+        lte(transaction.occurredAt, dateTime(`${days.at(-1)}T23:59:59.999Z`, "Date")),
+      ),
+    );
+  // How many of each "same" transaction the account already has. A file may
+  // legitimately contain two identical lines (two coffees on one day), so only
+  // as many lines are skipped as already exist.
+  const alreadyThere = new Map<string, number>();
+  for (const t of existing) {
+    const key = duplicateKey(t.occurredAt.toISOString().slice(0, 10), t.amount, t.name);
+    alreadyThere.set(key, (alreadyThere.get(key) ?? 0) + 1);
+  }
+
+  const toInsert = parsed.filter((p) => {
+    const key = duplicateKey(p.day, p.amount, p.name);
+    const left = alreadyThere.get(key) ?? 0;
+    if (left > 0) {
+      alreadyThere.set(key, left - 1);
+      return false;
+    }
+    return true;
+  });
+
+  if (toInsert.length > 0) {
+    // In chunks, sent together so the database saves all of them or none
+    const values = toInsert.map((p) => ({
+      name: p.name,
+      amount: p.amount,
+      occurredAt: p.occurredAt,
+      categoryId: p.categoryId,
+      organizationId,
+      accountId,
+      status: "completed",
+      createdById: userId,
+    }));
+    const chunks = [];
+    for (let i = 0; i < values.length; i += 500) {
+      chunks.push(db.insert(transaction).values(values.slice(i, i + 500)));
+    }
+    await db.batch(chunks as [(typeof chunks)[number], ...typeof chunks]);
+  }
+
+  return { imported: toInsert.length, skipped: parsed.length - toInsert.length };
 }

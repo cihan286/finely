@@ -1,0 +1,196 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Import a bank statement window styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the "choose a file" area, the column choices,
+   the preview table and the list of lines that will be skipped. The window
+   and form fields come from Dialog.module.css and forms.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.intro,
+.note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* "Choose a CSV file": the whole box opens the file picker */
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2rem 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dropZone:hover,
+.dropZone:focus-within {
+  border-color: var(--primary);
+  background-color: var(--primary-soft);
+}
+
+.dropTitle {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.dropHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* The chosen file's name and "Choose another file" */
+.fileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--hover);
+  font-size: 0.875rem;
+}
+
+.fileName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkButton {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+/* Column choices */
+
+.mapping {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.mapping legend {
+  padding: 0 0.35rem;
+}
+
+/* "Money in" and "Money out" side by side in one grid cell */
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Preview */
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  padding: 0 0.5rem 0.5rem;
+}
+
+.table td {
+  padding: 0.55rem 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+.name {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.amount {
+  text-align: right !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.income {
+  color: var(--success);
+}
+
+.more {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Lines that will be skipped */
+.problems {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.problems ul {
+  margin-top: 0.35rem;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+}
+
+/* Screens narrower than 480px (phones) */
+@media (max-width: 480px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+
+  .name {
+    max-width: 140px;
+  }
+}
