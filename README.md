@@ -227,7 +227,5 @@ Up to 2,000 lines per file.
 - The top bar's notifications and search are placeholders, and the sidebar's
   Insights page doesn't exist yet. Bills and payment cards aren't built.
 - Several footer links, "About" and "Contact sales" have no destination yet.
-- Categories can't be edited in the app yet; every company gets a default
-  set.
 - Not built yet: changing a member's role, leaving or renaming a company,
   and switching between several companies.
