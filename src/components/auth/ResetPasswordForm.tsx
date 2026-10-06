@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// "Choose a new password" form
+//
+// In plain words: the form opened from the password reset link. The user types
+// a new password twice; if both match and the link is still valid, the password
+// is changed and they're sent to the login page.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser. `token` is the one-time code from the
+// emailed link that proves the request is genuine.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -18,6 +30,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     const data = new FormData(e.currentTarget);
     const password = String(data.get("password"));
 
+    // Catch typos: both boxes must contain the same password
     if (password !== String(data.get("confirm"))) {
       setError("The passwords don't match.");
       return;
@@ -38,6 +51,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       setLoading(false);
       return;
     }
+    // Success: go to the login page, which shows "Your password was changed"
     router.push("/login?reset=success");
   };
 

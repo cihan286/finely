@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Cash flow chart
+//
+// In plain words: the chart on the dashboard that compares money coming in
+// (green) with money going out (red), with totals above it. A dropdown switches
+// between the last 30 days and this year. Hovering over the chart shows the
+// exact amounts for that day or month.
+//
+// For developers: a client component ("use client") because of the dropdown
+// and hover tooltip. Drawn with the Recharts library.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -16,6 +28,7 @@ import { cashflow } from "@/data/mockData";
 import type { CashflowRange } from "@/types/finance";
 import { formatCurrency, formatCompactCurrency } from "@/utils/format";
 
+// The time ranges in the dropdown, and the text shown for each
 const RANGES: Record<CashflowRange, string> = {
   last30Days: "Last 30 Days",
   thisYear: "This Year",
@@ -41,6 +54,7 @@ const SERIES: Record<
   },
 };
 
+// The small box that appears when hovering over the chart
 function ChartTooltip({
   active,
   payload,
@@ -68,9 +82,11 @@ function ChartTooltip({
 }
 
 export default function CashFlowChart() {
+  // Which time range is selected, and that range's data points
   const [range, setRange] = useState<CashflowRange>("last30Days");
   const data = cashflow[range];
 
+  // Totals for the selected range; recalculated only when the range changes
   const totals = useMemo(() => {
     const income = data.reduce((sum, d) => sum + d.income, 0);
     const expenses = data.reduce((sum, d) => sum + d.expenses, 0);
@@ -97,6 +113,7 @@ export default function CashFlowChart() {
         </select>
       </div>
 
+      {/* Net cash flow (in minus out), total income and total expenses */}
       <div className={styles.chartStats}>
         <div className={styles.chartStat}>
           <span className={styles.chartStatLabel}>Net cash flow</span>
@@ -128,6 +145,7 @@ export default function CashFlowChart() {
             data={data}
             margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
           >
+            {/* Color fades under each line, from the line color to transparent */}
             <defs>
               {Object.entries(SERIES).map(([key, { color }]) => (
                 <linearGradient
@@ -149,11 +167,13 @@ export default function CashFlowChart() {
                 </linearGradient>
               ))}
             </defs>
+            {/* Faint horizontal guide lines */}
             <CartesianGrid
               vertical={false}
               stroke="currentColor"
               strokeOpacity={0.1}
             />
+            {/* Dates along the bottom, amounts up the side ($1.2k…) */}
             <XAxis
               dataKey="label"
               tickLine={false}
@@ -170,12 +190,14 @@ export default function CashFlowChart() {
               width={44}
               tickFormatter={formatCompactCurrency}
             />
+            {/* Show the hover box (ChartTooltip above) and a vertical guide line */}
             <Tooltip
               content={ChartTooltip}
               cursor={{ stroke: "currentColor", strokeOpacity: 0.25 }}
             />
             <Area
               type="monotone"
+              // Red line: money going out
               dataKey="expenses"
               className={SERIES.expenses.className}
               stroke="currentColor"
@@ -185,6 +207,7 @@ export default function CashFlowChart() {
             />
             <Area
               type="monotone"
+              // Green line: money coming in
               dataKey="income"
               className={SERIES.income.className}
               stroke="currentColor"

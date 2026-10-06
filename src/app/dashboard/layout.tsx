@@ -1,3 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard frame
+//
+// In plain words: every dashboard page shares the same frame — the menu on the
+// left (sidebar) and the bar at the top with search, notifications and the
+// user's name. This file draws that frame and puts the current page inside it.
+// It also makes sure someone is logged in, and fetches who that is.
+//
+// For developers: requireUser() redirects to /login without a session. Pages
+// inside must still call requireUser() themselves, because this layout doesn't
+// re-run when navigating between dashboard pages.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { ReactNode } from "react";
 import styles from "./layout.module.css";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";

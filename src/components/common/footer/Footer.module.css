@@ -1,3 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Footer styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Logo and description on the left, link columns on the
+   right; the columns stack on smaller screens.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .footerContainer {
   background-color: var(--background);
   color: var(--foreground);
@@ -110,6 +118,7 @@
   }
 }
 
+/* Screens narrower than 900px (phones and tablets) */
 @media (max-width: 900px) {
   .topSection {
     flex-direction: column;
@@ -127,6 +136,7 @@
   }
 }
 
+/* Screens narrower than 550px (phones) */
 @media (max-width: 550px) {
   .footerContainer {
     padding: 3rem 1.5rem 2rem;

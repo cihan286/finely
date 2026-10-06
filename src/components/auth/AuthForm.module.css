@@ -1,3 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Login and sign-up form styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Shared by all the account pages: titles, input boxes,
+   error and success messages, links, the "or" divider and the Google button.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 /* Shared styles for the auth pages and forms */
 
 .header {

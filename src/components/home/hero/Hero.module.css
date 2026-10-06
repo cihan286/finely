@@ -1,3 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hero section styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The navigation bar, the headline area, the background
+   gradient, and the drop-down menu used on small screens.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .mainContainer {
   display: flex;
   flex-direction: column;
@@ -102,6 +110,7 @@
   gap: 2.5rem;
 }
 
+/* Dark mode: used when the visitor's device is set to dark */
 @media (prefers-color-scheme: dark) {
   .mainContainer {
     background: linear-gradient(
@@ -115,6 +124,7 @@
   }
 }
 
+/* Screens narrower than 1150px (tablets and small laptops) */
 @media (max-width: 1150px) {
   .mainContainer {
     height: auto;
@@ -132,6 +142,7 @@
   }
 }
 
+/* Screens narrower than 900px (phones and tablets) */
 @media (max-width: 900px) {
   .navigationMenu {
     padding: 1.5rem 2rem;
@@ -265,6 +276,7 @@
   }
 }
 
+/* Screens narrower than 500px (phones) */
 @media (max-width: 500px) {
   .navigationMenu {
     padding: 0.5rem 1rem;

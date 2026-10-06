@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Sign-up page (finely.com/signup)
+//
+// In plain words: where new users create a Finely account with their name,
+// email and a password (or Google). After signing up they go straight to the
+// dashboard.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -11,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SignupPage() {
+  // Already logged in? Skip this page and go to the dashboard
   if (await getSession()) redirect("/dashboard");
 
   return (

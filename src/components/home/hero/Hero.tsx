@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero — the top section of the home page
+//
+// In plain words: the first thing visitors see. It has the navigation bar
+// (logo, links, "Start for free" and "Log in"), the main headline with its
+// buttons, and the phone picture on the right. On small screens the links move
+// into a menu that opens with the ☰ button.
+//
+// For developers: a client component ("use client") because the mobile menu
+// opens and closes in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState } from "react";
@@ -9,7 +21,10 @@ import Logo from "@/components/common/logo/Logo";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 export default function Hero() {
+  // Whether the mobile menu is open
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Whether the menu has been used yet. Until then it has no open/close
+  // animation, so it doesn't flash closed when the page first loads.
   const [hasToggled, setHasToggled] = useState(false);
 
   const handleMenuToggle = () => {
@@ -23,11 +38,13 @@ export default function Hero() {
 
   return (
     <div className={styles.mainContainer}>
+      {/* Top navigation bar */}
       <div className={styles.navigationMenu}>
         <Link className={styles.brand} href={"/"}>
           <Logo />
         </Link>
 
+        {/* Section links, shown on wide screens only */}
         <div className={styles.navigationLinks}>
           <Link className={styles.navLink} href="#features">
             Features
@@ -40,6 +57,7 @@ export default function Hero() {
           </Link>
         </div>
 
+        {/* Sign-up / log-in buttons, plus the ☰ button on small screens */}
         <div className={styles.navActions}>
           <div className={`${styles.authCtas} ${styles.desktopAuth}`}>
             <Button variant="primary" text="Start for free" href="/signup" />
@@ -63,6 +81,7 @@ export default function Hero() {
       </div>
 
       <div
+        // The menu that drops down on small screens
         className={`${styles.mobileMenu} ${
           hasToggled
             ? isMobileMenuOpen
@@ -104,6 +123,7 @@ export default function Hero() {
         </div>
       </div>
 
+      {/* Headline and buttons on the left, phone picture on the right */}
       <div className={styles.columns}>
         <div className={styles.leftColumn}>
           <h1 className={styles.headline}>

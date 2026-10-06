@@ -1,3 +1,10 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Logo styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .logoSvg {
   min-width: 150px;
   width: 150px;

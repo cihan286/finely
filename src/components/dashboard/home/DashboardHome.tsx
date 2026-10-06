@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard overview (the main content of /dashboard)
+//
+// In plain words: everything below the top bar on the dashboard's first page —
+// the welcome line, four summary tiles (balance, income, expenses, cards), the
+// cash flow chart, the spending breakdown, recent payments and upcoming bills.
+//
+// For developers: a server component; only the chart (CashFlowChart) runs in
+// the browser. Figures come from data/mockData.ts until real data exists.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import styles from "./DashboardHome.module.css";
 import CashFlowChart from "./CashFlowChart";
 import Button from "@/components/common/button/Button";
@@ -32,6 +43,7 @@ import {
   getMetricChange,
 } from "@/utils/format";
 
+// Which icon belongs to which summary tile / spending category
 const metricIcons = {
   dollar: DollarSign,
   income: TrendingUp,
@@ -47,11 +59,13 @@ const categoryIcons = {
   more: MoreHorizontal,
 };
 
+// Only the five newest payments fit in "Recent Activity"
 const recentTransactions = transactions.slice(0, 5);
 
 export default function DashboardHome({ firstName }: { firstName: string }) {
   return (
     <main className={styles.contentArea}>
+      {/* Page title, welcome line and action buttons */}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Dashboard Overview</h1>
@@ -76,6 +90,7 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
         </div>
       </div>
 
+      {/* Four summary tiles, each with the change since last month */}
       <div className={styles.metricsGrid}>
         {metrics.map((metric) => {
           const Icon = metricIcons[metric.iconKey];
@@ -106,6 +121,7 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
       </div>
 
       <div className={styles.dashboardGrid}>
+        {/* Chart of money in vs. money out (its own file: CashFlowChart.tsx) */}
         <CashFlowChart />
 
         <div className={styles.card}>
@@ -115,6 +131,7 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
           <div className={styles.expenseList}>
             {expenseCategories.map((expense) => {
               const Icon = categoryIcons[expense.iconKey];
+              // How much of all spending this category is, as a percentage (bar length)
               const share = (expense.amount / EXPENSES_30D) * 100;
               return (
                 <div key={expense.id} className={styles.expenseItem}>
@@ -154,6 +171,7 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
       </div>
 
       <div className={styles.dashboardGrid}>
+        {/* Recent payments: green arrow up = money in, grey arrow down = money out */}
         <div className={`${styles.card} ${styles.transactionsCard}`}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Recent Activity</h2>
@@ -196,6 +214,7 @@ export default function DashboardHome({ firstName }: { firstName: string }) {
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Upcoming Bills</h2>
           </div>
+          {/* The next three bills that are due */}
           <div className={styles.billList}>
             {upcomingBills.slice(0, 3).map((bill) => (
               <div key={bill.id} className={styles.billItem}>

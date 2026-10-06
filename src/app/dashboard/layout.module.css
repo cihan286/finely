@@ -1,3 +1,12 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dashboard frame layout
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Places the sidebar next to the main column (top bar +
+   page), filling the whole screen. On phones the sidebar moves to the
+   bottom.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .mainContainer {
   display: flex;
   height: 100vh;

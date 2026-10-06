@@ -1,6 +1,15 @@
-/* Design tokens. Components use these instead of raw colors, so dark mode
-   only has to be defined once, in the block below. */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Global styles and design tokens
+
+   In plain words: the styles shared by the whole site. At the top are the
+   "design tokens": named colors, shadows and corner roundness (e.g. --primary
+   is Finely blue). Every other style file uses these names instead of raw
+   color codes, so changing a color here changes it everywhere, and dark mode
+   only has to be defined once, in the block below them.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 :root {
+  /* Light mode (default) values */
   /* Brand */
   --primary: #2196f3;
   --primary-soft: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -33,6 +42,7 @@
   --radius-full: 999px;
 }
 
+/* Dark mode: used when the visitor's device is set to dark */
 @media (prefers-color-scheme: dark) {
   :root {
     --primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);

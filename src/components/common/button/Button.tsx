@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Button
+//
+// In plain words: the standard button used everywhere in Finely, so all
+// buttons look and behave the same. It comes in a few styles: solid blue
+// ("primary"), see-through ("secondary") and outlined ("outline"), in a
+// regular or a compact size.
+//
+// For developers: use this instead of styling a new <button>. Pass `href` to
+// make it a link to another page, or `action` for a click handler.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import styles from "./Button.module.css";

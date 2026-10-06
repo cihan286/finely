@@ -1,3 +1,12 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Pricing section styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The monthly/yearly switch, the plan cards (the
+   featured plan is raised and outlined in blue), and the background
+   gradient.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .mainContainer {
   height: 100vh;
   display: flex;
@@ -11,6 +20,7 @@
   transition: background-color 0.3s ease;
 }
 
+/* Background gradient behind the section (decoration only) */
 .backgroundLayer {
   position: absolute;
   inset: 0;
@@ -19,6 +29,7 @@
   background-image: linear-gradient(-225deg, #e3fdf5 0%, #ffe6fa 100%);
 }
 
+/* Dark mode: used when the visitor's device is set to dark */
 @media (prefers-color-scheme: dark) {
   .backgroundLayer {
     background-image: radial-gradient(
@@ -315,6 +326,7 @@
   }
 }
 
+/* Screens narrower than 550px (phones) */
 @media (max-width: 550px) {
   .mainContainer {
     padding: 4rem 0;
@@ -325,6 +337,7 @@
   }
 }
 
+/* Screens narrower than 500px (phones) */
 @media (max-width: 500px) {
   .headline {
     font-size: 2.2rem;

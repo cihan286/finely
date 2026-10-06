@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Sign-up form
+//
+// In plain words: the form for creating an account — full name, work email and
+// a password of at least 8 characters. On success the new user is logged in and
+// taken to the dashboard. If the email is already registered, an error appears.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -15,10 +26,13 @@ export default function SignupForm({
   googleEnabled: boolean;
 }) {
   const router = useRouter();
+  // The error message to show, if any
   const [error, setError] = useState<string | null>(null);
+  // True while waiting for the server; the button shows "Creating account…"
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    // Stop the browser from reloading the page; we send the details ourselves
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setError(null);
@@ -36,12 +50,14 @@ export default function SignupForm({
       setLoading(false);
       return;
     }
+    // Success: go to the dashboard, and refresh so it loads the new login
     router.push("/dashboard");
     router.refresh();
   };
 
   return (
     <>
+      {/* Google option first, then an "or" divider, when Google is set up */}
       {googleEnabled && (
         <>
           <GoogleButton label="Sign up with Google" onError={setError} />

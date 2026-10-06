@@ -1,3 +1,12 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Phone picture styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Draws the phone itself (frame, side buttons, camera
+   notch) and the app screen inside. It uses its own colors, set at the top
+   of .screen: a dark phone on a light page and a light phone on a dark page.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .frame {
   position: relative;
   width: 300px;
@@ -71,6 +80,7 @@
   padding: 16px 18px 14px;
 }
 
+/* Light mode: used when the visitor's device is set to light */
 @media (prefers-color-scheme: light) {
   .screen {
     --phone-bg: #f5f6fa;
@@ -312,6 +322,7 @@
   color: var(--phone-accent);
 }
 
+/* Screens narrower than 499px (phones) */
 @media (max-width: 499px) {
   .frame {
     width: 260px;

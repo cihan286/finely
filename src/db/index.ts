@@ -1,7 +1,20 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Database connection
+//
+// In plain words: this opens the connection to our database, which is hosted
+// by Neon. Any code that needs to read or save data (like user accounts)
+// imports `db` from here.
+//
+// For developers: Drizzle over Neon's HTTP driver (no interactive transactions).
+// Table definitions live in ./schema.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
+// The database address and password come from the secret .env.local file.
+// Without it nothing can work, so stop right away with a clear message.
 const url = process.env.DATABASE_URL;
 if (!url) {
   throw new Error(

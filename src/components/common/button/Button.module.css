@@ -1,3 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Button styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The base shape of every button, then one block per
+   style ("primary", "secondary", "outline") and size.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .button {
   display: inline-flex;
   align-items: center;

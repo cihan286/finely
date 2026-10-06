@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// "Forgot your password?" page (finely.com/forgot-password)
+//
+// In plain words: people who forgot their password enter their email here, and
+// we send them a link to choose a new one.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";

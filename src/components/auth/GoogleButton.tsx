@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// "Continue with Google" button
+//
+// In plain words: sends the visitor to Google to confirm who they are. Google
+// then sends them back to Finely, logged in. If they're new, an account is
+// created for them automatically.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser. Only rendered when Google credentials
+// are configured (see isGoogleEnabled in lib/auth.ts).
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState } from "react";
@@ -11,6 +23,7 @@ interface GoogleButtonProps {
 }
 
 export default function GoogleButton({ label, onError }: GoogleButtonProps) {
+  // True while we're sending the visitor to Google (disables the button)
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {

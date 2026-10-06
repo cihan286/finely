@@ -1,3 +1,12 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sidebar styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The narrow and wide states of the menu, the highlight
+   on the current page, the hover labels, and the bottom bar it turns into on
+   phones.
+   ───────────────────────────────────────────────────────────────────────────── */
+
 .sidebar {
   height: 100vh;
   background-color: var(--background);

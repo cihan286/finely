@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Login form
+//
+// In plain words: the email + password form on the login page. When submitted,
+// it asks the server to check the details. If they're right, the user goes to
+// the dashboard; if not, an error message appears above the form.
+//
+// For developers: a client component ("use client") because it reacts to
+// typing and clicks in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -17,10 +28,14 @@ interface LoginFormProps {
 
 export default function LoginForm({ googleEnabled, notice }: LoginFormProps) {
   const router = useRouter();
+  // The error message to show (e.g. "Invalid email or password"), if any
   const [error, setError] = useState<string | null>(null);
+  // True while waiting for the server; the button shows "Logging in…"
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    // Stop the browser's default form behavior (reloading the page); we send
+    // the details ourselves
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setError(null);
@@ -36,12 +51,14 @@ export default function LoginForm({ googleEnabled, notice }: LoginFormProps) {
       setLoading(false);
       return;
     }
+    // Success: go to the dashboard, and refresh so it loads the new login
     router.push("/dashboard");
     router.refresh();
   };
 
   return (
     <>
+      {/* Google option first, then an "or" divider, when Google is set up */}
       {googleEnabled && (
         <>
           <GoogleButton label="Continue with Google" onError={setError} />

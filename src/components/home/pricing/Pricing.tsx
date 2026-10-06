@@ -1,3 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Pricing section of the home page
+//
+// In plain words: shows the three plans (Starter, Growth, Enterprise) with
+// their prices and what's included. A switch at the top toggles between
+// monthly and yearly prices; yearly is cheaper, and the "Save X%" badge is
+// calculated from the actual prices so it's always correct.
+//
+// For developers: a client component ("use client") because of the billing
+// toggle. To change plans or prices, edit the `plans` list below.
+// id="pricing" is the target of the "#pricing" links.
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import styles from "./Pricing.module.css";
@@ -5,6 +18,7 @@ import { useState } from "react";
 import Button from "@/components/common/button/Button";
 import { Check, ArrowRight } from "lucide-react";
 
+// What every plan needs: name, prices, features list and button
 interface Plan {
   name: string;
   description: string;
@@ -20,6 +34,7 @@ interface Plan {
 
 type BillingCycle = "monthly" | "yearly";
 
+// The plans shown on the page, in order
 const plans: Plan[] = [
   {
     name: "Starter",
@@ -83,6 +98,7 @@ const yearlySavings = Math.min(
 );
 
 export default function Pricing() {
+  // Which prices are shown right now: monthly or yearly
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
   return (
@@ -99,6 +115,7 @@ export default function Pricing() {
           <span>downgrade, or cancel anytime — no hidden fees.</span>
         </div>
 
+        {/* Monthly / Yearly switch */}
         <div className={styles.billingToggle}>
           <button
             className={`${styles.toggleOption} ${
@@ -120,6 +137,7 @@ export default function Pricing() {
         </div>
       </div>
 
+      {/* One card per plan */}
       <div className={styles.pricingGrid}>
         {plans.map((plan) => (
           <div
