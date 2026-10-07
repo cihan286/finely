@@ -1,0 +1,61 @@
+# Checks every push and pull request: types, lint, tests, database
+# migrations and a production build. A pull request should only be merged
+# when this passes.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch cancels the run that's still going
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The build loads the database and auth modules but never connects:
+      # placeholders are enough. Real values live in Vercel.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      BETTER_AUTH_SECRET: ci-placeholder-secret-not-used-anywhere
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      # Fails when src/db/*.ts changed without `npm run db:generate`
+      - name: Migrations match the schema
+        run: |
+          npm run db:generate
+          git add --intent-to-add drizzle
+          git diff --exit-code drizzle || {
+            echo "::error::The database schema changed but no migration was committed. Run 'npm run db:generate' and commit the new file in drizzle/."
+            exit 1
+          }
+
+      - name: Build
+        run: npm run build
