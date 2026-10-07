@@ -28,9 +28,17 @@ import {
 } from "@/lib/email/templates";
 import { roleLabel } from "@/lib/roles";
 
+// Addresses of this deployment on Vercel: a stable one per git branch and
+// one per deployment. Vercel sets these itself.
+const vercelUrls = [process.env.VERCEL_BRANCH_URL, process.env.VERCEL_URL]
+  .filter(Boolean)
+  .map((host) => `https://${host}`);
+
 // The site's own address, used to build links in emails (e.g. invitations).
 // In production, set BETTER_AUTH_URL to the real address (https://…).
-const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+// Preview deployments leave it unset and use their branch address.
+const appUrl =
+  process.env.BETTER_AUTH_URL ?? vercelUrls[0] ?? "http://localhost:3000";
 
 // Google sign-in credentials, read from the secret .env.local file
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -40,6 +48,11 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 export const isGoogleEnabled = Boolean(googleClientId && googleClientSecret);
 
 export const auth = betterAuth({
+  baseURL: appUrl,
+  // Logins are only accepted from pages on our own addresses. On Vercel,
+  // the same deployment can be opened from either of its addresses.
+  trustedOrigins: vercelUrls,
+
   // Store users, sessions and accounts in our Postgres database via Drizzle
   database: drizzleAdapter(db, { provider: "pg", schema }),
 
@@ -78,6 +91,14 @@ export const auth = betterAuth({
           },
         }
       : {},
+
+  // Slow down people (or bots) trying many passwords or sign-ups in a row.
+  // On by default in production only. The counts are kept in the database:
+  // the server runs as many short-lived copies, so counts kept in memory
+  // would be forgotten or split between copies.
+  rateLimit: {
+    storage: "database",
+  },
 
   // When someone logs in, open the company they belong to (the oldest
   // membership first), so the dashboard knows whose data to show.
