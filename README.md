@@ -19,6 +19,10 @@ from **Settings** and remove them; **members** can use Finely but can't change
 the team. Someone who signs up through an invitation link joins that company
 instead of creating their own.
 
+Someone can belong to several companies (their own, plus ones they were
+invited to). The company name in the top bar then becomes a switcher, and
+Finely remembers the last company used, so the next login opens it.
+
 New users get a "verify your email" email. They can use Finely right away (a
 banner reminds them), but need a verified email to accept a team invitation.
 Google sign-ins are verified automatically.
@@ -253,6 +257,13 @@ timezone never shifts a date.
 as plain numbers. An account's balance is its opening balance plus its
 completed transactions; pending ones don't count yet.
 
+**Emptying a database.** To delete all data, empty the tables in the `public`
+schema only. Leave `drizzle.__drizzle_migrations` alone: it records which
+migrations have run. If it's emptied while the tables still exist,
+`npm run db:migrate` tries to create every table again and fails (it exits
+with an error but prints no message). To start completely fresh instead, drop
+both the `public` and `drizzle` schemas and run `npm run db:migrate`.
+
 **Changing the database.** Edit `src/db/finance.ts` (or add a new file and
 list it in `drizzle.config.ts` and `src/db/index.ts`), run
 `npm run db:generate` and commit the new file in `drizzle/`, then
@@ -313,4 +324,4 @@ Up to 2,000 lines per file.
   "STRIPE ST-XYZ2") count as different vendors.
 - Several footer links, "About" and "Contact sales" have no destination yet.
 - Not built yet: changing a member's role, leaving or renaming a company,
-  and switching between several companies.
+  and creating a second company of your own.

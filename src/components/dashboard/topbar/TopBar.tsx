@@ -2,9 +2,9 @@
 // Dashboard top bar
 //
 // In plain words: the bar across the top of every dashboard page — a search
-// box, the company you're working in, the notifications bell (with a count of
-// unread messages and a panel that opens on click), and the logged-in user's
-// initials, name and email.
+// box, the company you're working in (and a way to switch), the
+// notifications bell (with a count of unread messages and a panel that opens
+// on click), and the logged-in user's initials, name and email.
 //
 // For developers: a client component ("use client") because the notifications
 // panel opens, closes and marks messages as read. The user comes from the
@@ -13,19 +13,28 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Bell, Building2, Search } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Bell, Search } from "lucide-react";
+import CompanySwitcher from "@/components/dashboard/company-switcher/CompanySwitcher";
 import styles from "./TopBar.module.css";
 import { notifications as initialNotifications } from "./mockNotifications";
 import { getInitials } from "@/lib/format";
+import { useDismiss } from "@/lib/use-dismiss";
+
+interface Company {
+  id: string;
+  name: string;
+}
 
 interface TopBarProps {
   user: { name: string; email: string };
   /** The company the user is working in */
-  organizationName: string;
+  organization: Company;
+  /** Every company the user belongs to */
+  organizations: Company[];
 }
 
-export default function TopBar({ user, organizationName }: TopBarProps) {
+export default function TopBar({ user, organization, organizations }: TopBarProps) {
   // The notifications (sample data for now), whether the panel is open, and a
   // reference to the bell area so we can tell clicks inside it from outside
   const [items, setItems] = useState(initialNotifications);
@@ -36,22 +45,7 @@ export default function TopBar({ user, organizationName }: TopBarProps) {
   const unreadCount = items.filter((n) => !n.read).length;
 
   // Close the panel on outside click or Escape
-  useEffect(() => {
-    if (!open) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  useDismiss(wrapRef, open, useCallback(() => setOpen(false), []));
 
   // "Mark all as read": clears the unread highlight and the badge
   const markAllRead = () =>
@@ -71,11 +65,8 @@ export default function TopBar({ user, organizationName }: TopBarProps) {
       </div>
 
       <div className={styles.actions}>
-        {/* The company you're working in */}
-        <div className={styles.company} title={organizationName}>
-          <Building2 size={16} aria-hidden="true" />
-          <span className={styles.companyName}>{organizationName}</span>
-        </div>
+        {/* The company you're working in, and a way to switch */}
+        <CompanySwitcher current={organization} companies={organizations} />
 
         {/* Bell button and its notifications panel */}
         <div className={styles.bellWrap} ref={wrapRef}>
