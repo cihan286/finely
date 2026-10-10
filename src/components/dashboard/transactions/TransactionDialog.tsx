@@ -260,7 +260,8 @@ function TransactionForm({
             type="submit"
             variant="primary"
             size="sm"
-            text={pending ? "Saving…" : isNew ? "Add transaction" : "Save changes"}
+            loading={pending}
+            text={pending ? "Saving" : isNew ? "Add transaction" : "Save changes"}
             disabled={pending}
           />
         </div>

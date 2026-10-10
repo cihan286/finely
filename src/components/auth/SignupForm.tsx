@@ -124,7 +124,8 @@ export default function SignupForm({
         <div className={styles.submit}>
           <Button
             type="submit"
-            text={loading ? "Creating account…" : "Create account"}
+            loading={loading}
+            text={loading ? "Creating account" : "Create account"}
             size="sm"
             fullWidth
             disabled={loading}

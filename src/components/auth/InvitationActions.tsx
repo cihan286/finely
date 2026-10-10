@@ -50,7 +50,8 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
       )}
       <div className={styles.submit}>
         <Button
-          text={busy === "accept" ? "Joining…" : "Accept invitation"}
+          loading={busy === "accept"}
+          text={busy === "accept" ? "Joining" : "Accept invitation"}
           size="sm"
           fullWidth
           disabled={busy !== null}
@@ -59,7 +60,8 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
       </div>
       <div className={styles.submit}>
         <Button
-          text={busy === "decline" ? "Declining…" : "Decline"}
+          loading={busy === "decline"}
+          text={busy === "decline" ? "Declining" : "Decline"}
           variant="outline"
           size="sm"
           fullWidth

@@ -16,6 +16,7 @@ import { useState, type FocusEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./Sidebar.module.css";
 import Logo from "@/components/common/logo/Logo";
 import {
@@ -50,9 +51,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  // True from the click on "Log out" until the login page takes over
+  const [loggingOut, setLoggingOut] = useState(false);
+
   // Log out, then go to the login page
   const handleLogOut = async () => {
-    await authClient.signOut();
+    setLoggingOut(true);
+    const { error } = await authClient.signOut();
+    if (error) {
+      // Still logged in (e.g. no connection): let them try again
+      setLoggingOut(false);
+      return;
+    }
     router.push("/login");
     router.refresh();
   };
@@ -90,10 +100,15 @@ export default function Sidebar() {
 
       <div className={styles.footer}>
         {/* Stays a button: logging out is an action, not a page */}
-        <button className={styles.navItem} onClick={handleLogOut}>
+        <button
+          className={styles.navItem}
+          onClick={handleLogOut}
+          disabled={loggingOut}
+          aria-busy={loggingOut || undefined}
+        >
           <NavItemContent
-            icon={<LogOut size={20} />}
-            label="Log out"
+            icon={loggingOut ? <Spinner size={20} /> : <LogOut size={20} />}
+            label={loggingOut ? "Logging out" : "Log out"}
             isExpanded={isExpanded}
           />
         </button>

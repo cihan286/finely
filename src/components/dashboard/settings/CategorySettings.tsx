@@ -106,7 +106,8 @@ export default function CategorySettings({
               type="submit"
               variant="primary"
               size="sm"
-              text={pending ? "Saving…" : "Add category"}
+              loading={pending}
+              text={pending ? "Saving" : "Add category"}
               icon={<Plus size={16} />}
               disabled={pending}
             />
@@ -148,7 +149,8 @@ export default function CategorySettings({
                               type="submit"
                               variant="primary"
                               size="sm"
-                              text={pending ? "Saving…" : "Save"}
+                              loading={pending}
+                              text={pending ? "Saving" : "Save"}
                               disabled={pending}
                             />
                           </div>

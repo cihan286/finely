@@ -102,13 +102,14 @@ src/
 │   ├── api/auth/           Better Auth's API endpoints
 │   └── dashboard/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
+│       ├── loading.tsx     Placeholder shown while a dashboard page loads
 │       ├── page.tsx        Dashboard overview
 │       ├── transactions/   Transactions list, filters, add/edit and CSV import
 │       ├── insights/       Trends over 3/6/12 months, vendors, unusual charges
 │       └── settings/       Timezone, team, bank accounts and categories
 ├── components/
 │   ├── common/             Shared across the app (Button, form fields, Dialog,
-│   │                       Logo, Footer)
+│   │                       Spinner, Logo, Footer)
 │   ├── home/               Landing page sections
 │   ├── auth/               Login/sign-up forms
 │   └── dashboard/          Dashboard UI
@@ -194,7 +195,9 @@ illustration.
 **Buttons.** Use `components/common/button/Button` instead of styling a new
 `<button>`. Pass `href` to render a link and `action` for a click handler.
 `variant` is `primary`, `secondary` or `outline`; `size="sm"` gives the compact
-style used in the dashboard.
+style used in the dashboard. While its action runs, pass `loading` and a text
+like "Saving" (no "…"): the button shows a spinner and can't be clicked again.
+Other buttons use `components/common/spinner/Spinner` for the same look.
 
 **Data.** Components read data that has the types in `src/types/finance.ts`.
 Amounts are plain numbers and dates are ISO strings; formatting happens only in
@@ -210,7 +213,8 @@ component's own CSS only arranges fields (rows, widths); it never restyles
 the boxes.
 
 **Adding a dashboard page.** Create `src/app/dashboard/<name>/page.tsx`. It
-automatically gets the sidebar and top bar from `dashboard/layout.tsx`. The
+automatically gets the sidebar and top bar from `dashboard/layout.tsx`, and
+the loading placeholder from `dashboard/loading.tsx` while its data loads. The
 sidebar already links to `transactions`, `insights` and `settings`.
 
 **Protecting pages and data.** Call `requireOrganization()` from

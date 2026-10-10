@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import Message from "@/components/common/form/Message";
+import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./AuthForm.module.css";
 
 export default function ActivateOrganization({
@@ -43,7 +44,7 @@ export default function ActivateOrganization({
     </Message>
   ) : (
     <p className={styles.subtitle} role="status">
-      Opening your company…
+      <Spinner size={14} /> Opening your company
     </p>
   );
 }

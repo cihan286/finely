@@ -103,7 +103,8 @@ export default function CompanySettings({
               type="submit"
               variant="primary"
               size="sm"
-              text={pending ? "Saving…" : "Save"}
+              loading={pending}
+              text={pending ? "Saving" : "Save"}
               disabled={pending}
             />
           </form>

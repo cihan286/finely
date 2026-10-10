@@ -81,7 +81,8 @@ export default function ForgotPasswordForm() {
       <div className={styles.submit}>
         <Button
           type="submit"
-          text={loading ? "Sending…" : "Send reset link"}
+          loading={loading}
+          text={loading ? "Sending" : "Send reset link"}
           size="sm"
           fullWidth
           disabled={loading}

@@ -23,6 +23,7 @@ import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
 import { canManageTeam, roleLabel } from "@/lib/roles";
 import { formatShortDate, getInitials } from "@/utils/format";
+import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./TeamSettings.module.css";
 
 export interface MemberRow {
@@ -152,7 +153,8 @@ export default function TeamSettings({
               type="submit"
               variant="primary"
               size="sm"
-              text={busy === "invite" ? "Sending…" : "Send invite"}
+              loading={busy === "invite"}
+              text={busy === "invite" ? "Sending" : "Send invite"}
               icon={<UserPlus size={16} />}
               disabled={busy !== null}
             />
@@ -199,7 +201,13 @@ export default function TeamSettings({
                   onClick={() => handleRemove(member)}
                   disabled={busy !== null}
                 >
-                  {busy === `remove-${member.id}` ? "Removing…" : "Remove"}
+                  {busy === `remove-${member.id}` ? (
+                    <>
+                      <Spinner size={12} /> Removing
+                    </>
+                  ) : (
+                    "Remove"
+                  )}
                 </button>
               )}
             </li>
@@ -236,7 +244,13 @@ export default function TeamSettings({
                     onClick={() => handleCancel(invitation)}
                     disabled={busy !== null}
                   >
-                    {busy === `cancel-${invitation.id}` ? "Cancelling…" : "Cancel"}
+                    {busy === `cancel-${invitation.id}` ? (
+                      <>
+                        <Spinner size={12} /> Cancelling
+                      </>
+                    ) : (
+                      "Cancel"
+                    )}
                   </button>
                 )}
               </li>
