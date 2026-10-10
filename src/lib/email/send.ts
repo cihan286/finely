@@ -26,7 +26,11 @@ const resend = apiKey ? new Resend(apiKey) : null;
 
 // Who emails come from. Must use a domain verified in Resend; the fallback is
 // Resend's test sender, which can only deliver to your own Resend account.
-const from = process.env.EMAIL_FROM ?? "Finely <onboarding@resend.dev>";
+// Quotes around the value are dropped: .env files remove them, but hosting
+// dashboards (Vercel) keep them as typed, and Resend then rejects the sender.
+const from =
+  process.env.EMAIL_FROM?.trim().replace(/^(["'])(.*)\1$/, "$2") ||
+  "Finely <onboarding@resend.dev>";
 
 /** Sends an email now and waits for the result. Never throws. */
 export async function sendEmail(email: Email): Promise<void> {
