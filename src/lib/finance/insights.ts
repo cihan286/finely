@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addDays } from "@/lib/dates";
-import { topCategories, type CategorySpending } from "@/lib/dashboard-summary";
+import { topCategories, type CategorySpending } from "@/lib/finance/dashboard-summary";
 import type { ExpenseCategory, ISODate } from "@/types/finance";
 
 /** The periods to choose from, in months */

@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import InsightsView from "@/components/dashboard/insights/InsightsView";
 import { listAccounts } from "@/lib/data/accounts";
 import { getInsights } from "@/lib/data/insights";
-import { INSIGHT_PERIODS, type InsightPeriod } from "@/lib/insights";
+import { INSIGHT_PERIODS, type InsightPeriod } from "@/lib/finance/insights";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 

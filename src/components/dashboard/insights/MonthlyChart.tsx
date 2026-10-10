@@ -23,8 +23,8 @@ import {
   YAxis,
   type TooltipContentProps,
 } from "recharts";
-import type { Insights } from "@/lib/insights";
-import { formatCompactCurrency, formatCurrency } from "@/utils/format";
+import type { Insights } from "@/lib/finance/insights";
+import { formatCompactCurrency, formatCurrency } from "@/lib/format";
 import styles from "./InsightsView.module.css";
 
 type Month = Insights["monthly"][number];

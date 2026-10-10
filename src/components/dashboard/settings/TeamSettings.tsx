@@ -22,7 +22,7 @@ import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
 import { canManageTeam, roleLabel } from "@/lib/roles";
-import { formatShortDate, getInitials } from "@/utils/format";
+import { formatShortDate, getInitials } from "@/lib/format";
 import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./TeamSettings.module.css";
 

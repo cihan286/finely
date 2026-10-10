@@ -23,7 +23,7 @@ import {
   updateTransaction,
   type TransactionInput,
 } from "@/lib/data/transactions";
-import type { StatementRow } from "@/lib/statement-import";
+import type { StatementRow } from "@/lib/finance/statement-import";
 import type { TransactionStatus } from "@/types/finance";
 
 const LIST_PATH = "/dashboard/transactions";

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Sample (mock) data
+// Sample (mock) notifications
 //
 // In plain words: made-up notifications for the bell in the top bar, until
 // Finely sends real ones. Everything else on the dashboard is real data.

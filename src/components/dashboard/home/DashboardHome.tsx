@@ -34,7 +34,7 @@ import {
   formatNumber,
   formatRelativeDate,
   getMetricChange,
-} from "@/utils/format";
+} from "@/lib/format";
 
 // Which icon belongs to which summary tile
 const metricIcons = {

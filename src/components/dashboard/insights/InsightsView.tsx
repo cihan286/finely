@@ -16,8 +16,8 @@ import Link from "next/link";
 import { AlertTriangle, Landmark } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
-import { INSIGHT_PERIODS, type Insights } from "@/lib/insights";
-import { formatCurrency, formatRelativeDate } from "@/utils/format";
+import { INSIGHT_PERIODS, type Insights } from "@/lib/finance/insights";
+import { formatCurrency, formatRelativeDate } from "@/lib/format";
 import MonthlyChart from "./MonthlyChart";
 import styles from "./InsightsView.module.css";
 

@@ -26,7 +26,7 @@ import {
 } from "recharts";
 import styles from "./DashboardHome.module.css";
 import type { Cashflow, CashflowRange } from "@/types/finance";
-import { formatCurrency, formatCompactCurrency } from "@/utils/format";
+import { formatCurrency, formatCompactCurrency } from "@/lib/format";
 
 // The time ranges in the dropdown, and the text shown for each
 const RANGES: Record<CashflowRange, string> = {
