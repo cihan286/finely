@@ -14,7 +14,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { ActionState } from "@/lib/action-state";
+import { formField, type ActionState } from "@/lib/action-state";
 import { errorMessage } from "@/lib/data/common";
 import {
   createTransaction,
@@ -37,28 +37,23 @@ function returnPath(value: FormDataEntryValue | null): string {
   return LIST_PATH;
 }
 
-const field = (formData: FormData, name: string) => {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
-};
-
 // Builds a transaction from the form's fields
 function toTransactionInput(formData: FormData): TransactionInput {
   // The form asks for a positive amount plus "money in" or "money out"
-  const amount = Math.abs(Number(field(formData, "amount")));
-  const sign = field(formData, "direction") === "in" ? 1 : -1;
+  const amount = Math.abs(Number(formField(formData, "amount")));
+  const sign = formField(formData, "direction") === "in" ? 1 : -1;
 
   return {
-    accountId: field(formData, "accountId"),
-    categoryId: field(formData, "categoryId") || null,
-    name: field(formData, "name"),
+    accountId: formField(formData, "accountId"),
+    categoryId: formField(formData, "categoryId") || null,
+    name: formField(formData, "name"),
     amount: sign * amount,
     // The form asks for a day; when editing, the current moment is sent too
     // so its time is kept if the day stays the same (see lib/data/)
-    date: field(formData, "date"),
-    originalDate: field(formData, "originalDate") || null,
-    status: field(formData, "status") as TransactionStatus,
-    notes: field(formData, "notes"),
+    date: formField(formData, "date"),
+    originalDate: formField(formData, "originalDate") || null,
+    status: formField(formData, "status") as TransactionStatus,
+    notes: formField(formData, "notes"),
   };
 }
 
@@ -70,9 +65,9 @@ export async function submitTransaction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const id = field(formData, "id");
+  const id = formField(formData, "id");
   try {
-    if (field(formData, "intent") === "delete") {
+    if (formField(formData, "intent") === "delete") {
       await deleteTransaction(id);
     } else if (id) {
       await updateTransaction(id, toTransactionInput(formData));
