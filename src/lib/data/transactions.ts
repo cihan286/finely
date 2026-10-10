@@ -25,7 +25,7 @@ import {
   MAX_IMPORT_ROWS,
   removeExisting,
   type StatementRow,
-} from "@/lib/statement-import";
+} from "@/lib/finance/statement-import";
 import {
   TRANSACTION_STATUSES,
   type ISODate,

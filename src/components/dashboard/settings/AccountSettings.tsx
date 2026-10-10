@@ -24,7 +24,7 @@ import Message from "@/components/common/form/Message";
 import { submitAccount } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Account } from "@/types/finance";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency } from "@/lib/format";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
 import styles from "./AccountSettings.module.css";

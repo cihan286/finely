@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseCsv } from "@/utils/csv";
+import { parseCsv } from "@/lib/finance/csv";
 import {
   columnLetter,
   detectDateFormat,

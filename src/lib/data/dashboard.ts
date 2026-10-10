@@ -4,7 +4,7 @@
 // In plain words: collects what the dashboard's first page needs from the
 // database — money in and out per day, spending per category, the latest
 // transactions and the accounts — and hands it to the calculations in
-// lib/dashboard-summary.ts. Only completed transactions count; pending ones
+// lib/finance/dashboard-summary.ts. Only completed transactions count; pending ones
 // don't. Days follow the company's timezone.
 //
 // For developers: server-only; finds the company itself via
@@ -20,7 +20,7 @@ import {
   buildDashboardSummary,
   dashboardWindows,
   type DashboardSummary,
-} from "@/lib/dashboard-summary";
+} from "@/lib/finance/dashboard-summary";
 import { startOfDay, todayIn } from "@/lib/dates";
 import { listAccounts } from "./accounts";
 import { getFinanceContext } from "./common";

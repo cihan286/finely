@@ -118,26 +118,32 @@ src/
 │   └── finance.ts          Bank accounts, categories and transactions
 ├── lib/
 │   ├── data/               Reading and saving company data (always use these)
-│   ├── auth.ts             Better Auth server config
+│   ├── finance/            Calculations, with no database or screen (tested)
+│   │   ├── dashboard-summary.ts  The dashboard's numbers
+│   │   ├── insights.ts           The Insights page's numbers
+│   │   ├── statement-import.ts   Reading bank statements (dates, amounts, columns)
+│   │   └── csv.ts                Turning CSV text into rows and cells
 │   ├── email/              Sending emails (Resend) and their templates
+│   ├── auth.ts             Better Auth server config
 │   ├── auth-client.ts      Auth functions for client components
 │   ├── session.ts          getSession() / requireUser() / requireOrganization()
 │   ├── roles.ts            Team roles (owner, admin, member) and their labels
-│   ├── monitoring.ts       Sentry settings (what is and isn't sent)
-│   ├── statement-import.ts Reading bank statement CSVs (dates, amounts, columns)
+│   ├── action-state.ts     What server actions read from forms and answer
 │   ├── dates.ts            Calendar days in a company's timezone
-│   ├── dashboard-summary.ts The dashboard's calculations (tested)
-│   ├── insights.ts         The Insights page's calculations (tested)
+│   ├── format.ts           Currency, number and date formatting
+│   ├── monitoring.ts       Sentry settings (what is and isn't sent)
 │   └── redirect.ts         Safe "return here after logging in" addresses
+├── types/finance.ts        Types for accounts, categories, transactions, …
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
 ├── instrumentation.ts      Starts Sentry on the server
-├── instrumentation-client.ts Starts Sentry in the browser
-├── data/mockData.ts        Mock notifications (the only mock data left)
-├── types/finance.ts        Types for accounts, categories, transactions, …
-└── utils/
-    ├── format.ts           Currency, number and date formatting
-    └── csv.ts              Turning CSV text into rows and cells
+└── instrumentation-client.ts Starts Sentry in the browser
 ```
+
+**Where new code goes.** Something that reads or saves company data goes in
+`lib/data/`. A calculation on data that's already loaded goes in
+`lib/finance/` with a test next to it. Anything shown on screen is a
+component. The only mock data left is the notifications list next to the top
+bar (`components/dashboard/topbar/mockNotifications.ts`).
 
 Each component lives in its own folder next to its `.module.css` file.
 
@@ -201,7 +207,7 @@ Other buttons use `components/common/spinner/Spinner` for the same look.
 
 **Data.** Components read data that has the types in `src/types/finance.ts`.
 Amounts are plain numbers and dates are ISO strings; formatting happens only in
-`src/utils/format.ts`. The functions in `src/lib/data/` return these shapes.
+`src/lib/format.ts`. The functions in `src/lib/data/` return these shapes.
 
 **Form fields.** Use the components in `components/common/form/` instead of
 styling a new `<input>`, `<select>` or `<textarea>`: wrap an `Input`,
@@ -274,7 +280,7 @@ returns an error (see `TransactionDialog.tsx`).
 
 **Tests.** Calculations live in pure functions (no database, no React) so
 they can be tested: put a `*.test.ts` file next to the code (e.g.
-`src/lib/statement-import.test.ts`) and run `npm test`. Pages and database
+`src/lib/finance/statement-import.test.ts`) and run `npm test`. Pages and database
 queries are checked by running the app.
 
 **Server vs. client components.** Components are Server Components by default.

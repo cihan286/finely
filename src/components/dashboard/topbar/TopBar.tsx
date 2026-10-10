@@ -16,8 +16,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, Building2, Search } from "lucide-react";
 import styles from "./TopBar.module.css";
-import { notifications as initialNotifications } from "@/data/mockData";
-import { getInitials } from "@/utils/format";
+import { notifications as initialNotifications } from "./mockNotifications";
+import { getInitials } from "@/lib/format";
 
 interface TopBarProps {
   user: { name: string; email: string };

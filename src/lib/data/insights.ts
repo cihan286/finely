@@ -4,9 +4,9 @@
 // In plain words: collects what the Insights page needs from the database
 // for the chosen period — money in and out per month, spending per category
 // and per vendor — plus the expenses of the last seven months to spot
-// unusual charges, and hands it to the calculations in lib/insights.ts. Only
-// completed transactions count. Months and days follow the company's
-// timezone.
+// unusual charges, and hands it to the calculations in
+// lib/finance/insights.ts. Only completed transactions count. Months and
+// days follow the company's timezone.
 //
 // For developers: server-only; finds the company itself via
 // getFinanceContext(). Grouping happens in Postgres, converting each moment
@@ -23,7 +23,7 @@ import {
   insightRange,
   type InsightPeriod,
   type Insights,
-} from "@/lib/insights";
+} from "@/lib/finance/insights";
 import { getFinanceContext } from "./common";
 
 export async function getInsights(period: InsightPeriod): Promise<Insights> {

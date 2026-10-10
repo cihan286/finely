@@ -10,9 +10,9 @@
 //
 // For developers: a client component ("use client") inside the shared
 // Dialog, opened by ?import=1. The file is read and previewed entirely in
-// the browser (utils/csv.ts, lib/statement-import.ts); only the resulting
-// rows are sent to the importStatement server action, which checks them
-// again and redirects back to the list with the result.
+// the browser (lib/finance/csv.ts, lib/finance/statement-import.ts); only
+// the resulting rows are sent to the importStatement server action, which
+// checks them again and redirects back to the list with the result.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -33,10 +33,10 @@ import {
   MAX_IMPORT_ROWS,
   type ColumnMapping,
   type DateFormat,
-} from "@/lib/statement-import";
+} from "@/lib/finance/statement-import";
 import type { Account, Category } from "@/types/finance";
-import { parseCsv } from "@/utils/csv";
-import { formatCurrency, formatDate } from "@/utils/format";
+import { parseCsv } from "@/lib/finance/csv";
+import { formatCurrency, formatDate } from "@/lib/format";
 import forms from "./forms.module.css";
 import styles from "./ImportDialog.module.css";
 

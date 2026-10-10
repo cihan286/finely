@@ -30,7 +30,7 @@ import type {
   Category,
   TransactionDetails,
 } from "@/types/finance";
-import { formatCurrency, formatDate } from "@/utils/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import ImportDialog from "./ImportDialog";
 import TransactionDialog from "./TransactionDialog";
 import styles from "./TransactionsView.module.css";
