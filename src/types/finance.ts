@@ -2,12 +2,12 @@
 // Data shapes (types)
 //
 // In plain words: these describe what each kind of information looks like —
-// for example, "a bill has a name, a due date and an amount". The code checker
-// uses them to catch mistakes, such as a missing amount or a misspelled field,
-// before the app ever runs.
+// for example, "a transaction has a name, a date and an amount". The code
+// checker uses them to catch mistakes, such as a missing amount or a
+// misspelled field, before the app ever runs.
 //
-// For developers: both the mock data and the real data functions (lib/data/)
-// return these shapes (raw numbers, ISO dates). The lists of allowed values
+// For developers: the data functions (lib/data/) return these shapes (raw
+// numbers, ISO dates). The lists of allowed values
 // (ACCOUNT_TYPES, …) are also used to check what people type into forms.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,20 +37,6 @@ export interface Account {
   /** Last four digits of the account number; null if it has none */
   last4: string | null;
   balance: number;
-  apy?: number;
-}
-
-// A company payment card and how much of its limit has been spent
-export interface Card {
-  id: string;
-  brand: "Visa" | "Mastercard";
-  last4: string;
-  holder: string;
-  kind: "physical" | "virtual";
-  status: "active" | "frozen";
-  expires: string; // "MM/YY"
-  limit: number;
-  spent: number;
 }
 
 // Which icon to show next to each category
@@ -143,21 +129,4 @@ export interface Transaction {
 export interface TransactionDetails extends Transaction {
   categoryId: string | null;
   notes: string | null;
-}
-
-// A bill that has to be paid by a certain date
-export interface Bill {
-  id: string;
-  name: string;
-  dueDate: ISODate;
-  amount: number;
-}
-
-// A warning that needs attention, e.g. an unusual charge
-export interface Alert {
-  id: string;
-  severity: "info" | "warning" | "danger";
-  title: string;
-  description: string;
-  actionLabel: string;
 }

@@ -65,7 +65,7 @@ export default function TopBar({ user, organizationName }: TopBarProps) {
         <input
           type="search"
           className={styles.searchInput}
-          placeholder="Search transactions, bills, cards…"
+          placeholder="Search transactions…"
           aria-label="Search"
         />
       </div>

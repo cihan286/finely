@@ -235,7 +235,7 @@ export default function DashboardHome({
 
           <div className={styles.dashboardGrid}>
             {/* Latest transactions: green arrow up = money in, grey arrow down = money out */}
-            <div className={`${styles.card} ${styles.transactionsCard}`}>
+            <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <h2 className={styles.cardTitle}>Recent Activity</h2>
                 <Link href="/dashboard/transactions" className={styles.viewAllBtn}>
