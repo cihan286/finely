@@ -13,8 +13,10 @@
 
 import { useState, type FormEvent } from "react";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
-import Field from "./Field";
 import styles from "./AuthForm.module.css";
 
 export default function ForgotPasswordForm() {
@@ -48,10 +50,10 @@ export default function ForgotPasswordForm() {
   // used to find out which emails are registered.
   if (sent) {
     return (
-      <p className={styles.success} role="status">
+      <Message type="success">
         If an account exists for that email, we&apos;ve sent a link to reset
         your password. It expires in one hour.
-      </p>
+      </Message>
     );
   }
 
@@ -60,19 +62,21 @@ export default function ForgotPasswordForm() {
     // fields (such as the password) must not end up in the address bar
     <form className={styles.form} method="post" onSubmit={handleSubmit}>
       {error && (
-        <p className={styles.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
 
-      <Field
-        label="Email"
-        name="email"
-        type="email"
-        autoComplete="email"
-        placeholder="you@company.com"
-        required
-      />
+      <Field label="Email">
+        <Input
+          size="lg"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          required
+        />
+      </Field>
 
       <div className={styles.submit}>
         <Button

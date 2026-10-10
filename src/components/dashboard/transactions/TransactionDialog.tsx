@@ -20,6 +20,9 @@
 import { startTransition, useActionState, type SubmitEvent } from "react";
 import { Trash2 } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input, Select, Textarea } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
 import { initialActionState } from "@/lib/action-state";
@@ -101,9 +104,9 @@ function TransactionForm({
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
       {error && (
-        <p className={forms.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
 
       <input type="hidden" name="id" value={transaction?.id ?? ""} />
@@ -134,9 +137,8 @@ function TransactionForm({
       </fieldset>
 
       <div className={forms.grid}>
-        <label className={forms.field}>
-          <span className={forms.label}>Amount (USD)</span>
-          <input
+        <Field label="Amount (USD)">
+          <Input
             name="amount"
             type="number"
             inputMode="decimal"
@@ -144,43 +146,36 @@ function TransactionForm({
             step="0.01"
             placeholder="0.00"
             defaultValue={transaction ? Math.abs(transaction.amount) : ""}
-            className={forms.input}
             required
             autoFocus
           />
-        </label>
-        <label className={forms.field}>
-          <span className={forms.label}>Date</span>
-          <input
+        </Field>
+        <Field label="Date">
+          <Input
             name="date"
             type="date"
             defaultValue={transaction?.day ?? today}
-            className={forms.input}
             required
           />
-        </label>
+        </Field>
       </div>
 
-      <label className={forms.field}>
-        <span className={forms.label}>Description</span>
-        <input
+      <Field label="Description">
+        <Input
           name="name"
           type="text"
           placeholder="e.g. Office rent, Stripe payout"
           defaultValue={transaction?.name ?? ""}
           maxLength={120}
-          className={forms.input}
           required
         />
-      </label>
+      </Field>
 
       <div className={forms.grid}>
-        <label className={forms.field}>
-          <span className={forms.label}>Account</span>
-          <select
+        <Field label="Account">
+          <Select
             name="accountId"
             defaultValue={transaction?.account ?? accounts[0]?.id}
-            className={forms.input}
             required
           >
             {accounts.map((a) => (
@@ -189,14 +184,12 @@ function TransactionForm({
                 {a.last4 ? ` ••${a.last4}` : ""}
               </option>
             ))}
-          </select>
-        </label>
-        <label className={forms.field}>
-          <span className={forms.label}>Category</span>
-          <select
+          </Select>
+        </Field>
+        <Field label="Category">
+          <Select
             name="categoryId"
             defaultValue={transaction?.categoryId ?? ""}
-            className={forms.input}
           >
             <option value="">Uncategorized</option>
             {incomeCategories.length > 0 && (
@@ -217,34 +210,28 @@ function TransactionForm({
                 ))}
               </optgroup>
             )}
-          </select>
-        </label>
+          </Select>
+        </Field>
       </div>
 
-      <label className={forms.field}>
-        <span className={forms.label}>Status</span>
-        <select
+      <Field label="Status">
+        <Select
           name="status"
           defaultValue={transaction?.status ?? "completed"}
-          className={forms.input}
         >
           <option value="completed">Completed</option>
           <option value="pending">Pending (not in balances yet)</option>
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <label className={forms.field}>
-        <span className={forms.label}>
-          Notes <span className={forms.optional}>(optional)</span>
-        </span>
-        <textarea
+      <Field label="Notes" optional>
+        <Textarea
           name="notes"
           rows={2}
           maxLength={1000}
           defaultValue={transaction?.notes ?? ""}
-          className={`${forms.input} ${forms.textarea}`}
         />
-      </label>
+      </Field>
 
       <div className={forms.footer}>
         {!isNew && canDelete && (

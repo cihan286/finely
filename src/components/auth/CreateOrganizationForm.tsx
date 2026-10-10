@@ -16,8 +16,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
-import Field from "./Field";
 import styles from "./AuthForm.module.css";
 
 // "Acme Corp" -> "acme-corp-4f9a2c": readable, and unique thanks to the suffix
@@ -67,20 +69,24 @@ export default function CreateOrganizationForm() {
     // fields (such as the password) must not end up in the address bar
     <form className={styles.form} method="post" onSubmit={handleSubmit}>
       {error && (
-        <p className={styles.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
 
       <Field
         label="Company name"
-        name="name"
-        autoComplete="organization"
-        placeholder="Northpeak Studio"
-        maxLength={100}
         hint="You can invite your team once it's set up."
-        required
-      />
+      >
+        <Input
+          size="lg"
+          name="name"
+          autoComplete="organization"
+          placeholder="Northpeak Studio"
+          maxLength={100}
+          required
+        />
+      </Field>
 
       <div className={styles.submit}>
         <Button

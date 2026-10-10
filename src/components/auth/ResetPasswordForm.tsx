@@ -15,8 +15,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { PasswordInput } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
-import Field from "./Field";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
 import styles from "./AuthForm.module.css";
 
@@ -60,28 +62,32 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     // fields (such as the password) must not end up in the address bar
     <form className={styles.form} method="post" onSubmit={handleSubmit}>
       {error && (
-        <p className={styles.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
 
       <Field
         label="New password"
-        name="password"
-        type="password"
-        autoComplete="new-password"
-        minLength={MIN_PASSWORD_LENGTH}
-        maxLength={MAX_PASSWORD_LENGTH}
         hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
-        required
-      />
-      <Field
-        label="Confirm new password"
-        name="confirm"
-        type="password"
-        autoComplete="new-password"
-        required
-      />
+      >
+        <PasswordInput
+          size="lg"
+          name="password"
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
+          required
+        />
+      </Field>
+      <Field label="Confirm new password">
+        <PasswordInput
+          size="lg"
+          name="confirm"
+          autoComplete="new-password"
+          required
+        />
+      </Field>
 
       <div className={styles.submit}>
         <Button

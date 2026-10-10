@@ -18,6 +18,9 @@
 import { startTransition, useActionState, useRef, type SubmitEvent } from "react";
 import { Landmark, Plus } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input, Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { submitAccount } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Account } from "@/types/finance";
@@ -71,12 +74,9 @@ export default function AccountSettings({
   return (
     <div className={shared.stack} id="accounts">
       {(state.error || state.success) && (
-        <p
-          className={state.error ? shared.error : shared.success}
-          role={state.error ? "alert" : "status"}
-        >
+        <Message type={state.error ? "error" : "success"}>
           {state.error ?? state.success}
-        </p>
+        </Message>
       )}
 
       {/* Add form: owners and admins only */}
@@ -90,48 +90,41 @@ export default function AccountSettings({
             </p>
           </div>
           <form ref={addFormRef} className={styles.addForm} onSubmit={submit}>
-            <label className={styles.field}>
-              <span>Name</span>
-              <input
+            <Field label="Name">
+              <Input
                 name="name"
                 placeholder="Business Checking"
                 maxLength={120}
-                className={shared.input}
                 required
               />
-            </label>
-            <label className={styles.field}>
-              <span>Type</span>
-              <select name="type" className={shared.select} defaultValue="checking">
+            </Field>
+            <Field label="Type">
+              <Select name="type" defaultValue="checking">
                 {Object.entries(TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span>Last 4 digits</span>
-              <input
+              </Select>
+            </Field>
+            <Field label="Last 4 digits">
+              <Input
                 name="last4"
                 inputMode="numeric"
                 pattern="\d{4}"
                 maxLength={4}
                 placeholder="3201"
                 title="Exactly 4 digits"
-                className={shared.input}
               />
-            </label>
-            <label className={styles.field}>
-              <span>Opening balance</span>
-              <input
+            </Field>
+            <Field label="Opening balance">
+              <Input
                 name="openingBalance"
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                className={shared.input}
               />
-            </label>
+            </Field>
             <Button
               type="submit"
               variant="primary"
@@ -152,11 +145,11 @@ export default function AccountSettings({
           </h2>
         </div>
         {accounts.length === 0 ? (
-          <p className={shared.notice}>
+          <Message type="info">
             {canManage
               ? "No bank accounts yet. Add one above."
               : "No bank accounts yet. Ask an owner or admin to add one."}
-          </p>
+          </Message>
         ) : (
           <ul className={shared.list}>
             {accounts.map((account) => (

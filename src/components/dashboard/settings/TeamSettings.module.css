@@ -3,7 +3,8 @@
 
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. Covers the invite form, the member and invitation
-   lists, role badges and the messages shown after an action.
+   lists and role badges. The cards and rows are also used by the other
+   settings sections.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .stack {
@@ -59,28 +60,14 @@
   gap: 0.75rem;
 }
 
-.input,
-.select {
-  height: 40px;
-  padding: 0 0.85rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background-color: var(--background);
-  color: inherit;
-  font: inherit;
-  font-size: 0.9rem;
-  outline: none;
-}
-
-.input {
+/* The email box takes the space left over; the role dropdown stays small */
+.inviteForm .email {
   flex: 1;
-  min-width: 0;
+  width: auto;
 }
 
-.input:focus,
-.select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
+.inviteForm .role {
+  width: auto;
 }
 
 .devNote {
@@ -193,42 +180,6 @@
   cursor: not-allowed;
 }
 
-/* Messages */
-
-.error,
-.success,
-.notice {
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.error {
-  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
-  color: color-mix(in srgb, var(--danger), var(--foreground) 25%);
-}
-
-.success {
-  background-color: color-mix(in srgb, var(--success) 12%, transparent);
-  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
-}
-
-.notice {
-  background-color: var(--hover);
-  color: var(--text-muted);
-}
-
-/* Visually hidden, but read by screen readers (labels for the invite form) */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
 /* Screens narrower than 640px (phones): stack the invite form */
 @media (max-width: 640px) {
   .card {
@@ -240,8 +191,11 @@
     flex-direction: column;
   }
 
-  /* In a column, "flex: 1" would squash the email box's height */
-  .input {
+  /* In a column, both take the full width ("flex: 1" would squash the
+     email box's height) */
+  .inviteForm .email,
+  .inviteForm .role {
     flex: none;
+    width: 100%;
   }
 }

@@ -2,8 +2,9 @@
    Login and sign-up form styles
 
    In plain words: this file (CSS) controls how things look — colors, sizes,
-   spacing and layout. Shared by all the account pages: titles, input boxes,
-   error and success messages, links, the "or" divider and the Google button.
+   spacing and layout. Shared by all the account pages: titles, links, the
+   "or" divider and the Google button. Input boxes and messages come from
+   components/common/form.
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Shared styles for the auth pages and forms */
@@ -32,109 +33,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
-}
-
-/* Fields */
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.labelRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.label {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.inputWrap {
-  position: relative;
-}
-
-.input {
-  width: 100%;
-  height: 44px;
-  padding: 0 0.9rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background-color: var(--background);
-  color: inherit;
-  font: inherit;
-  font-size: 0.95rem;
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
-}
-
-.input::placeholder {
-  color: var(--text-subtle);
-}
-
-.hasToggle {
-  padding-right: 2.75rem;
-}
-
-.toggle {
-  position: absolute;
-  right: 0.35rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.toggle:hover {
-  background-color: var(--hover);
-}
-
-.toggle:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-}
-
-.hint {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-/* Messages */
-
-.error,
-.success {
-  padding: 0.7rem 0.85rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  line-height: 1.45;
-}
-
-.error {
-  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
-  color: color-mix(in srgb, var(--danger), var(--foreground) 25%);
-}
-
-.success {
-  background-color: color-mix(in srgb, var(--success) 12%, transparent);
-  color: color-mix(in srgb, var(--success), var(--foreground) 35%);
 }
 
 /* Links */

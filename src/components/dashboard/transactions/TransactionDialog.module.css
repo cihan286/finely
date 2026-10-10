@@ -4,7 +4,8 @@
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. Only what's special to this window: the
    "Money out / Money in" switch and the Delete button. The window itself
-   and the form fields come from Dialog.module.css and forms.module.css.
+   comes from Dialog.module.css, the form layout from forms.module.css and
+   the form fields from components/common/form.
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* "Money out / Money in": two radio buttons styled as a switch */

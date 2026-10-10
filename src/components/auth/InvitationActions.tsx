@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
 import styles from "./AuthForm.module.css";
 
@@ -43,9 +44,9 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
   return (
     <div className={styles.form}>
       {error && (
-        <p className={styles.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
       <div className={styles.submit}>
         <Button
