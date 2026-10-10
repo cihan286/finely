@@ -133,7 +133,7 @@ src/
 ├── instrumentation.ts      Starts Sentry on the server
 ├── instrumentation-client.ts Starts Sentry in the browser
 ├── data/mockData.ts        Mock notifications (the only mock data left)
-├── types/finance.ts        Types for accounts, transactions, bills, …
+├── types/finance.ts        Types for accounts, categories, transactions, …
 └── utils/
     ├── format.ts           Currency, number and date formatting
     └── csv.ts              Turning CSV text into rows and cells
@@ -201,8 +201,7 @@ Other buttons use `components/common/spinner/Spinner` for the same look.
 
 **Data.** Components read data that has the types in `src/types/finance.ts`.
 Amounts are plain numbers and dates are ISO strings; formatting happens only in
-`src/utils/format.ts`. When the real backend arrives, it should return the same
-shapes, so components don't need to change.
+`src/utils/format.ts`. The functions in `src/lib/data/` return these shapes.
 
 **Form fields.** Use the components in `components/common/form/` instead of
 styling a new `<input>`, `<select>` or `<textarea>`: wrap an `Input`,
