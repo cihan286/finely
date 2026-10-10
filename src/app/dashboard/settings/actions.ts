@@ -13,7 +13,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import type { ActionState } from "@/lib/action-state";
+import { formField, type ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
 import {
   createCategory,
@@ -28,11 +28,6 @@ import type {
   CategoryKind,
 } from "@/types/finance";
 
-const field = (formData: FormData, name: string) => {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
-};
-
 /**
  * Adds a bank account, or removes one that has no transactions (when the form
  * says intent=remove). Owners and admins only.
@@ -41,18 +36,18 @@ export async function submitAccount(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const name = field(formData, "name").trim();
-  const removing = field(formData, "intent") === "remove";
+  const name = formField(formData, "name").trim();
+  const removing = formField(formData, "intent") === "remove";
   try {
     if (removing) {
-      await deleteAccount(field(formData, "id"));
+      await deleteAccount(formField(formData, "id"));
     } else {
       await createAccount({
         name,
-        type: field(formData, "type") as AccountType,
-        last4: field(formData, "last4"),
+        type: formField(formData, "type") as AccountType,
+        last4: formField(formData, "last4"),
         // An empty box means the account starts at zero
-        openingBalance: Number(field(formData, "openingBalance") || 0),
+        openingBalance: Number(formField(formData, "openingBalance") || 0),
       });
     }
   } catch (error) {
@@ -67,7 +62,7 @@ export async function submitCompanySettings(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const timeZone = field(formData, "timezone");
+  const timeZone = formField(formData, "timezone");
   try {
     await updateTimeZone(timeZone);
   } catch (error) {
@@ -85,14 +80,14 @@ export async function submitCategory(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const intent = field(formData, "intent");
-  const id = field(formData, "id");
-  const name = field(formData, "name").trim();
+  const intent = formField(formData, "intent");
+  const id = formField(formData, "id");
+  const name = formField(formData, "name").trim();
   const input = {
     name,
-    kind: field(formData, "kind") as CategoryKind,
-    color: field(formData, "color"),
-    iconKey: field(formData, "iconKey") as CategoryIconKey,
+    kind: formField(formData, "kind") as CategoryKind,
+    color: formField(formData, "color"),
+    iconKey: formField(formData, "iconKey") as CategoryIconKey,
   };
   try {
     if (intent === "delete") await deleteCategory(id);
