@@ -15,7 +15,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { queueEmail } from "@/lib/email/send";
@@ -98,24 +98,59 @@ export const auth = betterAuth({
     storage: "database",
   },
 
-  // When someone logs in, open the company they belong to (the oldest
-  // membership first), so the dashboard knows whose data to show.
+  // The company each person last worked in, so their next login opens it.
+  // Set by the hooks below; never by the browser (input: false).
+  user: {
+    additionalFields: {
+      lastOrganizationId: { type: "string", required: false, input: false },
+    },
+  },
+
   databaseHooks: {
     session: {
+      // When someone logs in, open a company they belong to, so the
+      // dashboard knows whose data to show: the one they last worked in, or
+      // else the one they joined first.
       create: {
         before: async (session) => {
-          const [membership] = await db
-            .select({ organizationId: schema.member.organizationId })
-            .from(schema.member)
-            .where(eq(schema.member.userId, session.userId))
-            .orderBy(asc(schema.member.createdAt))
-            .limit(1);
+          const [memberships, [person]] = await Promise.all([
+            db
+              .select({ organizationId: schema.member.organizationId })
+              .from(schema.member)
+              .where(eq(schema.member.userId, session.userId))
+              .orderBy(asc(schema.member.createdAt)),
+            db
+              .select({ last: schema.user.lastOrganizationId })
+              .from(schema.user)
+              .where(eq(schema.user.id, session.userId)),
+          ]);
+          const membership =
+            memberships.find((m) => m.organizationId === person?.last) ??
+            memberships[0];
           return {
             data: {
               ...session,
               activeOrganizationId: membership?.organizationId ?? null,
             },
           };
+        },
+      },
+      // When a login switches company (the switcher in the top bar, or
+      // accepting an invitation), remember it for the next login. Sessions
+      // are also updated for other reasons; then nothing changes here.
+      update: {
+        after: async (session) => {
+          const organizationId = session.activeOrganizationId;
+          if (typeof organizationId !== "string") return;
+          await db
+            .update(schema.user)
+            .set({ lastOrganizationId: organizationId })
+            .where(
+              and(
+                eq(schema.user.id, session.userId),
+                sql`${schema.user.lastOrganizationId} is distinct from ${organizationId}`,
+              ),
+            );
         },
       },
     },

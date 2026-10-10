@@ -39,6 +39,8 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  // The company they last worked in; their next login opens it
+  lastOrganizationId: text("last_organization_id"),
 });
 
 // Active logins: one row per logged-in device, removed on log out or expiry.

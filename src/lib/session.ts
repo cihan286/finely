@@ -52,6 +52,19 @@ export const getActiveOrganization = cache(async () => {
 });
 
 /**
+ * Every company the signed-in user belongs to, by name (for the company
+ * switcher). Cached for the duration of one request.
+ */
+export const listUserOrganizations = cache(async () => {
+  const organizations = await auth.api.listOrganizations({
+    headers: await headers(),
+  });
+  return organizations
+    .map(({ id, name }) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+/**
  * The signed-in user, their active company and their role in it. Redirects to
  * /login without a session, and to /onboarding without a company.
  */

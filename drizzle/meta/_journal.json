@@ -43,6 +43,13 @@
       "when": 1791401615553,
       "tag": "0005_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791632463312,
+      "tag": "0006_last_organization",
+      "breakpoints": true
     }
   ]
 }
