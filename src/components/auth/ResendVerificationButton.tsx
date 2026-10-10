@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import Spinner from "@/components/common/spinner/Spinner";
 
 interface ResendVerificationButtonProps {
   email: string;
@@ -41,11 +42,15 @@ export default function ResendVerificationButton({
       onClick={handleClick}
       disabled={state === "sending"}
     >
-      {state === "sending"
-        ? "Sending…"
-        : state === "error"
-          ? "Couldn't send. Try again"
-          : "Resend email"}
+      {state === "sending" ? (
+        <>
+          <Spinner size={12} /> Sending
+        </>
+      ) : state === "error" ? (
+        "Couldn't send. Try again"
+      ) : (
+        "Resend email"
+      )}
     </button>
   );
 }

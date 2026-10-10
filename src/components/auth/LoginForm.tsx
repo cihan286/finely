@@ -121,7 +121,8 @@ export default function LoginForm({
         <div className={styles.submit}>
           <Button
             type="submit"
-            text={loading ? "Logging in…" : "Log in"}
+            loading={loading}
+            text={loading ? "Logging in" : "Log in"}
             size="sm"
             fullWidth
             disabled={loading}

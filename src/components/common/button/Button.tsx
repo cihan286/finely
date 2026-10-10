@@ -7,11 +7,14 @@
 // regular or a compact size.
 //
 // For developers: use this instead of styling a new <button>. Pass `href` to
-// make it a link to another page, or `action` for a click handler.
+// make it a link to another page, or `action` for a click handler. While
+// its action is running, pass `loading` (and a text like "Saving"): it shows
+// a spinner and can't be clicked again.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./Button.module.css";
 
 interface ButtonProps {
@@ -28,6 +31,8 @@ interface ButtonProps {
   /** "submit" for form buttons; ignored when href is set */
   type?: "button" | "submit";
   disabled?: boolean;
+  /** Shows a spinner in place of the icon and disables the button */
+  loading?: boolean;
   /** Stretch to the width of the container */
   fullWidth?: boolean;
 }
@@ -43,6 +48,7 @@ export default function Button({
   iconPosition = "left",
   type = "button",
   disabled = false,
+  loading = false,
   fullWidth = false,
 }: ButtonProps) {
   const className = [
@@ -56,9 +62,9 @@ export default function Button({
 
   const content = (
     <>
-      {iconPosition === "left" && icon}
+      {loading ? <Spinner /> : iconPosition === "left" && icon}
       <span>{text}</span>
-      {iconPosition === "right" && icon}
+      {!loading && iconPosition === "right" && icon}
     </>
   );
 
@@ -75,7 +81,8 @@ export default function Button({
       type={type}
       className={className}
       onClick={action}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
     >
       {content}
     </button>

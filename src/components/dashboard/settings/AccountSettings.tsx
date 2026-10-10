@@ -129,7 +129,8 @@ export default function AccountSettings({
               type="submit"
               variant="primary"
               size="sm"
-              text={pending ? "Saving…" : "Add account"}
+              loading={pending}
+              text={pending ? "Saving" : "Add account"}
               icon={<Plus size={16} />}
               disabled={pending}
             />

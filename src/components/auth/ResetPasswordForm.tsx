@@ -92,7 +92,8 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       <div className={styles.submit}>
         <Button
           type="submit"
-          text={loading ? "Saving…" : "Set new password"}
+          loading={loading}
+          text={loading ? "Saving" : "Set new password"}
           size="sm"
           fullWidth
           disabled={loading}

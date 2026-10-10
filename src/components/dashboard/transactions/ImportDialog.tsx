@@ -373,9 +373,10 @@ function ImportForm({
           <Button
             variant="primary"
             size="sm"
+            loading={pending}
             text={
               pending
-                ? "Importing…"
+                ? "Importing"
                 : `Import ${rows.length} ${rows.length === 1 ? "transaction" : "transactions"}`
             }
             action={handleImport}

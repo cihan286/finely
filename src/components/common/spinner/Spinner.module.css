@@ -1,0 +1,31 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Spinner styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. A small ring with a gap that turns round and round.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+  border-radius: 50%;
+  /* Takes the color of the text around it; one quarter is left see-through */
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* People who asked their device for less motion get a slower turn; a still
+   ring wouldn't say "working" */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

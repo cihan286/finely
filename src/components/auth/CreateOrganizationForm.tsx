@@ -91,7 +91,8 @@ export default function CreateOrganizationForm() {
       <div className={styles.submit}>
         <Button
           type="submit"
-          text={loading ? "Setting up…" : "Continue"}
+          loading={loading}
+          text={loading ? "Setting up" : "Continue"}
           size="sm"
           fullWidth
           disabled={loading}

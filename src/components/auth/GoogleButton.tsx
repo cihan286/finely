@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { authClient } from "@/lib/auth-client";
+import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./AuthForm.module.css";
 
 interface GoogleButtonProps {
@@ -51,9 +52,10 @@ export default function GoogleButton({
       className={styles.googleButton}
       onClick={handleClick}
       disabled={loading}
+      aria-busy={loading || undefined}
     >
-      <FcGoogle size={20} aria-hidden="true" />
-      {loading ? "Redirecting to Google…" : label}
+      {loading ? <Spinner size={18} /> : <FcGoogle size={20} aria-hidden="true" />}
+      {loading ? "Redirecting to Google" : label}
     </button>
   );
 }
