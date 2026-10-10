@@ -18,8 +18,6 @@ import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { createDefaultCategories } from "@/lib/data/default-categories";
-import { createCompanySettings } from "@/lib/data/settings";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
@@ -157,6 +155,14 @@ export const auth = betterAuth({
               metadata = null; // unreadable: use the default timezone
             }
           }
+          // Loaded here, not at the top of the file: these are marked
+          // "server-only", which only loads inside Next.js, and this file
+          // must also load in the Better Auth CLI (npx auth generate)
+          const [{ createDefaultCategories }, { createCompanySettings }] =
+            await Promise.all([
+              import("@/lib/data/default-categories"),
+              import("@/lib/data/settings"),
+            ]);
           await Promise.all([
             createDefaultCategories(organization.id),
             createCompanySettings(organization.id, metadata?.timezone),
