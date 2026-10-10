@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import Message from "@/components/common/form/Message";
 import styles from "./AuthForm.module.css";
 
 export default function ActivateOrganization({
@@ -37,9 +38,9 @@ export default function ActivateOrganization({
   }, [organizationId, router]);
 
   return failed ? (
-    <p className={styles.error} role="alert">
+    <Message type="error">
       We couldn&apos;t open your company. Please refresh the page to try again.
-    </p>
+    </Message>
   ) : (
     <p className={styles.subtitle} role="status">
       Opening your company…

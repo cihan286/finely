@@ -14,8 +14,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input, PasswordInput } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
-import Field from "./Field";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
 import GoogleButton from "./GoogleButton";
 import styles from "./AuthForm.module.css";
@@ -81,36 +83,43 @@ export default function SignupForm({
           fields (such as the password) must not end up in the address bar */}
       <form className={styles.form} method="post" onSubmit={handleSubmit}>
         {error && (
-          <p className={styles.error} role="alert">
+          <Message type="error">
             {error}
-          </p>
+          </Message>
         )}
 
-        <Field
-          label="Full name"
-          name="name"
-          autoComplete="name"
-          placeholder="Maya Carter"
-          required
-        />
-        <Field
-          label="Work email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@company.com"
-          required
-        />
+        <Field label="Full name">
+          <Input
+            size="lg"
+            name="name"
+            autoComplete="name"
+            placeholder="Maya Carter"
+            required
+          />
+        </Field>
+        <Field label="Work email">
+          <Input
+            size="lg"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            required
+          />
+        </Field>
         <Field
           label="Password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          minLength={MIN_PASSWORD_LENGTH}
-          maxLength={MAX_PASSWORD_LENGTH}
           hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
-          required
-        />
+        >
+          <PasswordInput
+            size="lg"
+            name="password"
+            autoComplete="new-password"
+            minLength={MIN_PASSWORD_LENGTH}
+            maxLength={MAX_PASSWORD_LENGTH}
+            required
+          />
+        </Field>
 
         <div className={styles.submit}>
           <Button

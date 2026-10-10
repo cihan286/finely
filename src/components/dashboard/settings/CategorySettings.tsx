@@ -25,6 +25,9 @@ import {
 } from "react";
 import { Plus } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Input, Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import { submitCategory } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
@@ -81,12 +84,9 @@ export default function CategorySettings({
   return (
     <div className={shared.stack} id="categories">
       {(state.error || state.success) && (
-        <p
-          className={state.error ? shared.error : shared.success}
-          role={state.error ? "alert" : "status"}
-        >
+        <Message type={state.error ? "error" : "success"}>
           {state.error ?? state.success}
-        </p>
+        </Message>
       )}
 
       {/* Add form: owners and admins only */}
@@ -228,51 +228,44 @@ function CategoryRow({
 function CategoryFields({ category }: { category?: Category }) {
   return (
     <>
-      <label className={`${styles.field} ${styles.nameField}`}>
-        <span>Name</span>
-        <input
+      <Field label="Name" className={styles.nameField}>
+        <Input
           name="name"
           defaultValue={category?.name}
           placeholder="e.g. Travel"
           maxLength={60}
-          className={shared.input}
           required
         />
-      </label>
-      <label className={styles.field}>
-        <span>Type</span>
-        <select
+      </Field>
+      <Field label="Type">
+        <Select
           name="kind"
           defaultValue={category?.kind ?? "expense"}
-          className={shared.select}
         >
           <option value="expense">Money out</option>
           <option value="income">Money in</option>
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span>Icon</span>
-        <select
+        </Select>
+      </Field>
+      <Field label="Icon">
+        <Select
           name="iconKey"
           defaultValue={category?.iconKey ?? "more"}
-          className={shared.select}
         >
           {(Object.keys(CATEGORY_ICONS) as CategoryIconKey[]).map((key) => (
             <option key={key} value={key}>
               {CATEGORY_ICONS[key].label}
             </option>
           ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span>Color</span>
-        <input
+        </Select>
+      </Field>
+      <Field label="Color">
+        <Input
           name="color"
           type="color"
           defaultValue={category?.color ?? "#6366f1"}
           className={styles.color}
         />
-      </label>
+      </Field>
     </>
   );
 }

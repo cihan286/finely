@@ -20,6 +20,9 @@
 import { useState, useTransition, type ChangeEvent } from "react";
 import { FileUp } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import Field from "@/components/common/form/Field";
+import { Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { importStatement } from "@/app/dashboard/transactions/actions";
 import {
@@ -115,9 +118,9 @@ function ImportForm({
           is imported.
         </p>
         {error && (
-          <p className={forms.error} role="alert">
+          <Message type="error">
             {error}
-          </p>
+          </Message>
         )}
         <AccountSelect accounts={accounts} value={accountId} onChange={setAccountId} />
         <label className={styles.dropZone}>
@@ -190,16 +193,16 @@ function ImportForm({
       </div>
 
       {error && (
-        <p className={forms.error} role="alert">
+        <Message type="error">
           {error}
-        </p>
+        </Message>
       )}
 
       <AccountSelect accounts={accounts} value={accountId} onChange={setAccountId} />
 
       {/* Which column holds what */}
       <fieldset className={styles.mapping} disabled={pending}>
-        <legend className={forms.label}>Columns</legend>
+        <legend>Columns</legend>
         <label className={forms.checkbox}>
           <input
             type="checkbox"
@@ -215,20 +218,18 @@ function ImportForm({
             value={mapping.date}
             onChange={(date) => update({ date })}
           />
-          <label className={forms.field}>
-            <span className={forms.label}>Date format</span>
-            <select
+          <Field label="Date format">
+            <Select
               value={mapping.dateFormat}
               onChange={(e) => update({ dateFormat: e.target.value as DateFormat })}
-              className={forms.input}
             >
               {Object.entries(DATE_FORMATS).map(([value, example]) => (
                 <option key={value} value={value}>
                   {example}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
           <ColumnSelect
             label="Description"
             columns={columns}
@@ -242,19 +243,17 @@ function ImportForm({
             value={mapping.category}
             onChange={(category) => update({ category })}
           />
-          <label className={forms.field}>
-            <span className={forms.label}>Amounts</span>
-            <select
+          <Field label="Amounts">
+            <Select
               value={mapping.amountMode}
               onChange={(e) =>
                 update({ amountMode: e.target.value as ColumnMapping["amountMode"] })
               }
-              className={forms.input}
             >
               <option value="single">One column (minus = money out)</option>
               <option value="split">Separate money in and out columns</option>
-            </select>
-          </label>
+            </Select>
+          </Field>
           {mapping.amountMode === "single" ? (
             <ColumnSelect
               label="Amount"
@@ -399,12 +398,10 @@ function AccountSelect({
   onChange: (accountId: string) => void;
 }) {
   return (
-    <label className={forms.field}>
-      <span className={forms.label}>Import into</span>
-      <select
+    <Field label="Import into">
+      <Select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={forms.input}
       >
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>
@@ -412,8 +409,8 @@ function AccountSelect({
             {a.last4 ? ` ••${a.last4}` : ""}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }
 
@@ -432,22 +429,15 @@ function ColumnSelect({
   optional?: boolean;
 }) {
   return (
-    <label className={forms.field}>
-      <span className={forms.label}>
-        {label} {optional && <span className={forms.optional}>(optional)</span>}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={forms.input}
-      >
+    <Field label={label} optional={optional}>
+      <Select value={value} onChange={(e) => onChange(Number(e.target.value))}>
         <option value={-1}>{optional ? "None" : "Choose a column"}</option>
         {columns.map((c) => (
           <option key={c.value} value={c.value}>
             {c.label}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }

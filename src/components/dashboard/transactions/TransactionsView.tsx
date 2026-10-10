@@ -23,6 +23,8 @@ import {
   Search,
 } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import { Input, Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import type {
   Account,
   Category,
@@ -152,9 +154,9 @@ export default function TransactionsView({
       </div>
 
       {importResult && (
-        <p className={styles.notice} role="status">
+        <Message type="success">
           {importMessage(importResult)}
-        </p>
+        </Message>
       )}
 
       {accounts.length === 0 ? (
@@ -190,21 +192,21 @@ export default function TransactionsView({
           <Form action={LIST_PATH} className={styles.filters}>
             <div className={styles.searchBox}>
               <Search size={16} className={styles.searchIcon} aria-hidden="true" />
-              <input
+              <Input
                 name="q"
                 type="search"
                 placeholder="Search transactions"
                 aria-label="Search transactions"
                 defaultValue={query.q}
                 maxLength={100}
-                className={styles.input}
+                className={styles.filter}
               />
             </div>
-            <select
+            <Select
               name="account"
               aria-label="Account"
               defaultValue={query.account}
-              className={styles.input}
+              className={styles.filter}
             >
               <option value="">All accounts</option>
               {accounts.map((a) => (
@@ -212,12 +214,12 @@ export default function TransactionsView({
                   {a.name}
                 </option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               name="category"
               aria-label="Category"
               defaultValue={query.category}
-              className={styles.input}
+              className={styles.filter}
             >
               <option value="">All categories</option>
               {categories.map((c) => (
@@ -226,23 +228,23 @@ export default function TransactionsView({
                 </option>
               ))}
               <option value="none">Uncategorized</option>
-            </select>
+            </Select>
             <label className={styles.dateField}>
               <span>From</span>
-              <input
+              <Input
                 name="from"
                 type="date"
                 defaultValue={query.from}
-                className={styles.input}
+                className={styles.filter}
               />
             </label>
             <label className={styles.dateField}>
               <span>To</span>
-              <input
+              <Input
                 name="to"
                 type="date"
                 defaultValue={query.to}
-                className={styles.input}
+                className={styles.filter}
               />
             </label>
             <div className={styles.filterActions}>

@@ -21,6 +21,8 @@ import {
   type SubmitEvent,
 } from "react";
 import Button from "@/components/common/button/Button";
+import { Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 // The settings sections share their card and message styles
@@ -69,12 +71,9 @@ export default function CompanySettings({
   return (
     <div className={shared.stack}>
       {(state.error || state.success) && (
-        <p
-          className={state.error ? shared.error : shared.success}
-          role={state.error ? "alert" : "status"}
-        >
+        <Message type={state.error ? "error" : "success"}>
           {state.error ?? state.success}
-        </p>
+        </Message>
       )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
@@ -86,23 +85,20 @@ export default function CompanySettings({
         </div>
         {canManage ? (
           <form className={styles.form} onSubmit={handleSubmit}>
-            <label className={shared.srOnly} htmlFor="company-timezone">
-              Timezone
-            </label>
-            <select
-              id="company-timezone"
+            <Select
               name="timezone"
+              aria-label="Timezone"
               // Re-select the saved value after it changes
               key={timeZone}
               defaultValue={timeZone}
-              className={`${shared.select} ${styles.select}`}
+              className={styles.timezone}
             >
               {timeZones.map((zone) => (
                 <option key={zone} value={zone}>
                   {zone.replaceAll("_", " ")}
                 </option>
               ))}
-            </select>
+            </Select>
             <Button
               type="submit"
               variant="primary"

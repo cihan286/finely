@@ -4,7 +4,8 @@
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. Covers the "choose a file" area, the column choices,
    the preview table and the list of lines that will be skipped. The window
-   and form fields come from Dialog.module.css and forms.module.css.
+   comes from Dialog.module.css, the form layout from forms.module.css and
+   the form fields from components/common/form.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .intro,
@@ -88,6 +89,8 @@
 
 .mapping legend {
   padding: 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 /* "Money in" and "Money out" side by side in one grid cell */

@@ -107,7 +107,8 @@ src/
 │       ├── insights/       Trends over 3/6/12 months, vendors, unusual charges
 │       └── settings/       Timezone, team, bank accounts and categories
 ├── components/
-│   ├── common/             Shared across the app (Button, Logo, Footer)
+│   ├── common/             Shared across the app (Button, form fields, Dialog,
+│   │                       Logo, Footer)
 │   ├── home/               Landing page sections
 │   ├── auth/               Login/sign-up forms
 │   └── dashboard/          Dashboard UI
@@ -199,6 +200,14 @@ style used in the dashboard.
 Amounts are plain numbers and dates are ISO strings; formatting happens only in
 `src/utils/format.ts`. When the real backend arrives, it should return the same
 shapes, so components don't need to change.
+
+**Form fields.** Use the components in `components/common/form/` instead of
+styling a new `<input>`, `<select>` or `<textarea>`: wrap an `Input`,
+`Select`, `Textarea` or `PasswordInput` in a `Field` for its label
+(`<Field label="Email"><Input name="email" type="email" /></Field>`), and
+show results with `Message` (`type` is `error`, `success` or `info`). A
+component's own CSS only arranges fields (rows, widths); it never restyles
+the boxes.
 
 **Adding a dashboard page.** Create `src/app/dashboard/<name>/page.tsx`. It
 automatically gets the sidebar and top bar from `dashboard/layout.tsx`. The

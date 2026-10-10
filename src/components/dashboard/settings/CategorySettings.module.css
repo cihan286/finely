@@ -17,33 +17,14 @@
   gap: 0.75rem;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
 .nameField {
   flex: 1 1 180px;
 }
 
-/* The shared input style grows with "flex: 1", which in a column would
-   squash the box's height */
-.field input,
-.field select {
-  flex: none;
-}
-
-.color {
+/* The color picker: a small square instead of a full-width box */
+input.color {
   width: 48px;
-  height: 40px;
   padding: 0.2rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background-color: var(--background);
   cursor: pointer;
 }
 

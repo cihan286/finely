@@ -18,6 +18,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, UserPlus } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import { Input, Select } from "@/components/common/form/controls";
+import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
 import { canManageTeam, roleLabel } from "@/lib/roles";
 import { formatShortDate, getInitials } from "@/utils/format";
@@ -112,12 +114,9 @@ export default function TeamSettings({
   return (
     <div className={styles.stack}>
       {message && (
-        <p
-          className={message.type === "error" ? styles.error : styles.success}
-          role={message.type === "error" ? "alert" : "status"}
-        >
+        <Message type={message.type}>
           {message.text}
-        </p>
+        </Message>
       )}
 
       {/* Invite form: owners and admins only */}
@@ -131,25 +130,24 @@ export default function TeamSettings({
             </p>
           </div>
           <form className={styles.inviteForm} onSubmit={handleInvite}>
-            <label className={styles.srOnly} htmlFor="invite-email">
-              Email address
-            </label>
-            <input
-              id="invite-email"
+            <Input
               name="email"
               type="email"
+              aria-label="Email address"
               placeholder="colleague@company.com"
-              className={styles.input}
+              className={styles.email}
               autoComplete="off"
               required
             />
-            <label className={styles.srOnly} htmlFor="invite-role">
-              Role
-            </label>
-            <select id="invite-role" name="role" className={styles.select} defaultValue="member">
+            <Select
+              name="role"
+              aria-label="Role"
+              className={styles.role}
+              defaultValue="member"
+            >
               <option value="member">Member</option>
               <option value="admin">Admin</option>
-            </select>
+            </Select>
             <Button
               type="submit"
               variant="primary"
@@ -167,9 +165,9 @@ export default function TeamSettings({
           )}
         </section>
       ) : (
-        <p className={styles.notice}>
+        <Message type="info">
           Only owners and admins can invite or remove people.
-        </p>
+        </Message>
       )}
 
       {/* Everyone in the company */}
