@@ -260,9 +260,10 @@ completed transactions; pending ones don't count yet.
 **Emptying a database.** To delete all data, empty the tables in the `public`
 schema only. Leave `drizzle.__drizzle_migrations` alone: it records which
 migrations have run. If it's emptied while the tables still exist,
-`npm run db:migrate` tries to create every table again and fails (it exits
-with an error but prints no message). To start completely fresh instead, drop
-both the `public` and `drizzle` schemas and run `npm run db:migrate`.
+`npm run db:migrate` tries to create every table again and fails with
+"relation … already exists" (on Vercel, the deploy fails). To start
+completely fresh instead, drop both the `public` and `drizzle` schemas and
+run `npm run db:migrate`.
 
 **Changing the database.** Edit `src/db/finance.ts` (or add a new file and
 list it in `drizzle.config.ts` and `src/db/index.ts`), run
