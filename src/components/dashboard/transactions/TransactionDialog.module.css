@@ -3,7 +3,8 @@
 
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. Only what's special to this window: the
-   "Money out / Money in" switch and the Delete button. The window itself
+   "Money out / Money in" switch, "Always use this category" and the Delete
+   button. The window itself
    comes from Dialog.module.css, the form layout from forms.module.css and
    the form fields from components/common/form.
    ───────────────────────────────────────────────────────────────────────────── */
@@ -49,6 +50,14 @@
 .direction input:focus-visible + span {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
+}
+
+/* "Always use this category", with its text box once ticked */
+
+.remember {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 /* Delete, on the left of the buttons row */

@@ -50,6 +50,13 @@
       "when": 1791632463312,
       "tag": "0006_last_organization",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791749405692,
+      "tag": "0007_category_rules",
+      "breakpoints": true
     }
   ]
 }

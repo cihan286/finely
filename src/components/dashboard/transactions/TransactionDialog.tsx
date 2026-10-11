@@ -4,7 +4,8 @@
 // In plain words: the window that opens over the transactions list to add a
 // transaction or change one. You choose "Money out" or "Money in", type the
 // amount, a description and the date, and pick the account, category and
-// status. Owners and admins also get a Delete button. Pressing Escape,
+// status. Owners and admins also get a Delete button, and can tick "Always
+// use this category" to make the choice a category rule. Pressing Escape,
 // Cancel or clicking outside the window closes it without saving.
 //
 // For developers: a client component ("use client") inside the shared
@@ -17,7 +18,12 @@
 
 "use client";
 
-import { startTransition, useActionState, type SubmitEvent } from "react";
+import {
+  startTransition,
+  useActionState,
+  useState,
+  type SubmitEvent,
+} from "react";
 import { Trash2 } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
@@ -26,6 +32,10 @@ import Message from "@/components/common/form/Message";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
 import { initialActionState } from "@/lib/action-state";
+import {
+  MAX_RULE_TEXT_LENGTH,
+  MIN_RULE_TEXT_LENGTH,
+} from "@/lib/finance/category-rules";
 import type { Account, Category, TransactionDetails } from "@/types/finance";
 import forms from "./forms.module.css";
 import styles from "./TransactionDialog.module.css";
@@ -35,8 +45,11 @@ interface TransactionDialogProps {
   transaction: TransactionDetails | null;
   accounts: Account[];
   categories: Category[];
-  /** Whether to show the Delete button (owners and admins) */
-  canDelete: boolean;
+  /**
+   * Whether to show the Delete button and "always use this category"
+   * (owners and admins)
+   */
+  canManage: boolean;
   /** The list's address, to return to when the window closes */
   closeHref: string;
   /** Today in the company's timezone ("2026-10-01"), the default date */
@@ -75,7 +88,7 @@ function TransactionForm({
   transaction,
   accounts,
   categories,
-  canDelete,
+  canManage,
   closeHref,
   today,
   error,
@@ -84,6 +97,8 @@ function TransactionForm({
 }: TransactionFormProps) {
   const close = useCloseDialog();
   const isNew = transaction === null;
+  // Whether "always use this category" is ticked
+  const [remember, setRemember] = useState(false);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -214,6 +229,36 @@ function TransactionForm({
         </Field>
       </div>
 
+      {/* Make it a rule: owners and admins only */}
+      {canManage && categories.length > 0 && (
+        <div className={styles.remember}>
+          <label className={forms.checkbox}>
+            <input
+              type="checkbox"
+              name="remember"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            Always use this category for descriptions like this
+          </label>
+          {remember && (
+            <Field
+              label="Descriptions containing"
+              hint="Leave empty to use the whole description. Shorter text matches more, e.g. “AWS”. Transactions that have no category yet get it too."
+            >
+              <Input
+                name="ruleText"
+                type="text"
+                defaultValue={transaction?.name ?? ""}
+                placeholder="The whole description"
+                minLength={MIN_RULE_TEXT_LENGTH}
+                maxLength={MAX_RULE_TEXT_LENGTH}
+              />
+            </Field>
+          )}
+        </div>
+      )}
+
       <Field label="Status">
         <Select
           name="status"
@@ -234,7 +279,7 @@ function TransactionForm({
       </Field>
 
       <div className={forms.footer}>
-        {!isNew && canDelete && (
+        {!isNew && canManage && (
           <button
             type="submit"
             name="intent"

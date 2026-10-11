@@ -68,6 +68,14 @@ export interface Category {
   iconKey: CategoryIconKey;
 }
 
+// "Transactions whose description contains this text get this category"
+export interface CategoryRule {
+  id: string;
+  /** The text to look for, e.g. "AWS" (upper/lower case doesn't matter) */
+  matchText: string;
+  categoryId: string;
+}
+
 // A spending category (e.g. Payroll) and how much went to it
 export interface ExpenseCategory {
   id: string;

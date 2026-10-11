@@ -4,8 +4,9 @@
 // In plain words: these are the tables that hold each company's financial
 // data. `company_settings` holds preferences such as the company's timezone,
 // `financial_account` is a bank account (or cash box) the company keeps
-// money in, `category` is a label such as "Payroll" or "Marketing", and
-// `transaction` is one payment in or out of an account. Every row belongs to
+// money in, `category` is a label such as "Payroll" or "Marketing",
+// `category_rule` says which descriptions get which category automatically,
+// and `transaction` is one payment in or out of an account. Every row belongs to
 // exactly one company, so companies never see each other's data.
 //
 // For developers: kept apart from schema.ts because that file is regenerated
@@ -103,6 +104,36 @@ export const category = pgTable(
   ],
 );
 
+// "Transactions whose description contains this text get this category".
+// Applied when a transaction arrives without a category (see
+// lib/finance/category-rules.ts).
+export const categoryRule = pgTable(
+  "category_rule",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("rule")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // A rule is meaningless without its category, so it goes with it
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => category.id, { onDelete: "cascade" }),
+    // The text to look for in a description, e.g. "aws". Matched ignoring
+    // upper/lower case and extra spaces.
+    matchText: text("match_text").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    // One rule per text in a company, ignoring upper/lower case: two rules
+    // for "AWS" and "aws" could point at different categories
+    uniqueIndex("category_rule_organization_text_unique").on(
+      table.organizationId,
+      sql`lower(${table.matchText})`,
+    ),
+    index("category_rule_categoryId_idx").on(table.categoryId),
+  ],
+);
+
 // One payment in or out of an account. Positive amount = money in.
 export const transaction = pgTable(
   "transaction",
@@ -161,6 +192,18 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
     references: [organization.id],
   }),
   transactions: many(transaction),
+  rules: many(categoryRule),
+}));
+
+export const categoryRuleRelations = relations(categoryRule, ({ one }) => ({
+  organization: one(organization, {
+    fields: [categoryRule.organizationId],
+    references: [organization.id],
+  }),
+  category: one(category, {
+    fields: [categoryRule.categoryId],
+    references: [category.id],
+  }),
 }));
 
 export const transactionRelations = relations(transaction, ({ one }) => ({

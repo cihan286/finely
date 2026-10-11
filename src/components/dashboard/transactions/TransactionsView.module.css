@@ -181,6 +181,28 @@
   border-radius: var(--radius-sm);
 }
 
+/* The tick box sits above the row's link, so clicking it ticks the row
+   instead of opening it */
+.checkCell {
+  position: relative;
+  z-index: 1;
+  width: 1%;
+}
+
+.checkCell input {
+  display: block;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* A link inside a message box */
+.messageLink {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .dateCell {
   color: var(--text-muted);
 }

@@ -9,8 +9,9 @@
 // For developers: everything the page shows lives in the address (search
 // params), so filtered views and open edit windows can be linked to and the
 // back button works: ?q, account, category, from, to, page, plus ?new=1,
-// ?edit=<id> or ?import=1 for the windows, and ?imported=&skipped= for the
-// message after an import. Values from the address are tidied here before
+// ?edit=<id> or ?import=1 for the windows, ?imported=&skipped= for the
+// message after an import, and ?categorized= for the one after saving a
+// category rule from the edit window. Values from the address are tidied here before
 // they reach lib/data/, which checks them again.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ import TransactionsView, {
 import { todayIn } from "@/lib/dates";
 import { listAccounts } from "@/lib/data/accounts";
 import { listCategories } from "@/lib/data/categories";
+import { listCategoryRules } from "@/lib/data/category-rules";
 import { getCompanyTimeZone } from "@/lib/data/common";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
@@ -64,8 +66,12 @@ export default async function TransactionsPage({
   const importResult = /^\d+$/.test(imported)
     ? { imported: Number(imported), skipped: Number(single(params.skipped)) || 0 }
     : null;
+  // After saving with "always use this category": how many the rule caught
+  const categorized = single(params.categorized);
+  const ruleResult = /^\d+$/.test(categorized) ? Number(categorized) : null;
 
-  const [{ transactions, total }, accounts, categories, editing, timeZone] =
+  const importing = Boolean(single(params.import));
+  const [{ transactions, total }, accounts, categories, rules, editing, timeZone] =
     await Promise.all([
       listTransactions({
         search: query.q,
@@ -78,6 +84,8 @@ export default async function TransactionsPage({
       }),
       listAccounts(),
       listCategories(),
+      // Only the import window needs the rules
+      importing ? listCategoryRules() : [],
       editId ? getTransaction(editId) : null,
       getCompanyTimeZone(organization.id),
     ]);
@@ -93,7 +101,9 @@ export default async function TransactionsPage({
       total={total}
       accounts={accounts}
       categories={categories}
+      rules={rules}
       importResult={importResult}
+      ruleResult={ruleResult}
       // ?new=1 opens an empty form; ?edit=<id> opens that transaction;
       // ?import=1 opens the import window
       dialog={
@@ -103,7 +113,7 @@ export default async function TransactionsPage({
             ? null
             : single(params.new)
               ? { mode: "new" }
-              : single(params.import)
+              : importing
                 ? { mode: "import" }
                 : null
       }

@@ -2,24 +2,26 @@
 // Settings page (finely.com/dashboard/settings)
 //
 // In plain words: where you manage your company — its timezone, its team
-// (who's in it, their roles, and invitations), its bank accounts and its
-// categories. Owners and admins can change all of these; members can see
-// them.
+// (who's in it, their roles, and invitations), its bank accounts, its
+// categories and its category rules. Owners and admins can change all of
+// these; members can see them.
 //
 // For developers: loads the active company with requireOrganization() and
 // its settings and accounts from lib/data/, and hands plain values to the
-// CompanySettings, TeamSettings, AccountSettings and CategorySettings
-// components. /dashboard/settings#accounts and #categories jump to those
-// sections.
+// CompanySettings, TeamSettings, AccountSettings, CategorySettings and
+// CategoryRuleSettings components. /dashboard/settings#accounts,
+// #categories and #rules jump to those sections.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import AccountSettings from "@/components/dashboard/settings/AccountSettings";
+import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import { listAccounts } from "@/lib/data/accounts";
 import { listCategories } from "@/lib/data/categories";
+import { listCategoryRules } from "@/lib/data/category-rules";
 import { getCompanySettings } from "@/lib/data/settings";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -33,9 +35,10 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
-  const [accounts, categories, settings] = await Promise.all([
+  const [accounts, categories, rules, settings] = await Promise.all([
     listAccounts(),
     listCategories(),
+    listCategoryRules(),
     getCompanySettings(),
   ]);
   // Every timezone this server knows (UTC first), plus the saved one
@@ -91,6 +94,11 @@ export default async function SettingsPage() {
       <AccountSettings canManage={canManageFinances(role)} accounts={accounts} />
       <CategorySettings
         canManage={canManageFinances(role)}
+        categories={categories}
+      />
+      <CategoryRuleSettings
+        canManage={canManageFinances(role)}
+        rules={rules}
         categories={categories}
       />
     </main>

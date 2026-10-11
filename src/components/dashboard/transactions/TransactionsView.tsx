@@ -4,11 +4,11 @@
 // In plain words: the page title with "Import CSV" and "Add transaction"
 // buttons, a filter bar (search, account, category, dates), the table of
 // transactions, and links to the previous and next page. Clicking a transaction opens it for
-// editing. Before the company has a bank account, it explains that one has to
-// be added first.
+// editing; ticking several lets you give them all one category. Before the
+// company has a bank account, it explains that one has to be added first.
 //
 // For developers: a server component; only the windows (TransactionDialog,
-// ImportDialog) run in the browser. The filter bar is a GET form (next/form), so filtering just
+// ImportDialog) and the ticking (BulkCategorize) run in the browser. The filter bar is a GET form (next/form), so filtering just
 // changes the address and the page re-renders on the server.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -28,9 +28,11 @@ import Message from "@/components/common/form/Message";
 import type {
   Account,
   Category,
+  CategoryRule,
   TransactionDetails,
 } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/lib/format";
+import BulkCategorize from "./BulkCategorize";
 import ImportDialog from "./ImportDialog";
 import TransactionDialog from "./TransactionDialog";
 import styles from "./TransactionsView.module.css";
@@ -79,8 +81,15 @@ interface TransactionsViewProps {
   total: number;
   accounts: Account[];
   categories: Category[];
+  /** The company's category rules (for the import preview) */
+  rules: CategoryRule[];
   /** After an import: how many transactions were added and skipped */
   importResult: { imported: number; skipped: number } | null;
+  /**
+   * After saving a transaction with "always use this category": how many
+   * other transactions the new rule categorized
+   */
+  ruleResult: number | null;
   /** Which window is open, if any */
   dialog:
     | { mode: "new" }
@@ -109,7 +118,9 @@ export default function TransactionsView({
   total,
   accounts,
   categories,
+  rules,
   importResult,
+  ruleResult,
   dialog,
 }: TransactionsViewProps) {
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
@@ -156,6 +167,16 @@ export default function TransactionsView({
       {importResult && (
         <Message type="success">
           {importMessage(importResult)}
+        </Message>
+      )}
+      {ruleResult !== null && (
+        <Message type="success">
+          {ruleResult === 0
+            ? "The rule was saved. No other transactions without a category matched it."
+            : `The rule was saved and categorized ${ruleResult} other ${ruleResult === 1 ? "transaction" : "transactions"} that had no category.`}{" "}
+          <Link href="/dashboard/settings#rules" className={styles.messageLink}>
+            See all rules
+          </Link>
         </Message>
       )}
 
@@ -266,10 +287,21 @@ export default function TransactionsView({
               </p>
             ) : (
               <>
+                {/* Ticking rows shows a bar to give them all one category.
+                    A fresh one for each page and filter, so nothing stays
+                    ticked out of sight. */}
+                <BulkCategorize key={listHref} categories={categories}>
                 <div className={styles.tableScroll}>
                   <table className={styles.table}>
                     <thead>
                       <tr>
+                        <th scope="col" className={styles.checkCell}>
+                          <input
+                            type="checkbox"
+                            name="all"
+                            aria-label="Select all transactions on this page"
+                          />
+                        </th>
                         <th scope="col">Date</th>
                         <th scope="col">Description</th>
                         <th scope="col" className={styles.mediumUp}>
@@ -289,6 +321,14 @@ export default function TransactionsView({
                     <tbody>
                       {transactions.map((tx) => (
                         <tr key={tx.id} className={styles.row}>
+                          <td className={styles.checkCell}>
+                            <input
+                              type="checkbox"
+                              name="ids"
+                              value={tx.id}
+                              aria-label={`Select ${tx.name}`}
+                            />
+                          </td>
                           <td className={styles.dateCell}>{formatDate(tx.day)}</td>
                           <td className={styles.nameCell}>
                             {/* The link covers the whole row (see CSS) */}
@@ -334,6 +374,7 @@ export default function TransactionsView({
                     </tbody>
                   </table>
                 </div>
+                </BulkCategorize>
 
                 {/* Paging */}
                 <div className={styles.pagination}>
@@ -369,6 +410,7 @@ export default function TransactionsView({
         <ImportDialog
           accounts={accounts}
           categories={categories}
+          rules={rules}
           closeHref={listHref}
         />
       )}
@@ -379,7 +421,7 @@ export default function TransactionsView({
           transaction={dialog.mode === "edit" ? dialog.transaction : null}
           accounts={accounts}
           categories={categories}
-          canDelete={canManage}
+          canManage={canManage}
           closeHref={listHref}
           today={today}
         />

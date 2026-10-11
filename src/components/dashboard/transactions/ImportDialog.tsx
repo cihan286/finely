@@ -4,8 +4,9 @@
 // In plain words: most banks let you download your transactions as a CSV
 // file. Here you pick that file and the account it belongs to. Finely guesses
 // which column holds the date, description and amount (you can correct it),
-// shows a preview of what will be imported — and which lines can't be, and
-// why — and then adds all of them at once. Lines already in the account are
+// shows a preview of what will be imported, with the category each line
+// will get — and which lines can't be imported, and why — and then adds all
+// of them at once. Lines already in the account are
 // skipped, so importing the same file twice doesn't create duplicates.
 //
 // For developers: a client component ("use client") inside the shared
@@ -34,7 +35,8 @@ import {
   type ColumnMapping,
   type DateFormat,
 } from "@/lib/finance/statement-import";
-import type { Account, Category } from "@/types/finance";
+import { categoryFromRules } from "@/lib/finance/category-rules";
+import type { Account, Category, CategoryRule } from "@/types/finance";
 import { parseCsv } from "@/lib/finance/csv";
 import { formatCurrency, formatDate } from "@/lib/format";
 import forms from "./forms.module.css";
@@ -47,6 +49,8 @@ const PREVIEW_ROWS = 8;
 interface ImportDialogProps {
   accounts: Account[];
   categories: Category[];
+  /** The company's category rules, to preview which category each line gets */
+  rules: CategoryRule[];
   /** The list's address, to return to when the window closes */
   closeHref: string;
 }
@@ -74,6 +78,7 @@ interface ImportFormProps extends ImportDialogProps {
 function ImportForm({
   accounts,
   categories,
+  rules,
   pending,
   startImport,
 }: ImportFormProps) {
@@ -160,7 +165,17 @@ function ImportForm({
   });
 
   const { rows, problems } = interpretRows(file.rows, mapping);
-  const knownCategories = new Set(categories.map((c) => c.name.toLowerCase()));
+  // The category each line will get, as the server decides it on import:
+  // the file's own category if we know it, otherwise what the rules say
+  const categoryByName = new Map(categories.map((c) => [c.name.toLowerCase(), c.name]));
+  const categoryById = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryOf = (row: (typeof rows)[number]) => {
+    const fromFile = row.category && categoryByName.get(row.category.toLowerCase());
+    if (fromFile) return fromFile;
+    const fromRules = categoryFromRules(row.name, rules);
+    return (fromRules && categoryById.get(fromRules)) ?? null;
+  };
+  const uncategorized = rows.filter((row) => categoryOf(row) === null).length;
   const totalIn = rows.reduce((sum, r) => (r.amount > 0 ? sum + r.amount : sum), 0);
   const totalOut = rows.reduce((sum, r) => (r.amount < 0 ? sum + r.amount : sum), 0);
 
@@ -298,6 +313,7 @@ function ImportForm({
             <span className={styles.income}>{formatCurrency(totalIn, { signed: true })}</span>
             {" in · "}
             {formatCurrency(totalOut, { signed: true })} out
+            {uncategorized > 0 && ` · ${uncategorized} uncategorized`}
           </span>
         )}
       </div>
@@ -321,9 +337,7 @@ function ImportForm({
                   <td>{formatDate(row.date)}</td>
                   <td className={styles.name}>{row.name}</td>
                   <td className={styles.muted}>
-                    {row.category && knownCategories.has(row.category.toLowerCase())
-                      ? row.category
-                      : "Uncategorized"}
+                    {categoryOf(row) ?? "Uncategorized"}
                   </td>
                   <td className={`${styles.amount} ${row.amount > 0 ? styles.income : ""}`}>
                     {formatCurrency(row.amount, { signed: true })}
