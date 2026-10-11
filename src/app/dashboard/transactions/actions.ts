@@ -4,7 +4,8 @@
 // In plain words: when someone presses Save (or Delete) in the transaction
 // window, the browser sends the form here. We turn the form's fields into a
 // transaction — "money out" amounts become negative — save it, and go back to
-// the list. Importing a bank statement sends all of its lines here at once.
+// the list. Importing a bank statement sends all of its lines here at once,
+// and ticking several transactions and choosing a category sends those here.
 // If something's wrong, we send back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -13,13 +14,16 @@
 
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { saveCategoryRule } from "@/lib/data/category-rules";
 import { errorMessage } from "@/lib/data/common";
 import {
   createTransaction,
   deleteTransaction,
   importTransactions,
+  setTransactionsCategory,
   updateTransaction,
   type TransactionInput,
 } from "@/lib/data/transactions";
@@ -59,26 +63,74 @@ function toTransactionInput(formData: FormData): TransactionInput {
 
 /**
  * Saves a new or changed transaction, or deletes one (when the Delete button
- * was pressed), then returns to the list.
+ * was pressed), then returns to the list. With "always use this category"
+ * ticked, also saves that as a category rule and applies it to the
+ * transactions that have no category yet.
  */
 export async function submitTransaction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const id = formField(formData, "id");
+  // How many other transactions the new rule categorized, if one was made
+  let categorized: number | null = null;
   try {
     if (formField(formData, "intent") === "delete") {
       await deleteTransaction(id);
-    } else if (id) {
-      await updateTransaction(id, toTransactionInput(formData));
     } else {
-      await createTransaction(toTransactionInput(formData));
+      const input = toTransactionInput(formData);
+      if (formField(formData, "remember")) {
+        if (!input.categoryId) {
+          return { error: "Choose a category to always use for these descriptions." };
+        }
+        // Before the transaction: if the rule is refused, nothing was saved
+        // yet, so sending the form again can't add the transaction twice
+        const rule = await saveCategoryRule({
+          // An empty box means the whole description
+          matchText: formField(formData, "ruleText").trim() || input.name,
+          categoryId: input.categoryId,
+        });
+        categorized = rule.categorized;
+      }
+      if (id) await updateTransaction(id, input);
+      else await createTransaction(input);
     }
   } catch (error) {
     return { error: errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
-  redirect(returnPath(formData.get("returnTo")));
+  const path = returnPath(formData.get("returnTo"));
+  redirect(
+    categorized === null
+      ? path
+      : `${path}${path.includes("?") ? "&" : "?"}categorized=${categorized}`,
+  );
+}
+
+/**
+ * Gives the ticked transactions one category ("none" = uncategorized), then
+ * reloads the list.
+ */
+export async function categorizeSelected(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ids = formData
+    .getAll("ids")
+    .filter((id): id is string => typeof id === "string");
+  const category = formField(formData, "bulkCategory");
+  if (!category) return { error: "Choose a category." };
+  let changed;
+  try {
+    changed = await setTransactionsCategory(ids, category === "none" ? null : category);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return {
+    error: null,
+    success: `${changed} ${changed === 1 ? "transaction was" : "transactions were"} updated.`,
+  };
 }
 
 /**

@@ -3,9 +3,11 @@
 //
 // In plain words: lists the company's payments in and out — newest first,
 // searchable and filterable by account, category and date — and lets people
-// add and edit them, one by one or many at once from a bank statement file.
+// add and edit them, one by one or many at once from a bank statement file,
+// and change the category of several at once.
 // Everyone on the team can add, import and edit transactions; only owners and
-// admins can delete them.
+// admins can delete them. New transactions without a category get one from
+// the company's category rules, if a rule fits their description.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
@@ -16,10 +18,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, count, desc, eq, gte, ilike, isNull, lt, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNull, lt, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { category, financialAccount, transaction } from "@/db/finance";
 import { addDays, localDay, startOfDay, zonedTime } from "@/lib/dates";
+import { categoryFromRules } from "@/lib/finance/category-rules";
 import {
   duplicateKey,
   MAX_IMPORT_ROWS,
@@ -33,9 +36,11 @@ import {
   type TransactionDetails,
   type TransactionStatus,
 } from "@/types/finance";
+import { selectRules } from "./category-rules";
 import {
   DataError,
   dateTime,
+  escapeLike,
   getFinanceContext,
   isoDay,
   money,
@@ -115,9 +120,6 @@ function toTransactionDetails(
     status: row.status as TransactionStatus,
   };
 }
-
-// "50%_off" -> "50\%\_off", so search text is matched literally
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 /**
  * One page of the company's transactions, newest first, plus how many match
@@ -232,12 +234,21 @@ async function parseTransactionInput(
   };
 }
 
-/** Adds a transaction and returns its ID. */
+/**
+ * Adds a transaction and returns its ID. Left without a category, it gets
+ * one from the company's category rules if a rule fits its description.
+ */
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<string> {
   const { organizationId, userId, timeZone } = await getFinanceContext();
   const values = await parseTransactionInput(input, organizationId, timeZone);
+  if (values.categoryId === null) {
+    values.categoryId = categoryFromRules(
+      values.name,
+      await selectRules(organizationId),
+    );
+  }
   const [row] = await db
     .insert(transaction)
     .values({ ...values, organizationId, createdById: userId })
@@ -245,7 +256,10 @@ export async function createTransaction(
   return row.id;
 }
 
-/** Changes a transaction. */
+/**
+ * Changes a transaction. Category rules don't apply here: someone who
+ * removes a category on purpose shouldn't get it back.
+ */
 export async function updateTransaction(id: string, input: TransactionInput) {
   const { organizationId, timeZone } = await getFinanceContext();
   const values = await parseTransactionInput(input, organizationId, timeZone);
@@ -271,6 +285,51 @@ export async function deleteTransaction(id: string) {
   if (deleted.length === 0) throw new DataError("Transaction not found.");
 }
 
+/** The most transactions whose category can be changed at once */
+export const MAX_BULK_TRANSACTIONS = 200;
+
+/**
+ * Gives several transactions the same category at once (null = none) and
+ * returns how many were changed. IDs the company doesn't have are ignored.
+ */
+export async function setTransactionsCategory(
+  ids: string[],
+  categoryId: string | null,
+): Promise<number> {
+  const { organizationId } = await getFinanceContext();
+
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || !id)) {
+    throw new DataError("Transactions are invalid.");
+  }
+  if (ids.length === 0) throw new DataError("Select at least one transaction.");
+  if (ids.length > MAX_BULK_TRANSACTIONS) {
+    throw new DataError(
+      `At most ${MAX_BULK_TRANSACTIONS} transactions can be changed at once.`,
+    );
+  }
+
+  const chosen = optionalText(categoryId, "Category", 120);
+  if (chosen) {
+    const categoryMatches = await db.$count(
+      category,
+      and(eq(category.id, chosen), eq(category.organizationId, organizationId)),
+    );
+    if (categoryMatches === 0) throw new DataError("Category not found.");
+  }
+
+  const updated = await db
+    .update(transaction)
+    .set({ categoryId: chosen })
+    .where(
+      and(
+        eq(transaction.organizationId, organizationId),
+        inArray(transaction.id, ids),
+      ),
+    )
+    .returning({ id: transaction.id });
+  return updated.length;
+}
+
 /* ------------------------------------------------------------------ */
 /* Importing a bank statement                                          */
 /* ------------------------------------------------------------------ */
@@ -280,7 +339,8 @@ export async function deleteTransaction(id: string) {
  * file. Lines already in the account (same day, amount and description) are
  * skipped, so importing the same statement twice adds nothing the second
  * time. Category names are matched to the company's categories, ignoring
- * upper/lower case; unknown ones are left uncategorized. Either every line is
+ * upper/lower case; lines without a known category get one from the
+ * company's category rules, or stay uncategorized. Either every line is
  * saved or none is.
  */
 export async function importTransactions(
@@ -298,7 +358,7 @@ export async function importTransactions(
     );
   }
 
-  const [accountMatches, categories] = await Promise.all([
+  const [accountMatches, categories, rules] = await Promise.all([
     db.$count(
       financialAccount,
       and(
@@ -310,6 +370,7 @@ export async function importTransactions(
       .select({ id: category.id, name: category.name })
       .from(category)
       .where(eq(category.organizationId, organizationId)),
+    selectRules(organizationId),
   ]);
   if (accountMatches === 0) throw new DataError("Account not found.");
   const categoryIds = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
@@ -322,13 +383,17 @@ export async function importTransactions(
       const amount = money(row.amount, "Amount");
       if (amount === 0) throw new DataError("Amount can't be zero.");
       const categoryName = optionalText(row.category, "Category", 120);
+      const name = requiredText(row.name, "Description");
       return {
         day,
-        name: requiredText(row.name, "Description"),
+        name,
         amount,
         // Statements list days, not times: noon that day, in the company's timezone
         occurredAt: zonedTime(day, "12:00", timeZone),
-        categoryId: categoryName ? (categoryIds.get(categoryName.toLowerCase()) ?? null) : null,
+        // The file's own category if we know it, otherwise what the rules say
+        categoryId:
+          (categoryName && categoryIds.get(categoryName.toLowerCase())) ||
+          categoryFromRules(name, rules),
       };
     } catch (error) {
       if (error instanceof DataError) throw line(error.message);

@@ -65,6 +65,9 @@ export async function getFinanceContext({ manage = false } = {}) {
   };
 }
 
+/** "50%_off" -> "50\%\_off", so text is matched literally by LIKE / ILIKE */
+export const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
+
 /** Whether a database error means "this value already exists" */
 export function isUniqueViolation(error: unknown): boolean {
   // The database's code can sit on the error itself or on its cause

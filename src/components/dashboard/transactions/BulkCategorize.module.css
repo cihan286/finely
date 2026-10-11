@@ -1,0 +1,45 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Categorize several transactions at once: styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The bar that appears above the table while
+   transactions are ticked ("3 selected", a category box and Apply), and the
+   message after applying.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--primary-soft);
+}
+
+.count {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.error {
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* The shared boxes fill their container; here it sits next to the button */
+.actions .select {
+  width: auto;
+}
+
+.message {
+  margin-bottom: 1rem;
+}

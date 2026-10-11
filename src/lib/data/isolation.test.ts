@@ -10,6 +10,14 @@ import { todayIn } from "@/lib/dates";
 import { actAs, createTestCompany, setUpTestDb, testDb } from "./testing";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./accounts";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories";
+import {
+  applyCategoryRule,
+  createCategoryRule,
+  deleteCategoryRule,
+  listCategoryRules,
+  saveCategoryRule,
+  updateCategoryRule,
+} from "./category-rules";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { updateTimeZone } from "./settings";
@@ -19,6 +27,7 @@ import {
   getTransaction,
   importTransactions,
   listTransactions,
+  setTransactionsCategory,
   updateTransaction,
   type TransactionInput,
 } from "./transactions";
@@ -213,6 +222,225 @@ describe("importing", () => {
     expect(transactions[0].categoryId).toBe(acme.categoryId);
     const refund = (await listTransactions({ search: "Refund" })).transactions[0];
     expect(refund.categoryId).toBeNull();
+  });
+});
+
+describe("category rules", () => {
+  it("keeps each company's rules to itself", async () => {
+    actAs(globex);
+    const globexRule = await createCategoryRule({
+      matchText: "Initech",
+      categoryId: globex.categoryId,
+    });
+    actAs(acme);
+    const acmeRule = await createCategoryRule({
+      // The same text as the other company's rule is fine
+      matchText: "  initech   LLC ",
+      categoryId: acme.categoryId,
+    });
+
+    expect(await listCategoryRules()).toEqual([
+      { id: acmeRule, matchText: "initech LLC", categoryId: acme.categoryId },
+    ]);
+    await expect(
+      updateCategoryRule(globexRule, { matchText: "Hacked", categoryId: acme.categoryId }),
+    ).rejects.toThrow("Rule not found.");
+    await expect(deleteCategoryRule(globexRule)).rejects.toThrow("Rule not found.");
+
+    actAs(globex);
+    expect(await listCategoryRules()).toEqual([
+      { id: globexRule, matchText: "Initech", categoryId: globex.categoryId },
+    ]);
+
+    await deleteCategoryRule(globexRule);
+    actAs(acme);
+    await deleteCategoryRule(acmeRule);
+  });
+
+  it("can't point a rule at another company's category", async () => {
+    actAs(acme);
+    await expect(
+      createCategoryRule({ matchText: "Initech", categoryId: globex.categoryId }),
+    ).rejects.toThrow("Category not found.");
+    const id = await createCategoryRule({ matchText: "Initech", categoryId: acme.categoryId });
+    await expect(
+      updateCategoryRule(id, { matchText: "Initech", categoryId: globex.categoryId }),
+    ).rejects.toThrow("Category not found.");
+    await deleteCategoryRule(id);
+  });
+
+  it("refuses texts that are too short or already have a rule", async () => {
+    actAs(acme);
+    await expect(
+      createCategoryRule({ matchText: " a ", categoryId: acme.categoryId }),
+    ).rejects.toThrow("Text must be at least 2 characters.");
+    const id = await createCategoryRule({ matchText: "Initech", categoryId: acme.categoryId });
+    await expect(
+      createCategoryRule({ matchText: "INITECH", categoryId: acme.categoryId }),
+    ).rejects.toThrow("There is already a rule for this text.");
+    await deleteCategoryRule(id);
+  });
+
+  it("categorizes new and imported transactions with the company's own rules only", async () => {
+    actAs(globex);
+    const globexRule = await createCategoryRule({
+      matchText: "Hooli",
+      categoryId: globex.categoryId,
+    });
+    actAs(acme);
+    const otherCategory = await createCategory({
+      name: "acme Travel",
+      kind: "expense",
+      color: "#0ea5e9",
+      iconKey: "plane",
+    });
+    const acmeRule = await createCategoryRule({
+      matchText: "initech",
+      categoryId: acme.categoryId,
+    });
+
+    // Added by hand without a category: the rule fills it in
+    const added = await createTransaction(
+      transactionFor(acme, { name: "INITECH  invoice 42", categoryId: null }),
+    );
+    expect((await getTransaction(added))?.categoryId).toBe(acme.categoryId);
+    // A category chosen by hand is kept, and so is removing one later
+    const chosen = await createTransaction(
+      transactionFor(acme, { name: "Initech flights", categoryId: otherCategory }),
+    );
+    expect((await getTransaction(chosen))?.categoryId).toBe(otherCategory);
+    await updateTransaction(
+      added,
+      transactionFor(acme, { name: "INITECH invoice 42", categoryId: null }),
+    );
+    expect((await getTransaction(added))?.categoryId).toBeNull();
+
+    await importTransactions(acme.accountId, [
+      { date: today, name: "Initech subscription", amount: -30, category: null },
+      // The file's own category wins over the rule
+      { date: today, name: "Initech offsite", amount: -31, category: "Acme Travel" },
+      // Only the other company has a rule for this one
+      { date: today, name: "Hooli hosting", amount: -32, category: null },
+    ]);
+    const categoryOf = async (search: string) =>
+      (await listTransactions({ search })).transactions[0].categoryId;
+    expect(await categoryOf("Initech subscription")).toBe(acme.categoryId);
+    expect(await categoryOf("Initech offsite")).toBe(otherCategory);
+    expect(await categoryOf("Hooli hosting")).toBeNull();
+
+    await deleteCategoryRule(acmeRule);
+    await deleteCategory(otherCategory);
+    actAs(globex);
+    await deleteCategoryRule(globexRule);
+  });
+
+  it("applies a rule to uncategorized transactions of its own company only", async () => {
+    const uncategorized = (company: typeof acme, name: string) =>
+      createTransaction(transactionFor(company, { name, categoryId: null }));
+    actAs(globex);
+    const theirs = await uncategorized(globex, "Umbrella retainer");
+    actAs(acme);
+    const plain = await uncategorized(acme, "UMBRELLA   Corp retainer");
+    const literal = await uncategorized(acme, "Umbrella 100% cover");
+    const travel = await createCategory({
+      name: "acme Travel",
+      kind: "expense",
+      color: "#0ea5e9",
+      iconKey: "plane",
+    });
+    const kept = await createTransaction(
+      transactionFor(acme, { name: "Umbrella flights", categoryId: travel }),
+    );
+
+    // "Always categorize like this": adds the rule and catches up
+    expect(
+      await saveCategoryRule({ matchText: "umbrella corp", categoryId: acme.categoryId }),
+    ).toEqual({ categorized: 1 });
+    expect((await getTransaction(plain))?.categoryId).toBe(acme.categoryId);
+    expect((await getTransaction(literal))?.categoryId).toBeNull();
+    // The same text again changes that rule instead of adding a second one
+    await saveCategoryRule({ matchText: "Umbrella Corp", categoryId: travel });
+    expect(await listCategoryRules()).toEqual([
+      { id: expect.any(String), matchText: "umbrella corp", categoryId: travel },
+    ]);
+
+    // % and _ in a rule's text are ordinary characters
+    const percentRule = await createCategoryRule({
+      matchText: "100% cover",
+      categoryId: travel,
+    });
+    expect(await applyCategoryRule(percentRule)).toBe(1);
+    expect((await getTransaction(literal))?.categoryId).toBe(travel);
+    // Nothing left to do, and categories chosen by hand were never touched
+    expect(await applyCategoryRule(percentRule)).toBe(0);
+    expect((await getTransaction(kept))?.categoryId).toBe(travel);
+    expect((await getTransaction(plain))?.categoryId).toBe(acme.categoryId);
+
+    actAs(globex);
+    expect((await getTransaction(theirs))?.categoryId).toBeNull();
+    await expect(applyCategoryRule(percentRule)).rejects.toThrow("Rule not found.");
+    await expect(
+      saveCategoryRule({ matchText: "Umbrella", categoryId: acme.categoryId }),
+    ).rejects.toThrow("Category not found.");
+    expect(await listCategoryRules()).toEqual([]);
+
+    actAs(acme);
+    await deleteCategory(travel); // its rules go with it
+    expect(await listCategoryRules()).toEqual([]);
+  });
+
+  it("changes the category of several transactions at once, in its own company only", async () => {
+    actAs(acme);
+    const first = await createTransaction(transactionFor(acme, { name: "Bulk one" }));
+    const second = await createTransaction(transactionFor(acme, { name: "Bulk two" }));
+
+    // The other company's transaction is ignored, not changed
+    expect(
+      await setTransactionsCategory([first, second, globex.transactionId], null),
+    ).toBe(2);
+    expect((await getTransaction(first))?.categoryId).toBeNull();
+    expect(await setTransactionsCategory([first], acme.categoryId)).toBe(1);
+    expect((await getTransaction(first))?.categoryId).toBe(acme.categoryId);
+    expect((await getTransaction(second))?.categoryId).toBeNull();
+
+    await expect(setTransactionsCategory([first], globex.categoryId)).rejects.toThrow(
+      "Category not found.",
+    );
+    await expect(setTransactionsCategory([], acme.categoryId)).rejects.toThrow(
+      "Select at least one transaction.",
+    );
+
+    actAs(globex);
+    expect((await getTransaction(globex.transactionId))?.categoryId).toBe(globex.categoryId);
+    // Members can edit transactions, so they can do this too
+    actAs(globex, "member");
+    expect(await setTransactionsCategory([globex.transactionId], globex.categoryId)).toBe(1);
+    await expect(
+      saveCategoryRule({ matchText: "Extra", categoryId: globex.categoryId }),
+    ).rejects.toThrow("Only owners and admins can do this.");
+    await expect(applyCategoryRule("rule_missing")).rejects.toThrow(
+      "Only owners and admins can do this.",
+    );
+  });
+
+  it("lets members see rules, but not change them", async () => {
+    actAs(globex);
+    const id = await createCategoryRule({ matchText: "Initech", categoryId: globex.categoryId });
+
+    actAs(globex, "member");
+    const denied = "Only owners and admins can do this.";
+    expect((await listCategoryRules()).map((r) => r.id)).toEqual([id]);
+    await expect(
+      createCategoryRule({ matchText: "Extra", categoryId: globex.categoryId }),
+    ).rejects.toThrow(denied);
+    await expect(
+      updateCategoryRule(id, { matchText: "Changed", categoryId: globex.categoryId }),
+    ).rejects.toThrow(denied);
+    await expect(deleteCategoryRule(id)).rejects.toThrow(denied);
+
+    actAs(globex, "admin");
+    await deleteCategoryRule(id);
+    expect(await listCategoryRules()).toEqual([]);
   });
 });
 

@@ -1,0 +1,48 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Category rule settings styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to rules: each rule's text, the
+   arrow and the category it gives. The cards, lists and messages come from
+   TeamSettings.module.css; the form and row buttons from
+   CategorySettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* "AWS → Software & IT" */
+.rule {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+}
+
+.text {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.arrow {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.categoryField {
+  flex: 1 1 180px;
+}
