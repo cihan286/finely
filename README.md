@@ -167,7 +167,8 @@ src/
 │                           and which emails people want
 ├── lib/
 │   ├── data/               Reading and saving company data (always use these);
-│   │                       company.ts hands a company over or deletes it
+│   │                       company.ts hands a company over or deletes it,
+│   │                       person.ts is a person's own data and account
 │   ├── finance/            Calculations, with no database or screen (tested)
 │   │   ├── dashboard-summary.ts  The dashboard's numbers
 │   │   ├── insights.ts           The Insights page's numbers
@@ -643,6 +644,24 @@ spreadsheet would run as a formula is made harmless.
 window, where every browser can save a PDF. The printout leaves out the
 menu, the top bar and the buttons.
 
+## Your own account
+
+At the bottom of Settings, everyone has two things for themselves
+(`lib/data/person.ts`):
+
+- **Download my data** saves a JSON file with what Finely holds about the
+  person: profile, how they sign in, where they're logged in, their
+  companies with their email choices, the invitations they sent, and what
+  the activity logs say they did. Passwords and sign-in tokens are never in
+  it, and neither are a company's transactions, bills or files: those belong
+  to the company.
+- **Delete my account** removes the person for good, after they typed their
+  email address. Their memberships, logins, sign-in methods, email choices
+  and invitations (sent, and sent to them) go right away, each company's
+  activity log gets a line saying they left, and they get a last email.
+  What they entered for a company stays, with "entered by" emptied. Someone
+  who owns a company has to hand it over or delete it first.
+
 ## Terms and privacy
 
 `/terms` and `/privacy` (linked from the footer and the sign-up page)
@@ -787,8 +806,13 @@ and disappear once the cause is gone. Only the moment each person pressed
   address and a contact for data protection. There is no cookie banner
   (only login cookies are used) and no record of which version of the terms
   someone accepted.
-- People can't delete their own account or download their personal data
-  themselves; the privacy policy says to write to us.
+- Your account: someone who has no company (they left their last one, or
+  never set one up) can't reach Settings, so they can't download their data
+  or delete their account themselves. Deleting asks for the email address,
+  not the password again. A company's activity log keeps the name of
+  someone who deleted their account next to what they did. The download is
+  one JSON file; there's no way to correct a name or email address in the
+  app.
 - Exports are CSV only, plus the browser's "Save as PDF" for the Insights
   page: no PDF of the transactions list and no Excel file. The budgets file
   is this month's only.

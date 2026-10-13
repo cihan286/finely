@@ -22,11 +22,12 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; next?: string }>;
+  searchParams: Promise<{ reset?: string; next?: string; deleted?: string }>;
 }) {
   // "?reset=success" in the address means the user just changed their password;
+  // "?deleted=1" that they just deleted their account;
   // "?next=…" is where to return afterwards (e.g. an invitation)
-  const { reset, next: rawNext } = await searchParams;
+  const { reset, deleted, next: rawNext } = await searchParams;
   const next = safeNextPath(rawNext);
 
   // Already logged in? Skip this page
@@ -45,7 +46,9 @@ export default async function LoginPage({
         notice={
           reset === "success"
             ? "Your password was changed. Log in with your new password."
-            : undefined
+            : deleted
+              ? "Your account was deleted. Thanks for trying Finely."
+              : undefined
         }
       />
 
