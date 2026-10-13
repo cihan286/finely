@@ -12,6 +12,7 @@
 import type { Metadata } from "next";
 import InsightsView from "@/components/dashboard/insights/InsightsView";
 import { listAccounts } from "@/lib/data/accounts";
+import { getCompanyLocale } from "@/lib/data/common";
 import { getInsights } from "@/lib/data/insights";
 import { getRecurring } from "@/lib/data/recurring";
 import { INSIGHT_PERIODS, type InsightPeriod } from "@/lib/finance/insights";
@@ -31,6 +32,7 @@ export default async function InsightsPage({
   // Protects the page: visitors who aren't logged in are sent to /login, and
   // people without a company to /onboarding
   const { organization, role } = await requireOrganization();
+  const { currency } = await getCompanyLocale(organization.id);
   const requested = Number((await searchParams).months);
   const period: InsightPeriod = INSIGHT_PERIODS.includes(requested as InsightPeriod)
     ? (requested as InsightPeriod)
@@ -44,6 +46,7 @@ export default async function InsightsPage({
   return (
     <InsightsView
       organizationName={organization.name}
+      currency={currency}
       hasAccounts={accounts.length > 0}
       canManage={canManageFinances(role)}
       insights={insights}

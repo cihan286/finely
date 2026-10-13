@@ -3,6 +3,7 @@ import { digestHasNews, digestRange, type Digest } from "./digest";
 
 const quiet: Digest = {
   organizationName: "Northpeak",
+  currency: "USD",
   from: "2026-10-05",
   to: "2026-10-11",
   transactionCount: 0,

@@ -65,6 +65,8 @@ export function buildNotifications(
   timeZone: string,
   /** Today in that timezone, for the month the budgets are about */
   today: ISODate,
+  /** The company's currency, for the amounts in the texts */
+  currency = "USD",
 ): Notification[] {
   const items: (Omit<Notification, "day" | "read"> & { at: Date })[] = [];
 
@@ -73,7 +75,7 @@ export function buildNotifications(
       id: `unusual-${charge.id}`,
       type: "alert",
       title: "Unusually high charge",
-      description: `${charge.name} charged ${formatCurrency(charge.amount)}, ${charge.percentAbove}% above its usual ${formatCurrency(charge.usual)}.`,
+      description: `${charge.name} charged ${formatCurrency(charge.amount, { currency: currency })}, ${charge.percentAbove}% above its usual ${formatCurrency(charge.usual, { currency: currency })}.`,
       href: `/dashboard/transactions?edit=${charge.id}`,
       at: charge.at,
     });
@@ -84,7 +86,7 @@ export function buildNotifications(
       id: `overdrawn-${account.id}`,
       type: "alert",
       title: "Account below zero",
-      description: `${account.name} is at ${formatCurrency(account.balance)}.`,
+      description: `${account.name} is at ${formatCurrency(account.balance, { currency: currency })}.`,
       href: `/dashboard/transactions?account=${account.id}`,
       at: account.at,
     });
@@ -96,7 +98,7 @@ export function buildNotifications(
       id: "cash-shortfall",
       type: "alert",
       title: "Cash may run short",
-      description: `With the bills and regular payments expected, your balance could drop to ${formatCurrency(balance)} by ${formatDate(day)}.`,
+      description: `With the bills and regular payments expected, your balance could drop to ${formatCurrency(balance, { currency: currency })} by ${formatDate(day)}.`,
       href: "/dashboard#forecast",
       at: facts.cashShortfall.at,
     });
@@ -108,7 +110,7 @@ export function buildNotifications(
       id: `budget-${category.categoryId}-${today.slice(0, 7)}`,
       type: "alert",
       title: "Over budget",
-      description: `${category.name} is ${formatCurrency(category.spent - category.budget)} over its ${formatCurrency(category.budget)} budget for ${monthName(today)}.`,
+      description: `${category.name} is ${formatCurrency(category.spent - category.budget, { currency: currency })} over its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}.`,
       href: `/dashboard/transactions?category=${category.categoryId}&from=${monthStart(today)}`,
       at: category.at,
     });
@@ -120,7 +122,7 @@ export function buildNotifications(
       id: "bills-overdue",
       type: "alert",
       title: count === 1 ? "Bill overdue" : "Bills overdue",
-      description: `${plural(count, "bill is", "bills are")} past ${count === 1 ? "its" : "their"} due date, ${formatCurrency(amount)} in total.`,
+      description: `${plural(count, "bill is", "bills are")} past ${count === 1 ? "its" : "their"} due date, ${formatCurrency(amount, { currency: currency })} in total.`,
       href: "/dashboard/bills",
       at: facts.overdueBills.at,
     });
@@ -132,7 +134,7 @@ export function buildNotifications(
       id: "bills-due-soon",
       type: "reminder",
       title: count === 1 ? "Bill due soon" : "Bills due soon",
-      description: `${plural(count, "bill is", "bills are")} due within a week, ${formatCurrency(amount)} in total.`,
+      description: `${plural(count, "bill is", "bills are")} due within a week, ${formatCurrency(amount, { currency: currency })} in total.`,
       href: "/dashboard/bills",
       at: facts.billsDueSoon.at,
     });

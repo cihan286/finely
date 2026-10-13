@@ -31,6 +31,8 @@ const LIST_PATH = "/dashboard/bills";
 
 interface BillsViewProps {
   organizationName: string;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /** Today in the company's timezone */
   today: ISODate;
   /** Whether to show Delete (owners and admins) */
@@ -64,6 +66,7 @@ function dueText(dueDate: ISODate, today: ISODate): string {
 
 export default function BillsView({
   organizationName,
+  currency,
   today,
   canManage,
   unpaid,
@@ -139,7 +142,7 @@ export default function BillsView({
           <span
             className={`${styles.tileValue} ${summary.overdue.count > 0 ? styles.danger : ""}`}
           >
-            {formatCurrency(summary.overdue.amount)}
+            {formatCurrency(summary.overdue.amount, { currency: currency })}
           </span>
           <span className={styles.tileNote}>
             {summary.overdue.count} {summary.overdue.count === 1 ? "bill" : "bills"}
@@ -148,7 +151,7 @@ export default function BillsView({
         <div className={styles.tile}>
           <span className={styles.tileLabel}>Due in the next 7 days</span>
           <span className={styles.tileValue}>
-            {formatCurrency(summary.dueSoon.amount)}
+            {formatCurrency(summary.dueSoon.amount, { currency: currency })}
           </span>
           <span className={styles.tileNote}>
             {summary.dueSoon.count} {summary.dueSoon.count === 1 ? "bill" : "bills"}
@@ -157,7 +160,7 @@ export default function BillsView({
         <div className={styles.tile}>
           <span className={styles.tileLabel}>Owed in total</span>
           <span className={styles.tileValue}>
-            {formatCurrency(summary.unpaid.amount)}
+            {formatCurrency(summary.unpaid.amount, { currency: currency })}
           </span>
           <span className={styles.tileNote}>
             {summary.unpaid.count} {summary.unpaid.count === 1 ? "bill" : "bills"}
@@ -225,7 +228,7 @@ export default function BillsView({
                       </td>
                       <td className={styles.mediumUp}>{categoryCell(bill)}</td>
                       <td className={styles.amountCell}>
-                        {formatCurrency(bill.amount)}
+                        {formatCurrency(bill.amount, { currency: currency })}
                       </td>
                       <td className={styles.actionCell}>
                         <Link
@@ -278,7 +281,7 @@ export default function BillsView({
                     </td>
                     <td className={styles.mediumUp}>{categoryCell(bill)}</td>
                     <td className={styles.amountCell}>
-                      {formatCurrency(bill.amount)}
+                      {formatCurrency(bill.amount, { currency: currency })}
                     </td>
                     <td className={styles.actionCell}>
                       {/* Gone if the transaction was deleted since */}
@@ -307,6 +310,7 @@ export default function BillsView({
           bill={dialog.mode === "edit" ? dialog.bill : null}
           prefill={dialog.mode === "new" ? dialog.prefill : undefined}
           categories={categories}
+          currency={currency}
           canManage={canManage}
           closeHref={LIST_PATH}
           today={today}
@@ -317,6 +321,7 @@ export default function BillsView({
           key={dialog.bill.id}
           bill={dialog.bill}
           accounts={accounts}
+          currency={currency}
           canManage={canManage}
           closeHref={LIST_PATH}
           today={today}

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  currencySymbol,
   formatCompactCurrency,
   formatCurrency,
   formatDate,
@@ -80,4 +81,25 @@ test("formatDateTime: the moment in the given timezone", () => {
   expect(formatDateTime(moment, "UTC")).toBe("Oct 13, 2026, 6:05 PM");
   expect(formatDateTime(moment, "America/New_York")).toBe("Oct 13, 2026, 2:05 PM");
   expect(formatDateTime(moment, "Asia/Tokyo")).toBe("Oct 14, 2026, 3:05 AM");
+});
+
+describe("other currencies", () => {
+  test("amounts take the company's currency", () => {
+    expect(formatCurrency(2400, { currency: "EUR" })).toBe("€2,400.00");
+    expect(formatCurrency(-12.5, { currency: "GBP", signed: true })).toBe("-£12.50");
+    expect(formatCurrency(100, { currency: "CAD" })).toBe("CA$100.00");
+    // Yen have no cents
+    expect(formatCurrency(1500, { currency: "JPY" })).toBe("¥1,500");
+  });
+
+  test("symbols and chart labels", () => {
+    expect(currencySymbol("USD")).toBe("$");
+    expect(currencySymbol("EUR")).toBe("€");
+    expect(formatCompactCurrency(12400, "EUR")).toBe("€12.4k");
+    expect(formatCompactCurrency(750, "GBP")).toBe("£750");
+  });
+
+  test("an unknown currency is shown as dollars rather than failing", () => {
+    expect(formatCurrency(5, { currency: "not a currency" })).toBe("$5.00");
+  });
 });

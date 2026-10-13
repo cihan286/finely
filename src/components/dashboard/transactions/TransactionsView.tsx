@@ -82,6 +82,8 @@ function exportHref({ q, account, category, from, to }: TransactionsQuery): stri
 
 interface TransactionsViewProps {
   organizationName: string;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /** Today in the company's timezone */
   today: string;
   /** Whether you may delete transactions and add bank accounts */
@@ -123,6 +125,7 @@ function importMessage({ imported, skipped }: { imported: number; skipped: numbe
 
 export default function TransactionsView({
   organizationName,
+  currency,
   today,
   canManage,
   query,
@@ -240,7 +243,7 @@ export default function TransactionsView({
               <Input
                 name="q"
                 type="search"
-                placeholder="Search transactions"
+                placeholder="Description, notes, category or amount"
                 aria-label="Search transactions"
                 // Show a search made from the top bar while this page is open
                 key={query.q}
@@ -400,7 +403,7 @@ export default function TransactionsView({
                           <td
                             className={`${styles.amountCell} ${tx.amount > 0 ? styles.income : ""}`}
                           >
-                            {formatCurrency(tx.amount, { signed: true })}
+                            {formatCurrency(tx.amount, { signed: true, currency: currency })}
                           </td>
                         </tr>
                       ))}
@@ -441,6 +444,7 @@ export default function TransactionsView({
 
       {dialog?.mode === "import" && (
         <ImportDialog
+          currency={currency}
           accounts={accounts}
           categories={categories}
           rules={rules}
@@ -453,6 +457,7 @@ export default function TransactionsView({
           key={dialog.mode === "edit" ? dialog.transaction.id : "new"}
           transaction={dialog.mode === "edit" ? dialog.transaction : null}
           attachments={dialog.mode === "edit" ? dialog.attachments : []}
+          currency={currency}
           accounts={accounts}
           categories={categories}
           canManage={canManage}

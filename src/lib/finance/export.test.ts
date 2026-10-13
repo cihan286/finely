@@ -73,10 +73,11 @@ describe("insightsCsv", () => {
     );
     const section = (title: string) => rows.findIndex((row) => row[0] === title);
 
-    expect(rows.slice(0, 4)).toEqual([
+    expect(rows.slice(0, 5)).toEqual([
       ["Finely insights"],
       ["Company", "Northpeak, Inc."],
       ["Period", "Last 3 months"],
+      ["Currency", "USD"],
       ["Exported on", "2026-10-06"],
     ]);
     expect(rows.slice(section("Totals") + 1, section("Totals") + 5)).toEqual([

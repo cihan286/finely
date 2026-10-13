@@ -20,7 +20,7 @@ import { todayIn } from "@/lib/dates";
 import { listAccounts } from "@/lib/data/accounts";
 import { getBill, listBills } from "@/lib/data/bills";
 import { listCategories } from "@/lib/data/categories";
-import { getCompanyTimeZone } from "@/lib/data/common";
+import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { getRecurring } from "@/lib/data/recurring";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -43,6 +43,7 @@ export default async function BillsPage({
   // Protects the page: visitors who aren't logged in are sent to /login, and
   // people without a company to /onboarding
   const { organization, role } = await requireOrganization();
+  const { currency } = await getCompanyLocale(organization.id);
   const params = await searchParams;
   const editId = single(params.edit);
   const payId = single(params.pay);
@@ -80,6 +81,7 @@ export default async function BillsPage({
   return (
     <BillsView
       organizationName={organization.name}
+      currency={currency}
       today={todayIn(timeZone)}
       canManage={canManageFinances(role)}
       unpaid={unpaid}

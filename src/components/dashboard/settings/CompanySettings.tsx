@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Company settings (name and timezone)
+// Company settings (name, timezone and currency)
 //
-// In plain words: the company's name, and its timezone, which decides which
-// day each transaction belongs to and when "today" starts on the dashboard.
-// Owners and admins can change both; if the timezone differs from this
+// In plain words: the company's name, its timezone, which decides which
+// day each transaction belongs to and when "today" starts on the dashboard,
+// and its currency, which decides how every amount is shown.
+// Owners and admins can change them; if the timezone differs from this
 // device's, a button offers to use the device's instead. Members can see
 // them but not change them.
 //
@@ -30,6 +31,7 @@ import Message from "@/components/common/form/Message";
 import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
+import { CURRENCIES, type CurrencyCode } from "@/lib/finance/currencies";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
 import styles from "./CompanySettings.module.css";
@@ -40,6 +42,8 @@ interface CompanySettingsProps {
   /** The company's ID and current name */
   organization: { id: string; name: string };
   timeZone: string;
+  /** The currency the company's amounts are in, e.g. "USD" */
+  currency: string;
   /** Every timezone to choose from, e.g. "Europe/Istanbul" */
   timeZones: string[];
 }
@@ -57,6 +61,7 @@ export default function CompanySettings({
   canManage,
   organization,
   timeZone,
+  currency,
   timeZones,
 }: CompanySettingsProps) {
   const router = useRouter();
@@ -72,6 +77,21 @@ export default function CompanySettings({
   const save = (value: string) => {
     const formData = new FormData();
     formData.set("timezone", value);
+    startTransition(() => dispatch(formData));
+  };
+
+  const handleCurrency = (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const chosen = String(formData.get("currency"));
+    if (
+      chosen === currency ||
+      !window.confirm(
+        `Show every amount in ${chosen} instead of ${currency}? Nothing is converted: 100.00 ${currency} becomes 100.00 ${chosen}.`,
+      )
+    ) {
+      return;
+    }
     startTransition(() => dispatch(formData));
   };
 
@@ -189,6 +209,48 @@ export default function CompanySettings({
             >
               Use it for the company
             </button>
+          </p>
+        )}
+      </section>
+
+      <section className={shared.card}>
+        <div className={shared.cardHeader}>
+          <h2 className={shared.cardTitle}>Currency</h2>
+          <p className={shared.cardHint}>
+            The currency your company keeps its books in. Every amount is
+            shown in it. Changing it doesn&apos;t convert anything, so choose
+            it before adding transactions.
+          </p>
+        </div>
+        {canManage ? (
+          <form className={styles.form} onSubmit={handleCurrency}>
+            <Select
+              name="currency"
+              aria-label="Currency"
+              // Re-select the saved value after it changes
+              key={currency}
+              defaultValue={currency}
+              className={styles.timezone}
+            >
+              {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+                <option key={code} value={code}>
+                  {code} – {CURRENCIES[code]}
+                </option>
+              ))}
+            </Select>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={pending}
+              text={pending ? "Saving" : "Save"}
+              disabled={pending}
+            />
+          </form>
+        ) : (
+          <p className={styles.current}>
+            {currency}
+            {currency in CURRENCIES && ` – ${CURRENCIES[currency as CurrencyCode]}`}
           </p>
         )}
       </section>

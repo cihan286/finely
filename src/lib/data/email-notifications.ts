@@ -41,7 +41,7 @@ import {
 import { findUnusualCharges, insightRange } from "@/lib/finance/insights";
 import type { EmailPreferences, ISODate } from "@/types/finance";
 import { selectBudgetSpending } from "./budgets";
-import { DataError, getFinanceContext } from "./common";
+import { DataError, getCompanyLocale, getFinanceContext } from "./common";
 
 /* ------------------------------------------------------------------ */
 /* Preferences                                                         */
@@ -167,18 +167,21 @@ export async function alertUnusualCharges(
       .slice(0, MAX_CHARGES_PER_ALERT);
     if (charges.length === 0) return 0;
 
-    const [[company], recipients] = await Promise.all([
+    const [[company], recipients, { currency }] = await Promise.all([
       db
         .select({ name: organization.name })
         .from(organization)
         .where(eq(organization.id, organizationId)),
       selectRecipients(organizationId, "unusualCharges"),
+      getCompanyLocale(organizationId),
     ]);
     if (!company) return 0;
 
     let sent = 0;
     for (const recipient of recipients) {
-      if (await sendEmail(unusualChargeEmail(recipient, company.name, charges))) sent++;
+      if (await sendEmail(unusualChargeEmail(recipient, company.name, charges, currency))) {
+        sent++;
+      }
     }
     return sent;
   } catch (error) {
@@ -197,6 +200,7 @@ export async function loadDigest(
   organizationName: string,
   timeZone: string,
   today: ISODate,
+  currency = "USD",
 ): Promise<Digest> {
   const { from, to } = digestRange(today);
   const inWeek = and(
@@ -254,6 +258,7 @@ export async function loadDigest(
   const round2 = (n: number) => Math.round(n * 100) / 100;
   return {
     organizationName,
+    currency,
     from,
     to,
     transactionCount: week.count,
@@ -291,6 +296,7 @@ export async function sendWeeklyDigests(
       id: organization.id,
       name: organization.name,
       timeZone: companySettings.timezone,
+      currency: companySettings.currency,
     })
     .from(organization)
     .leftJoin(companySettings, eq(companySettings.organizationId, organization.id));
@@ -308,6 +314,7 @@ export async function sendWeeklyDigests(
         company.name,
         timeZone,
         todayIn(timeZone, now),
+        company.currency ?? "USD",
       );
       if (!digestHasNews(digest)) continue;
       const recipients = await selectRecipients(company.id, "weeklyDigest");

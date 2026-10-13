@@ -47,6 +47,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const PREVIEW_ROWS = 8;
 
 interface ImportDialogProps {
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   accounts: Account[];
   categories: Category[];
   /** The company's category rules, to preview which category each line gets */
@@ -76,6 +78,7 @@ interface ImportFormProps extends ImportDialogProps {
 
 // The window's content (separate so its Cancel button can close it)
 function ImportForm({
+  currency,
   accounts,
   categories,
   rules,
@@ -310,9 +313,9 @@ function ImportForm({
         </strong>
         {rows.length > 0 && (
           <span>
-            <span className={styles.income}>{formatCurrency(totalIn, { signed: true })}</span>
+            <span className={styles.income}>{formatCurrency(totalIn, { signed: true, currency: currency })}</span>
             {" in · "}
-            {formatCurrency(totalOut, { signed: true })} out
+            {formatCurrency(totalOut, { signed: true, currency: currency })} out
             {uncategorized > 0 && ` · ${uncategorized} uncategorized`}
           </span>
         )}
@@ -340,7 +343,7 @@ function ImportForm({
                     {categoryOf(row) ?? "Uncategorized"}
                   </td>
                   <td className={`${styles.amount} ${row.amount > 0 ? styles.income : ""}`}>
-                    {formatCurrency(row.amount, { signed: true })}
+                    {formatCurrency(row.amount, { signed: true, currency: currency })}
                   </td>
                 </tr>
               ))}

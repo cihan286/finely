@@ -39,17 +39,29 @@ export function errorMessage(error: unknown): string {
   throw error;
 }
 
-/** A company's timezone ("UTC" until set). Read once per request. */
-export const getCompanyTimeZone = cache(async (organizationId: string) => {
+/**
+ * A company's timezone and currency ("UTC" and "USD" until set). Read once
+ * per request.
+ */
+export const getCompanyLocale = cache(async (organizationId: string) => {
   const [row] = await db
-    .select({ timezone: companySettings.timezone })
+    .select({
+      timezone: companySettings.timezone,
+      currency: companySettings.currency,
+    })
     .from(companySettings)
     .where(eq(companySettings.organizationId, organizationId));
-  return row?.timezone ?? "UTC";
+  return { timeZone: row?.timezone ?? "UTC", currency: row?.currency ?? "USD" };
 });
 
+/** A company's timezone ("UTC" until set) */
+export async function getCompanyTimeZone(organizationId: string): Promise<string> {
+  return (await getCompanyLocale(organizationId)).timeZone;
+}
+
 /**
- * The signed-in user, the company whose data they may use and its timezone.
+ * The signed-in user, the company whose data they may use, and its timezone
+ * and currency.
  * With `manage: true`, also requires the owner or admin role.
  */
 export async function getFinanceContext({ manage = false } = {}) {
@@ -63,7 +75,8 @@ export async function getFinanceContext({ manage = false } = {}) {
     userName: user.name,
     organizationId: organization.id,
     role,
-    timeZone: await getCompanyTimeZone(organization.id),
+    // timeZone and currency
+    ...(await getCompanyLocale(organization.id)),
   };
 }
 

@@ -5,8 +5,9 @@
 // CONTACT_EMAIL), with the visitor's address as the one to reply to.
 //
 // For developers: a server action ("use server") on a public page: anyone
-// can call it, logged in or not. It can only ever email our own address, and
-// bots that fill in the hidden "website" box are quietly ignored. Without
+// can call it, logged in or not. It can only ever email our own address,
+// bots that fill in the hidden "website" box are quietly ignored, and one
+// address on the internet can send at most five messages an hour. Without
 // RESEND_API_KEY the message is printed in the terminal, like other emails.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,11 @@ import { formField, type ActionState } from "@/lib/action-state";
 import { parseContactMessage } from "@/lib/contact";
 import { sendEmail } from "@/lib/email/send";
 import { contactMessageEmail } from "@/lib/email/templates";
+import { clientIp, withinRateLimit } from "@/lib/rate-limit";
+
+// At most this many messages per visitor (IP address) per hour
+const MAX_MESSAGES = 5;
+const WINDOW_SECONDS = 60 * 60;
 
 const SENT = "Thanks! Your message is on its way. We'll reply by email.";
 
@@ -33,6 +39,14 @@ export async function submitContactMessage(
     message: formField(formData, "message"),
   });
   if ("error" in parsed) return { error: parsed.error };
+
+  // Counted only for messages that would be sent, so typing mistakes don't
+  // use up the allowance
+  if (!(await withinRateLimit(`contact:${await clientIp()}`, MAX_MESSAGES, WINDOW_SECONDS))) {
+    return {
+      error: "You've sent several messages in a short time. Please try again in an hour.",
+    };
+  }
 
   const to = process.env.CONTACT_EMAIL?.trim();
   // Emails are really sent (Resend is set up) but we have nowhere to send to

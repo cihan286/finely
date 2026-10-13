@@ -30,7 +30,11 @@ import styles from "./InsightsView.module.css";
 type Month = Insights["monthly"][number];
 
 // Tooltip rows: the value leads, a short line in the series color names it
-function MonthTooltip({ active, payload }: TooltipContentProps) {
+function MonthTooltip({
+  active,
+  payload,
+  currency,
+}: TooltipContentProps & { currency: string }) {
   const month = payload?.[0]?.payload as Month | undefined;
   if (!active || !month) return null;
   return (
@@ -41,17 +45,24 @@ function MonthTooltip({ active, payload }: TooltipContentProps) {
       </span>
       <span className={styles.tooltipRow}>
         <span className={`${styles.lineKey} ${styles.incomeKey}`} />
-        <strong>{formatCurrency(month.income)}</strong> in
+        <strong>{formatCurrency(month.income, { currency: currency })}</strong> in
       </span>
       <span className={styles.tooltipRow}>
         <span className={`${styles.lineKey} ${styles.expensesKey}`} />
-        <strong>{formatCurrency(month.expenses)}</strong> out
+        <strong>{formatCurrency(month.expenses, { currency: currency })}</strong> out
       </span>
     </div>
   );
 }
 
-export default function MonthlyChart({ monthly }: { monthly: Month[] }) {
+export default function MonthlyChart({
+  monthly,
+  currency,
+}: {
+  monthly: Month[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
+}) {
   const axisTick = { fill: "currentColor", fontSize: 12 };
   return (
     <div className={styles.chartWrap}>
@@ -78,11 +89,13 @@ export default function MonthlyChart({ monthly }: { monthly: Month[] }) {
             axisLine={false}
             tick={axisTick}
             width={48}
-            tickFormatter={formatCompactCurrency}
+            tickFormatter={(value: number) => formatCompactCurrency(value, currency)}
           />
           {/* A soft band behind the hovered month */}
           <Tooltip
-            content={MonthTooltip}
+            content={(props: TooltipContentProps) => (
+              <MonthTooltip {...props} currency={currency} />
+            )}
             cursor={{ fill: "currentColor", fillOpacity: 0.06 }}
           />
           <Bar

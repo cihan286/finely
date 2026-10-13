@@ -104,10 +104,16 @@ export default function TermsPage() {
       <section className={styles.section}>
         <h2 className={styles.heading}>6. Plans and payment</h2>
         <p className={styles.text}>
-          Some plans may be paid. Where a price applies, it is shown before
-          you commit to it, and nothing is charged without your agreement. If
-          we change prices, we&apos;ll tell you in advance, and you can stop
-          before the new price applies.
+          Finely has a free plan and paid plans, which differ in how many
+          people can be on a company&apos;s team. A paid plan is a
+          subscription that the company&apos;s owner starts and pays for
+          through Stripe; it renews each month or year until it&apos;s
+          cancelled, which the owner can do at any time under Settings. A
+          cancelled plan stays active until the end of the period already
+          paid for. The price is shown before you commit to it, and nothing
+          is charged without your agreement. If we change prices, we&apos;ll
+          tell you in advance, and you can stop before the new price applies.
+          Deleting a company ends its subscription.
         </p>
       </section>
 

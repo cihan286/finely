@@ -53,7 +53,8 @@ import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
 import { getForecast, getRecurring } from "./recurring";
-import { updateTimeZone } from "./settings";
+import { withinRateLimit } from "@/lib/rate-limit";
+import { getCompanySettings, updateCurrency, updateTimeZone } from "./settings";
 import {
   createTransaction,
   deleteTransaction,
@@ -946,6 +947,50 @@ describe("handing over and deleting a company", () => {
   });
 });
 
+describe("searching transactions", () => {
+  it("looks in descriptions, notes, category names and amounts of the company's own", async () => {
+    const company = await createTestCompany("sirius");
+    const other = await createTestCompany("cybersys");
+    actAs(other);
+    const otherAccount = await createAccount({ name: "Other", type: "checking" });
+    const otherCategory = await createCategory({
+      name: "Gadgets",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    await createTransaction(
+      transactionFor({ accountId: otherAccount, categoryId: otherCategory }, { name: "Robot", amount: -42, notes: "towel" }),
+    );
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Main", type: "checking" });
+    const gadgets = await createCategory({
+      name: "Gadgets",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    const add = (name: string, amount: number, extra: Partial<TransactionInput> = {}) =>
+      createTransaction(transactionFor({ accountId, categoryId: "" }, { name, amount, categoryId: null, ...extra }));
+    await add("Nutrimatic", -42, { notes: "Almost, but not quite, tea" });
+    await add("Babel fish", -7.5, { categoryId: gadgets });
+    await add("Refund", 42);
+    await add("Office 42 rent", -900);
+
+    const found = async (search: string) =>
+      (await listTransactions({ search })).transactions.map((t) => t.name).sort();
+    expect(await found("nutri")).toEqual(["Nutrimatic"]);
+    expect(await found("NOT QUITE")).toEqual(["Nutrimatic"]);
+    expect(await found("gadget")).toEqual(["Babel fish"]);
+    // The amount in or out, and descriptions containing the number
+    expect(await found("42")).toEqual(["Nutrimatic", "Office 42 rent", "Refund"]);
+    expect(await found("$7.50")).toEqual(["Babel fish"]);
+    expect(await found("towel")).toEqual([]);
+    expect(await found("50%_")).toEqual([]);
+  });
+});
+
 describe("exporting transactions", () => {
   it("exports only the company's own transactions, with the same filters as the list", async () => {
     const company = await createTestCompany("oscorp");
@@ -1285,5 +1330,57 @@ describe("activity log", () => {
     await expect(listAuditLog()).rejects.toThrow("Only owners and admins can do this.");
     actAs(globex, "admin");
     expect((await listAuditLog()).total).toBeGreaterThan(0);
+  });
+});
+
+describe("currency", () => {
+  it("is the company's own, and shows up in what Finely writes about its money", async () => {
+    const company = await createTestCompany("lutece");
+    const other = await createTestCompany("columbia");
+    actAs(company);
+    expect((await getCompanySettings()).currency).toBe("USD");
+    await updateCurrency("EUR");
+    await expect(updateCurrency("BTC")).rejects.toThrow("Choose a currency from the list.");
+
+    const accountId = await createAccount({ name: "Compte", type: "checking", openingBalance: -50 });
+    await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Loyer",
+      amount: -900,
+      date: today,
+      status: "completed",
+    });
+    expect((await getCompanySettings()).currency).toBe("EUR");
+    // The bell and the activity log speak euros
+    expect((await listNotifications()).find((n) => n.id.startsWith("overdrawn"))?.description).toBe(
+      "Compte is at -€950.00.",
+    );
+    expect((await listAuditLog({ area: "transaction" })).entries[0].summary).toBe(
+      "Added the transaction “Loyer” (-€900.00)",
+    );
+    expect((await listAuditLog({ area: "settings" })).entries[0].summary).toBe(
+      "Changed the company's currency from USD to EUR (Euro)",
+    );
+
+    actAs(company, "member");
+    await expect(updateCurrency("GBP")).rejects.toThrow("Only owners and admins can do this.");
+    actAs(other);
+    expect((await getCompanySettings()).currency).toBe("USD");
+  });
+});
+
+describe("rate limiting", () => {
+  it("allows a number of requests per window and key, then refuses until the window is over", async () => {
+    const start = 1_800_000_000_000;
+    for (let i = 0; i < 5; i++) {
+      expect(await withinRateLimit("test:1.2.3.4", 5, 3600, start + i * 1000)).toBe(true);
+    }
+    expect(await withinRateLimit("test:1.2.3.4", 5, 3600, start + 6000)).toBe(false);
+    expect(await withinRateLimit("test:1.2.3.4", 5, 3600, start + 3_599_000)).toBe(false);
+    // Someone else isn't affected
+    expect(await withinRateLimit("test:5.6.7.8", 5, 3600, start + 6000)).toBe(true);
+    // An hour after the first request, a new window starts
+    expect(await withinRateLimit("test:1.2.3.4", 5, 3600, start + 3_601_000)).toBe(true);
   });
 });

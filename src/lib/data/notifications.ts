@@ -36,7 +36,7 @@ import { getForecast } from "./recurring";
 
 /** The company's notifications for the signed-in person, newest first */
 export async function listNotifications(): Promise<Notification[]> {
-  const { organizationId, userId, timeZone } = await getFinanceContext();
+  const { organizationId, userId, timeZone, currency } = await getFinanceContext();
   const today = todayIn(timeZone);
   const { historyStart } = insightRange(today, 3);
   // Payments from before this moment have been pending for too long
@@ -218,6 +218,7 @@ export async function listNotifications(): Promise<Notification[]> {
     read?.readAt ?? null,
     timeZone,
     today,
+    currency,
   );
 }
 

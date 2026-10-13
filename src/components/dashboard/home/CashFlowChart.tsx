@@ -59,7 +59,8 @@ function ChartTooltip({
   active,
   payload,
   label,
-}: TooltipContentProps) {
+  currency,
+}: TooltipContentProps & { currency: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className={styles.tooltip}>
@@ -73,7 +74,7 @@ function ChartTooltip({
               style={{ backgroundColor: series.color }}
             />
             <span>{series.label}</span>
-            <strong>{formatCurrency(Number(item.value))}</strong>
+            <strong>{formatCurrency(Number(item.value), { currency: currency })}</strong>
           </div>
         );
       })}
@@ -81,7 +82,14 @@ function ChartTooltip({
   );
 }
 
-export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
+export default function CashFlowChart({
+  cashflow,
+  currency,
+}: {
+  cashflow: Cashflow;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
+}) {
   // Which time range is selected, and that range's data points
   const [range, setRange] = useState<CashflowRange>("last30Days");
   const data = cashflow[range];
@@ -120,7 +128,7 @@ export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
           <span
             className={`${styles.chartStatValue} ${totals.net >= 0 ? styles.positive : styles.negative}`}
           >
-            {formatCurrency(totals.net, { signed: true })}
+            {formatCurrency(totals.net, { signed: true, currency: currency })}
           </span>
         </div>
         {(Object.keys(SERIES) as SeriesKey[]).map((key) => (
@@ -133,7 +141,7 @@ export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
               {SERIES[key].label}
             </span>
             <span className={styles.chartStatValue}>
-              {formatCurrency(totals[key])}
+              {formatCurrency(totals[key], { currency: currency })}
             </span>
           </div>
         ))}
@@ -188,11 +196,13 @@ export default function CashFlowChart({ cashflow }: { cashflow: Cashflow }) {
               axisLine={false}
               tick={axisTick}
               width={44}
-              tickFormatter={formatCompactCurrency}
+              tickFormatter={(value: number) => formatCompactCurrency(value, currency)}
             />
             {/* Show the hover box (ChartTooltip above) and a vertical guide line */}
             <Tooltip
-              content={ChartTooltip}
+              content={(props: TooltipContentProps) => (
+                <ChartTooltip {...props} currency={currency} />
+              )}
               cursor={{ stroke: "currentColor", strokeOpacity: 0.25 }}
             />
             <Area

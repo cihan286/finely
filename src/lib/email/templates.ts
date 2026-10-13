@@ -192,10 +192,12 @@ export function unusualChargeEmail(
   to: Recipient,
   organizationName: string,
   charges: UnusualCharge[],
+  /** The company's currency, e.g. "USD" */
+  currency: string,
 ): Email {
   const one = charges.length === 1;
   const line = (c: UnusualCharge) =>
-    `${c.name} charged ${formatCurrency(c.amount)} on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`;
+    `${c.name} charged ${formatCurrency(c.amount, { currency: currency })} on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: currency })}.`;
   const heading = one
     ? `Unusually high charge from ${charges[0].name}`
     : `${charges.length} unusually high charges`;
@@ -211,7 +213,7 @@ export function unusualChargeEmail(
         `${one ? "A charge" : "Some charges"} just added to <strong>${escapeHtml(organizationName)}</strong> ${one ? "is" : "are"} well above what ${one ? "that vendor" : "those vendors"} usually ${one ? "charges" : "charge"}:`,
         ...charges.map(
           (c) =>
-            `<strong>${escapeHtml(c.name)}</strong> charged <strong>${formatCurrency(c.amount)}</strong> on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`,
+            `<strong>${escapeHtml(c.name)}</strong> charged <strong>${formatCurrency(c.amount, { currency: currency })}</strong> on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: currency })}.`,
         ),
       ],
       button: {
@@ -244,25 +246,25 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
   const bills = (count: number) => `${count} ${count === 1 ? "bill" : "bills"}`;
 
   const figures: [string, string][] = [
-    ["Money in", formatCurrency(digest.moneyIn)],
-    ["Money out", formatCurrency(digest.moneyOut)],
-    ["Net", formatCurrency(net, { signed: true })],
-    ["In the bank now", formatCurrency(digest.balance)],
+    ["Money in", formatCurrency(digest.moneyIn, { currency: digest.currency })],
+    ["Money out", formatCurrency(digest.moneyOut, { currency: digest.currency })],
+    ["Net", formatCurrency(net, { signed: true, currency: digest.currency })],
+    ["In the bank now", formatCurrency(digest.balance, { currency: digest.currency })],
   ];
   // Plain sentences; names typed by people are escaped for the HTML version
   const attention: { text: string; html: string }[] = [];
   const note = (text: string, html = escapeHtml(text)) => attention.push({ text, html });
   if (digest.overdueBills.count > 0) {
-    note(`${bills(digest.overdueBills.count)} overdue, ${formatCurrency(digest.overdueBills.amount)} in total.`);
+    note(`${bills(digest.overdueBills.count)} overdue, ${formatCurrency(digest.overdueBills.amount, { currency: digest.currency })} in total.`);
   }
   if (digest.billsDueSoon.count > 0) {
-    note(`${bills(digest.billsDueSoon.count)} due in the next 7 days, ${formatCurrency(digest.billsDueSoon.amount)} in total.`);
+    note(`${bills(digest.billsDueSoon.count)} due in the next 7 days, ${formatCurrency(digest.billsDueSoon.amount, { currency: digest.currency })} in total.`);
   }
   for (const b of digest.overBudget) {
-    note(`${b.name} is ${formatCurrency(b.spent - b.budget)} over its ${formatCurrency(b.budget)} budget this month.`);
+    note(`${b.name} is ${formatCurrency(b.spent - b.budget, { currency: digest.currency })} over its ${formatCurrency(b.budget, { currency: digest.currency })} budget this month.`);
   }
   for (const c of digest.unusualCharges) {
-    note(`${c.name} charged ${formatCurrency(c.amount)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`);
+    note(`${c.name} charged ${formatCurrency(c.amount, { currency: digest.currency })}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: digest.currency })}.`);
   }
 
   const period = `${formatDate(digest.from)} – ${formatDate(digest.to)}`;
@@ -281,7 +283,7 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
   if (digest.topCategories.length > 0) {
     paragraphs.push(
       `<strong>Where it went:</strong> ${digest.topCategories
-        .map((c) => `${escapeHtml(c.name)} ${formatCurrency(c.amount)}`)
+        .map((c) => `${escapeHtml(c.name)} ${formatCurrency(c.amount, { currency: digest.currency })}`)
         .join(", ")}.`,
     );
   }
@@ -293,9 +295,9 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
 
   return {
     to: to.email,
-    subject: oneLine(`${org}'s week: ${formatCurrency(net, { signed: true })} net`),
+    subject: oneLine(`${org}'s week: ${formatCurrency(net, { signed: true, currency: digest.currency })} net`),
     html: layout({
-      preview: `Money in ${formatCurrency(digest.moneyIn)}, money out ${formatCurrency(digest.moneyOut)}.`,
+      preview: `Money in ${formatCurrency(digest.moneyIn, { currency: digest.currency })}, money out ${formatCurrency(digest.moneyOut, { currency: digest.currency })}.`,
       heading: "Your week in Finely",
       paragraphs,
       button: { label: "Open the dashboard", url: `${appUrl}/dashboard` },
@@ -306,7 +308,7 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
 ${figures.map(([label, value]) => `${label}: ${value}`).join("\n")}
 ${
   digest.topCategories.length > 0
-    ? `\nWhere it went: ${digest.topCategories.map((c) => `${c.name} ${formatCurrency(c.amount)}`).join(", ")}.\n`
+    ? `\nWhere it went: ${digest.topCategories.map((c) => `${c.name} ${formatCurrency(c.amount, { currency: digest.currency })}`).join(", ")}.\n`
     : ""
 }${attention.length > 0 ? `\nNeeds a look:\n${attention.map((a) => `- ${a.text}`).join("\n")}\n` : ""}
 Open the dashboard: ${appUrl}/dashboard

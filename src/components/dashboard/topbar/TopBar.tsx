@@ -2,7 +2,8 @@
 // Dashboard top bar
 //
 // In plain words: the bar across the top of every dashboard page — a search
-// box that looks through the company's transactions, the company you're
+// box that looks through the company's transactions (descriptions, notes,
+// categories and amounts), the company you're
 // working in (and a way to switch), the notifications bell (with a count of
 // unread messages and a panel that opens on click), and the logged-in user's
 // initials, name and email.
@@ -87,7 +88,7 @@ export default function TopBar({
           name="q"
           type="search"
           className={styles.searchInput}
-          placeholder="Search transactions…"
+          placeholder="Search by description, notes, category or amount…"
           aria-label="Search transactions"
           maxLength={100}
         />

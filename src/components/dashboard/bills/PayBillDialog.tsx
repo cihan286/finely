@@ -31,6 +31,8 @@ import styles from "./BillDialog.module.css";
 interface PayBillDialogProps {
   bill: Bill;
   accounts: Account[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /** Whether this person can add a bank account (owners and admins) */
   canManage: boolean;
   /** The list's address, to return to when the window closes */
@@ -66,6 +68,7 @@ interface PayBillFormProps extends PayBillDialogProps {
 function PayBillForm({
   bill,
   accounts,
+  currency,
   canManage,
   today,
   error,
@@ -89,7 +92,7 @@ function PayBillForm({
       {/* What's being paid */}
       <div className={styles.summary}>
         <span className={styles.summaryName}>{bill.name}</span>
-        <span className={styles.summaryAmount}>{formatCurrency(bill.amount)}</span>
+        <span className={styles.summaryAmount}>{formatCurrency(bill.amount, { currency: currency })}</span>
         <span className={styles.summaryNote}>Due {formatDate(bill.dueDate)}</span>
       </div>
 
@@ -119,7 +122,7 @@ function PayBillForm({
           </div>
 
           <p className={styles.note}>
-            This adds a payment of {formatCurrency(bill.amount)} to the
+            This adds a payment of {formatCurrency(bill.amount, { currency: currency })} to the
             account&apos;s transactions.
             {next && ` The next bill will be due ${formatDate(next)}.`}
           </p>

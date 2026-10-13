@@ -30,6 +30,7 @@ import {
   inArray,
   isNull,
   lt,
+  or,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -46,6 +47,7 @@ import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
 import { countOf, describeChanges } from "@/lib/finance/audit";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import type { TransactionExportRow } from "@/lib/finance/export";
+import { amountFromSearch } from "@/lib/finance/search";
 import {
   duplicateKey,
   MAX_IMPORT_ROWS,
@@ -95,7 +97,10 @@ export interface TransactionInput {
 
 /** Ways to narrow down the transactions list */
 export interface TransactionFilters {
-  /** Matches part of the name, ignoring upper/lower case */
+  /**
+   * Matches part of the description, notes or category name (ignoring
+   * upper/lower case), or the exact amount
+   */
   search?: string;
   accountId?: string;
   /** A category's ID, or "none" for uncategorized transactions */
@@ -158,7 +163,26 @@ function matching(
   const conditions: SQL[] = [eq(transaction.organizationId, organizationId)];
   const search = optionalText(filters.search, "Search", 100);
   if (search) {
-    conditions.push(ilike(transaction.name, `%${escapeLike(search)}%`));
+    const pattern = `%${escapeLike(search)}%`;
+    const amount = amountFromSearch(search);
+    // In the description, the notes or the category's name; a number also
+    // finds that exact amount, in or out
+    conditions.push(
+      or(
+        ilike(transaction.name, pattern),
+        ilike(transaction.notes, pattern),
+        inArray(
+          transaction.categoryId,
+          db
+            .select({ id: category.id })
+            .from(category)
+            .where(
+              and(eq(category.organizationId, organizationId), ilike(category.name, pattern)),
+            ),
+        ),
+        amount === null ? undefined : sql`abs(${transaction.amount}) = ${amount}`,
+      )!,
+    );
   }
   if (filters.accountId) {
     conditions.push(eq(transaction.accountId, filters.accountId));
@@ -335,7 +359,7 @@ export async function createTransaction(
     area: "transaction",
     action: "created",
     entityId: row.id,
-    summary: `Added the transaction “${values.name}” (${formatCurrency(values.amount, { signed: true })})`,
+    summary: `Added the transaction “${values.name}” (${formatCurrency(values.amount, { signed: true, currency: actor.currency })})`,
   });
   // Far above what this vendor usually charges? Email the team, without
   // making the person wait
@@ -372,8 +396,8 @@ export async function updateTransaction(id: string, input: TransactionInput) {
       { label: "description", before: before.name, after: after.name },
       {
         label: "amount",
-        before: formatCurrency(before.amount, { signed: true }),
-        after: formatCurrency(after.amount, { signed: true }),
+        before: formatCurrency(before.amount, { signed: true, currency: actor.currency }),
+        after: formatCurrency(after.amount, { signed: true, currency: actor.currency }),
       },
       {
         label: "date",
@@ -418,7 +442,7 @@ export async function deleteTransaction(id: string) {
     area: "transaction",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the transaction “${gone.name}” (${formatCurrency(gone.amount, { signed: true })}, ${formatDate(localDay(gone.occurredAt, timeZone))})`,
+    summary: `Deleted the transaction “${gone.name}” (${formatCurrency(gone.amount, { signed: true, currency: actor.currency })}, ${formatDate(localDay(gone.occurredAt, timeZone))})`,
   });
 }
 

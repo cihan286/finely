@@ -3,7 +3,7 @@
 //
 // In plain words: when a linked bank reports its accounts and what changed
 // since last time, this decides which accounts Finely can keep (everyday
-// and savings accounts in US dollars), and for every reported payment
+// and savings accounts in the company's currency), and for every reported payment
 // whether it's new, a change to one we already have, or the booked version
 // of one that was pending before.
 //
@@ -19,11 +19,15 @@ import type { AccountType } from "@/types/finance";
  * The kind of Finely account a bank account becomes, or null for accounts
  * Finely can't keep yet: credit cards, loans and investments (their
  * "balance" is money owed or invested, not money in the bank) and
- * currencies other than US dollars.
+ * accounts in another currency than the company's (nothing is converted).
  */
-export function finelyAccountType(account: BankAccount): AccountType | null {
+export function finelyAccountType(
+  account: BankAccount,
+  /** The company's currency, e.g. "USD" */
+  currency = "USD",
+): AccountType | null {
   if (account.type !== "depository") return null;
-  if (account.currency !== null && account.currency !== "USD") return null;
+  if (account.currency !== null && account.currency !== currency) return null;
   const saving = ["savings", "money market", "cd"].includes(account.subtype ?? "");
   return saving ? "savings" : "checking";
 }

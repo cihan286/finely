@@ -1,0 +1,119 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Plan and billing styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to this section: the current
+   plan's name and usage, the monthly/yearly switch and the boxes of the
+   plans to choose from. The card and messages come from
+   TeamSettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* The plan the company is on, with how much of it is used */
+.current {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.plan {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.usage {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.full {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.note {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+}
+
+.hint {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.link {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Monthly / Yearly */
+.toggle {
+  display: inline-flex;
+  padding: 0.2rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-full);
+  background-color: var(--hover);
+}
+
+.toggleOption {
+  padding: 0.3rem 0.9rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.toggleActive {
+  background-color: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The plans to choose from, side by side */
+.plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 1.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.optionName {
+  font-weight: 600;
+}
+
+.optionPrice {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 0.15rem;
+}
+
+.option > :last-child {
+  margin-top: 0.6rem;
+}
+
+/* Screens narrower than 640px (phones): one plan per row */
+@media (max-width: 640px) {
+  .plans {
+    grid-template-columns: 1fr;
+  }
+}

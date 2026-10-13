@@ -53,6 +53,8 @@ interface TransactionDialogProps {
   attachments: Attachment[];
   accounts: Account[];
   categories: Category[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /**
    * Whether to show the Delete button and "always use this category"
    * (owners and admins)
@@ -104,6 +106,7 @@ function TransactionForm({
   transaction,
   accounts,
   categories,
+  currency,
   canManage,
   closeHref,
   today,
@@ -168,7 +171,7 @@ function TransactionForm({
       </fieldset>
 
       <div className={forms.grid}>
-        <Field label="Amount (USD)">
+        <Field label={`Amount (${currency})`}>
           <Input
             name="amount"
             type="number"

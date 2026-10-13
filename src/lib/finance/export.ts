@@ -54,6 +54,8 @@ export function insightsCsv(
   organizationName: string,
   insights: Insights,
   recurring: (RecurringPayment & { category: string | null })[],
+  /** The company's currency, e.g. "USD" */
+  currency = "USD",
 ): string {
   const { totals } = insights;
   const tables: CsvCell[][][] = [
@@ -61,6 +63,7 @@ export function insightsCsv(
       ["Finely insights"],
       ["Company", organizationName],
       ["Period", `Last ${insights.period} months`],
+      ["Currency", currency],
       ["Exported on", insights.today],
     ],
     [

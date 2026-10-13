@@ -103,7 +103,7 @@ export async function createCategory(input: CategoryInput): Promise<string> {
       area: "category",
       action: "created",
       entityId: row.id,
-      summary: `Added the category “${row.name}”${row.budget === null ? "" : ` with a budget of ${formatCurrency(row.budget)} a month`}`,
+      summary: `Added the category “${row.name}”${row.budget === null ? "" : ` with a budget of ${formatCurrency(row.budget, { currency: actor.currency })} a month`}`,
     });
     return row.id;
   } catch (error) {
@@ -129,7 +129,7 @@ export async function updateCategory(id: string, input: CategoryInput) {
     const [after] = updated;
     const kinds = { income: "Money in", expense: "Money out" } as Record<string, string>;
     const budget = (amount: number | null) =>
-      amount === null ? null : `${formatCurrency(amount)} a month`;
+      amount === null ? null : `${formatCurrency(amount, { currency: actor.currency })} a month`;
     const changes = describeChanges([
       { label: "name", before: before?.name ?? null, after: after.name },
       { label: "type", before: kinds[before?.kind ?? ""] ?? null, after: kinds[after.kind] },

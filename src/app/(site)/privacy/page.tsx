@@ -85,7 +85,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Messages you send us.</strong> What you write in the
-            contact form, with your name and email address.
+            contact form, with your name and email address. To stop abuse of
+            the form, we count for an hour how many messages came from an IP
+            address.
           </li>
         </ul>
       </section>
@@ -137,6 +139,12 @@ export default function PrivacyPage() {
             <strong>Sentry</strong> receives reports when something breaks.
             We set it up to send no personal or financial data: no cookies,
             no form contents, no database values.
+          </li>
+          <li>
+            <strong>Stripe</strong>, only if your company pays for a plan.
+            Stripe takes the payment on its own pages: we never see card
+            numbers. We keep which plan the company is on and Stripe&apos;s
+            IDs for the customer and the subscription.
           </li>
           <li>
             <strong>Plaid</strong>, only if you link a bank. Plaid connects to
