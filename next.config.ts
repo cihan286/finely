@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
   // The React Compiler automatically optimizes components so pages re-draw
   // only what actually changed. It makes the app faster without extra code.
   reactCompiler: true,
+  experimental: {
+    serverActions: {
+      // Attached receipts are sent through a server action. Files can be
+      // 4 MB (lib/finance/attachments.ts), plus room for the form around
+      // them; Vercel itself refuses requests over 4.5 MB.
+      bodySizeLimit: "4500kb",
+    },
+  },
 };
 
 // Error monitoring (see lib/monitoring.ts). When building with

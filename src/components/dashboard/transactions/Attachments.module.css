@@ -1,0 +1,127 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Receipts and attachments styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The list of a transaction's files in the edit window:
+   a title with the "Add file" button, then one row per file with its name,
+   size and a delete button.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Below the transaction's form, under a line */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.825rem;
+  font-weight: 500;
+}
+
+.addButton:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.addButton:disabled,
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* The real file picker is opened by the button above */
+.fileInput {
+  display: none;
+}
+
+.hint {
+  font-size: 0.825rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-muted);
+  font-size: 0.875rem;
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.name:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.size {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.deleteButton {
+  display: flex;
+  flex-shrink: 0;
+  padding: 0.3rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+}

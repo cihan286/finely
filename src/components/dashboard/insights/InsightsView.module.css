@@ -19,6 +19,25 @@
   gap: 1.5rem;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Shown on the printout only */
+.printOnly {
+  display: none;
+}
+
 .title {
   font-size: 1.75rem;
   font-weight: 700;
@@ -509,5 +528,36 @@
 
   .vendorName {
     max-width: 120px;
+  }
+}
+
+/* On paper (or "Save as PDF"): the figures only, without what's there to
+   click, and no card cut in half by a page break */
+@media print {
+  .page {
+    padding: 0;
+    background: none;
+  }
+
+  .headerActions,
+  .periods,
+  .addBill {
+    display: none;
+  }
+
+  .printOnly {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  /* The month-by-month table is folded away on screen */
+  .tableView summary {
+    display: none;
   }
 }

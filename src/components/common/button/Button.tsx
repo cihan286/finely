@@ -23,6 +23,8 @@ interface ButtonProps {
   action?: () => void;
   /** Destination, for buttons that navigate; renders a Link instead */
   href?: string;
+  /** With href: the address is a file to download, not a page to open */
+  download?: boolean;
   variant?: "primary" | "secondary" | "outline";
   /** "sm" is the compact style for app UI like the dashboard */
   size?: "md" | "sm";
@@ -42,6 +44,7 @@ export default function Button({
   text,
   action,
   href,
+  download = false,
   variant = "primary",
   size = "md",
   icon,
@@ -67,6 +70,15 @@ export default function Button({
       {!loading && iconPosition === "right" && icon}
     </>
   );
+
+  if (href && download) {
+    // A plain link: Next.js's Link would try to open the file as a page
+    return (
+      <a className={className} href={href} download>
+        {content}
+      </a>
+    );
+  }
 
   if (href) {
     return (

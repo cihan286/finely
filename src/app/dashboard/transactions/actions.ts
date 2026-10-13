@@ -17,6 +17,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { addAttachment, deleteAttachment } from "@/lib/data/attachments";
 import { saveCategoryRule } from "@/lib/data/category-rules";
 import { errorMessage } from "@/lib/data/common";
 import {
@@ -28,7 +29,7 @@ import {
   type TransactionInput,
 } from "@/lib/data/transactions";
 import type { StatementRow } from "@/lib/finance/statement-import";
-import type { TransactionStatus } from "@/types/finance";
+import type { Attachment, TransactionStatus } from "@/types/finance";
 
 const LIST_PATH = "/dashboard/transactions";
 
@@ -148,4 +149,46 @@ export async function importStatement(
     return { error: errorMessage(error) };
   }
   redirect(`${LIST_PATH}?imported=${result.imported}&skipped=${result.skipped}`);
+}
+
+/** What the attachment actions answer: an error, or the transaction's files */
+export interface AttachmentResult {
+  error: string | null;
+  attachments?: Attachment[];
+}
+
+/**
+ * Attaches a file (the form's "file") to a transaction and answers with the
+ * transaction's files.
+ */
+export async function uploadAttachment(
+  transactionId: string,
+  formData: FormData,
+): Promise<AttachmentResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "Choose a file to attach." };
+  let attachments;
+  try {
+    attachments = await addAttachment(transactionId, {
+      name: file.name,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    });
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  // The list behind the window shows which transactions have files
+  refresh();
+  return { error: null, attachments };
+}
+
+/** Deletes an attached file and answers with what's left on its transaction. */
+export async function removeAttachment(id: string): Promise<AttachmentResult> {
+  let attachments;
+  try {
+    attachments = await deleteAttachment(id);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return { error: null, attachments };
 }

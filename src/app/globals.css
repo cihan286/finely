@@ -104,3 +104,11 @@ button {
   font-size: inherit;
   cursor: pointer;
 }
+
+/* On paper: pages scroll inside their <main> on screen; printed, they must
+   run on over as many sheets as they need */
+@media print {
+  main {
+    overflow: visible !important;
+  }
+}

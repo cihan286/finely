@@ -7,9 +7,10 @@
 // money in, `category` is a label such as "Payroll" or "Marketing",
 // `category_rule` says which descriptions get which category automatically,
 // `transaction` is one payment in or out of an account, `bill` is a payment
-// the company still has to make (or has made), and `notification_read`
-// remembers when each person last read the company's
-// notifications. Every row belongs to exactly one company, so companies never
+// the company still has to make (or has made), `attachment` is a receipt or
+// other file added to a transaction, `notification_read` remembers when each
+// person last read the company's notifications, and
+// `notification_preference` which emails each person wants. Every row belongs to exactly one company, so companies never
 // see each other's data.
 //
 // For developers: kept apart from schema.ts because that file is regenerated
@@ -22,7 +23,9 @@
 
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   date,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -58,6 +61,9 @@ export const companySettings = pgTable("company_settings", {
   // IANA timezone name, e.g. "Europe/Istanbul". Decides which calendar day a
   // transaction falls on and when "today" starts.
   timezone: text("timezone").default("UTC").notNull(),
+  // When the weekly email was last sent to this company's team, so a run
+  // that is repeated doesn't send it twice
+  lastDigestAt: timestamp("last_digest_at"),
   ...timestamps,
 });
 
@@ -223,6 +229,59 @@ export const bill = pgTable(
     // The list shows one company's bills by due date
     index("bill_organization_dueDate_idx").on(table.organizationId, table.dueDate),
   ],
+);
+
+// A receipt, invoice or other file added to a transaction. The file itself
+// is kept in the row (as base64 text), so it is exactly as private as the
+// rest of the company's data and needs no separate storage service; files
+// are small (see lib/finance/attachments.ts for the limits).
+export const attachment = pgTable(
+  "attachment",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("att")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Deleting a transaction deletes its files
+    transactionId: text("transaction_id")
+      .notNull()
+      .references(() => transaction.id, { onDelete: "cascade" }),
+    // The file's name as it was on the person's device, e.g. "receipt.pdf"
+    name: text("name").notNull(),
+    // What kind of file it really is (checked from its content), e.g.
+    // "application/pdf"
+    contentType: text("content_type").notNull(),
+    // In bytes
+    size: integer("size").notNull(),
+    // The file, base64-encoded. Never select this for lists.
+    data: text("data").notNull(),
+    // Who added it (empty if that person's account was deleted)
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("attachment_transactionId_idx").on(table.transactionId)],
+);
+
+// Which emails a person wants about a company. People without a row get
+// the defaults (see lib/finance/email-preferences.ts).
+export const notificationPreference = pgTable(
+  "notification_preference",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // The summary of the week, every Monday
+    weeklyDigest: boolean("weekly_digest").notNull(),
+    // An email right away when a charge is unusually high
+    unusualCharges: boolean("unusual_charges").notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.organizationId] })],
 );
 
 // When a person last pressed "Mark all as read" in a company. Notifications

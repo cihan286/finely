@@ -177,4 +177,28 @@ export interface Bill {
 export interface TransactionDetails extends Transaction {
   categoryId: string | null;
   notes: string | null;
+  /** How many receipts or other files are attached */
+  attachmentCount: number;
+}
+
+// A receipt, invoice or other file attached to a transaction (without the
+// file itself)
+export interface Attachment {
+  id: string;
+  /** The file's name, e.g. "receipt.pdf" */
+  name: string;
+  /** e.g. "application/pdf" */
+  contentType: string;
+  /** In bytes */
+  size: number;
+  /** Whether the signed-in person may delete it */
+  canDelete: boolean;
+}
+
+// Which emails a person gets about a company
+export interface EmailPreferences {
+  /** The summary of the week, every Monday */
+  weeklyDigest: boolean;
+  /** An email right away when a charge is unusually high */
+  unusualCharges: boolean;
 }

@@ -4,7 +4,8 @@
 // In plain words: where you manage your company — its name and timezone, its team
 // (who's in it, their roles, and invitations), its bank accounts, its
 // categories and its category rules. Owners and admins can change all of
-// these; members can see them. The owner also gets a last section to hand
+// these; members can see them. Everyone chooses which emails they get
+// themselves. The owner also gets a last section to hand
 // the company over to someone else or delete it.
 //
 // For developers: loads the active company with requireOrganization() and
@@ -20,12 +21,14 @@ import AccountSettings from "@/components/dashboard/settings/AccountSettings";
 import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
+import EmailSettings from "@/components/dashboard/settings/EmailSettings";
 import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import Message from "@/components/common/form/Message";
 import { listAccounts } from "@/lib/data/accounts";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
+import { getEmailPreferences } from "@/lib/data/email-notifications";
 import { getCompanySettings } from "@/lib/data/settings";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -44,12 +47,14 @@ export default async function SettingsPage({
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
   const { handedOver } = await searchParams;
-  const [accounts, categories, rules, settings] = await Promise.all([
-    listAccounts(),
-    listCategories(),
-    listCategoryRules(),
-    getCompanySettings(),
-  ]);
+  const [accounts, categories, rules, settings, emailPreferences] =
+    await Promise.all([
+      listAccounts(),
+      listCategories(),
+      listCategoryRules(),
+      getCompanySettings(),
+      getEmailPreferences(),
+    ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
     "UTC",
@@ -119,6 +124,12 @@ export default async function SettingsPage({
         canManage={canManageFinances(role)}
         rules={rules}
         categories={categories}
+      />
+      <EmailSettings
+        organizationName={organization.name}
+        email={user.email}
+        emailVerified={user.emailVerified}
+        preferences={emailPreferences}
       />
       {role === "owner" && (
         <OwnerSettings

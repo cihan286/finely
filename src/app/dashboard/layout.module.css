@@ -31,3 +31,14 @@
   display: flex;
   flex-direction: column;
 }
+
+/* On paper: the page takes the whole sheet and runs over as many sheets as
+   it needs, instead of being a screen-high box that scrolls inside */
+@media print {
+  .mainContainer,
+  .mainColumn {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+}

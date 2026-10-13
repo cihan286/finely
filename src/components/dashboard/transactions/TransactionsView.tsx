@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Transactions list (the content of /dashboard/transactions)
 //
-// In plain words: the page title with "Import CSV" and "Add transaction"
-// buttons, a filter bar (search, account, category, dates), the table of
+// In plain words: the page title with "Export CSV", "Import CSV" and "Add
+// transaction" buttons, a filter bar (search, account, category, dates), the table of
 // transactions, and links to the previous and next page. Clicking a transaction opens it for
 // editing; ticking several lets you give them all one category. Before the
 // company has a bank account, it explains that one has to be added first.
@@ -17,8 +17,10 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
+  Download,
   FileUp,
   Landmark,
+  Paperclip,
   Plus,
   Search,
 } from "lucide-react";
@@ -27,6 +29,7 @@ import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import type {
   Account,
+  Attachment,
   Category,
   CategoryRule,
   TransactionDetails,
@@ -67,6 +70,16 @@ function hrefFor(
   return search ? `${LIST_PATH}?${search}` : LIST_PATH;
 }
 
+/** The export file for the same search and filters (every page of them) */
+function exportHref({ q, account, category, from, to }: TransactionsQuery): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries({ q, account, category, from, to })) {
+    if (value) params.set(key, value);
+  }
+  const search = params.toString();
+  return `${LIST_PATH}/export${search ? `?${search}` : ""}`;
+}
+
 interface TransactionsViewProps {
   organizationName: string;
   /** Today in the company's timezone */
@@ -93,7 +106,7 @@ interface TransactionsViewProps {
   /** Which window is open, if any */
   dialog:
     | { mode: "new" }
-    | { mode: "edit"; transaction: TransactionDetails }
+    | { mode: "edit"; transaction: TransactionDetails; attachments: Attachment[] }
     | { mode: "import" }
     | null;
 }
@@ -146,6 +159,17 @@ export default function TransactionsView({
         </div>
         {accounts.length > 0 && (
           <div className={styles.headerActions}>
+            {/* Everything the filters show, not just this page */}
+            {total > 0 && (
+              <Button
+                href={exportHref(query)}
+                download
+                variant="outline"
+                size="sm"
+                text="Export CSV"
+                icon={<Download size={16} />}
+              />
+            )}
             <Button
               href={hrefFor(query, { import: "1" })}
               variant="outline"
@@ -341,6 +365,13 @@ export default function TransactionsView({
                             >
                               {tx.name}
                             </Link>
+                            {tx.attachmentCount > 0 && (
+                              <Paperclip
+                                size={13}
+                                className={styles.clip}
+                                aria-label={`${tx.attachmentCount} ${tx.attachmentCount === 1 ? "file" : "files"} attached`}
+                              />
+                            )}
                           </td>
                           <td className={styles.mediumUp}>
                             <span className={styles.category}>
@@ -421,6 +452,7 @@ export default function TransactionsView({
           // A fresh form for each transaction opened
           key={dialog.mode === "edit" ? dialog.transaction.id : "new"}
           transaction={dialog.mode === "edit" ? dialog.transaction : null}
+          attachments={dialog.mode === "edit" ? dialog.attachments : []}
           accounts={accounts}
           categories={categories}
           canManage={canManage}

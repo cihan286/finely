@@ -18,6 +18,7 @@ import { organization } from "better-auth/plugins";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { appUrl, vercelUrls } from "@/lib/app-url";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
@@ -25,18 +26,6 @@ import {
   verifyEmailEmail,
 } from "@/lib/email/templates";
 import { roleLabel } from "@/lib/roles";
-
-// Addresses of this deployment on Vercel: a stable one per git branch and
-// one per deployment. Vercel sets these itself.
-const vercelUrls = [process.env.VERCEL_BRANCH_URL, process.env.VERCEL_URL]
-  .filter(Boolean)
-  .map((host) => `https://${host}`);
-
-// The site's own address, used to build links in emails (e.g. invitations).
-// In production, set BETTER_AUTH_URL to the real address (https://…).
-// Preview deployments leave it unset and use their branch address.
-const appUrl =
-  process.env.BETTER_AUTH_URL ?? vercelUrls[0] ?? "http://localhost:3000";
 
 // Google sign-in credentials, read from the secret .env.local file
 const googleClientId = process.env.GOOGLE_CLIENT_ID;

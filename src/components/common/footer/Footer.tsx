@@ -2,11 +2,11 @@
 // Footer
 //
 // In plain words: the bottom section of the public pages — the logo and a
-// short description, link columns (Product, Company, Account) and the
-// copyright line.
+// short description, link columns (Product, Company, Legal, Account) and
+// the copyright line.
 //
 // For developers: every link here leads somewhere real. Add a link (Blog,
-// Terms of service, social media…) only once its page or account exists.
+// social media…) only once its page or account exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import styles from "./Footer.module.css";
@@ -30,7 +30,7 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* Three columns of links */}
+        {/* Four columns of links */}
         <div className={styles.linksGrid}>
           <div className={styles.linkColumn}>
             <span className={styles.columnTitle}>Product</span>
@@ -49,6 +49,16 @@ export default function Footer() {
             </Link>
             <Link href="/contact" className={styles.link}>
               Contact
+            </Link>
+          </div>
+
+          <div className={styles.linkColumn}>
+            <span className={styles.columnTitle}>Legal</span>
+            <Link href="/terms" className={styles.link}>
+              Terms of service
+            </Link>
+            <Link href="/privacy" className={styles.link}>
+              Privacy policy
             </Link>
           </div>
 

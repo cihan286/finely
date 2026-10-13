@@ -203,6 +203,13 @@
   text-decoration: underline;
 }
 
+/* The paperclip after the description of a transaction with files */
+.clip {
+  margin-left: 0.4rem;
+  vertical-align: -1px;
+  color: var(--text-subtle);
+}
+
 .dateCell {
   color: var(--text-muted);
 }

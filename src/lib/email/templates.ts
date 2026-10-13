@@ -2,8 +2,9 @@
 // Email templates
 //
 // In plain words: the wording and look of every email Finely sends — password
-// reset, "verify your email address" and team invitations — plus the plain
-// email we get ourselves when someone fills in the contact form. Each email
+// reset, "verify your email address", team invitations, the weekly summary
+// and the alert for an unusually high charge — plus the plain email we get
+// ourselves when someone fills in the contact form. Each email
 // has a designed version and a plain-text version.
 //
 // For developers: emails can't use our CSS files, so styles are written inline,
@@ -13,7 +14,11 @@
 // into convincing phishing.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { appUrl } from "@/lib/app-url";
 import type { ContactMessage } from "@/lib/contact";
+import type { Digest } from "@/lib/finance/digest";
+import type { UnusualCharge } from "@/lib/finance/insights";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { Email } from "./send";
 
 // Brand colors, matching the design tokens in globals.css
@@ -169,6 +174,145 @@ Accept the invitation here:
 ${d.url}
 
 This invitation expires in 48 hours. If you weren't expecting it, you can ignore this email.`,
+  };
+}
+
+// ---------------------------------------------------------------- unusual charge
+
+// Where people choose which emails they get
+const SETTINGS_URL = `${appUrl}/dashboard/settings#emails`;
+
+interface Recipient {
+  name: string;
+  email: string;
+}
+
+/** Sent right away when charges far above a vendor's usual were just added */
+export function unusualChargeEmail(
+  to: Recipient,
+  organizationName: string,
+  charges: UnusualCharge[],
+): Email {
+  const one = charges.length === 1;
+  const line = (c: UnusualCharge) =>
+    `${c.name} charged ${formatCurrency(c.amount)} on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`;
+  const heading = one
+    ? `Unusually high charge from ${charges[0].name}`
+    : `${charges.length} unusually high charges`;
+  const footnote = `You get this email because you're on ${organizationName}'s team in Finely. To stop these alerts, open Settings → Email notifications in Finely.`;
+  return {
+    to: to.email,
+    subject: oneLine(`${heading} at ${organizationName}`),
+    html: layout({
+      preview: line(charges[0]),
+      heading,
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        `${one ? "A charge" : "Some charges"} just added to <strong>${escapeHtml(organizationName)}</strong> ${one ? "is" : "are"} well above what ${one ? "that vendor" : "those vendors"} usually ${one ? "charges" : "charge"}:`,
+        ...charges.map(
+          (c) =>
+            `<strong>${escapeHtml(c.name)}</strong> charged <strong>${formatCurrency(c.amount)}</strong> on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`,
+        ),
+      ],
+      button: {
+        label: one ? "Review the transaction" : "Review the transactions",
+        url: one
+          ? `${appUrl}/dashboard/transactions?edit=${charges[0].id}`
+          : `${appUrl}/dashboard/insights`,
+      },
+      footnote: escapeHtml(footnote),
+    }),
+    text: `Hi ${firstName(to.name)},
+
+${one ? "A charge" : "Some charges"} just added to ${organizationName} ${one ? "is" : "are"} well above the usual:
+
+${charges.map((c) => `- ${line(c)}`).join("\n")}
+
+Review in Finely: ${appUrl}/dashboard/insights
+
+${footnote}
+${SETTINGS_URL}`,
+  };
+}
+
+// ---------------------------------------------------------------- weekly summary
+
+/** The Monday email: one company's last seven days */
+export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
+  const org = digest.organizationName;
+  const net = digest.moneyIn - digest.moneyOut;
+  const bills = (count: number) => `${count} ${count === 1 ? "bill" : "bills"}`;
+
+  const figures: [string, string][] = [
+    ["Money in", formatCurrency(digest.moneyIn)],
+    ["Money out", formatCurrency(digest.moneyOut)],
+    ["Net", formatCurrency(net, { signed: true })],
+    ["In the bank now", formatCurrency(digest.balance)],
+  ];
+  // Plain sentences; names typed by people are escaped for the HTML version
+  const attention: { text: string; html: string }[] = [];
+  const note = (text: string, html = escapeHtml(text)) => attention.push({ text, html });
+  if (digest.overdueBills.count > 0) {
+    note(`${bills(digest.overdueBills.count)} overdue, ${formatCurrency(digest.overdueBills.amount)} in total.`);
+  }
+  if (digest.billsDueSoon.count > 0) {
+    note(`${bills(digest.billsDueSoon.count)} due in the next 7 days, ${formatCurrency(digest.billsDueSoon.amount)} in total.`);
+  }
+  for (const b of digest.overBudget) {
+    note(`${b.name} is ${formatCurrency(b.spent - b.budget)} over its ${formatCurrency(b.budget)} budget this month.`);
+  }
+  for (const c of digest.unusualCharges) {
+    note(`${c.name} charged ${formatCurrency(c.amount)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual)}.`);
+  }
+
+  const period = `${formatDate(digest.from)} – ${formatDate(digest.to)}`;
+  const footnote = `You get this email every week because you're on ${org}'s team in Finely. To stop it, open Settings → Email notifications in Finely.`;
+  const cell = "padding:4px 0;font-size:15px;";
+
+  const paragraphs = [
+    `Hi ${escapeHtml(firstName(to.name))}, here's <strong>${escapeHtml(org)}</strong>'s week (${period}).`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${figures
+      .map(
+        ([label, value]) =>
+          `<tr><td style="${cell}color:${MUTED};">${label}</td><td align="right" style="${cell}font-weight:bold;">${value}</td></tr>`,
+      )
+      .join("")}</table>`,
+  ];
+  if (digest.topCategories.length > 0) {
+    paragraphs.push(
+      `<strong>Where it went:</strong> ${digest.topCategories
+        .map((c) => `${escapeHtml(c.name)} ${formatCurrency(c.amount)}`)
+        .join(", ")}.`,
+    );
+  }
+  if (attention.length > 0) {
+    paragraphs.push(
+      `<strong>Needs a look:</strong><br>${attention.map((a) => `• ${a.html}`).join("<br>")}`,
+    );
+  }
+
+  return {
+    to: to.email,
+    subject: oneLine(`${org}'s week: ${formatCurrency(net, { signed: true })} net`),
+    html: layout({
+      preview: `Money in ${formatCurrency(digest.moneyIn)}, money out ${formatCurrency(digest.moneyOut)}.`,
+      heading: "Your week in Finely",
+      paragraphs,
+      button: { label: "Open the dashboard", url: `${appUrl}/dashboard` },
+      footnote: escapeHtml(footnote),
+    }),
+    text: `Hi ${firstName(to.name)}, here's ${org}'s week (${period}).
+
+${figures.map(([label, value]) => `${label}: ${value}`).join("\n")}
+${
+  digest.topCategories.length > 0
+    ? `\nWhere it went: ${digest.topCategories.map((c) => `${c.name} ${formatCurrency(c.amount)}`).join(", ")}.\n`
+    : ""
+}${attention.length > 0 ? `\nNeeds a look:\n${attention.map((a) => `- ${a.text}`).join("\n")}\n` : ""}
+Open the dashboard: ${appUrl}/dashboard
+
+${footnote}
+${SETTINGS_URL}`,
   };
 }
 
