@@ -112,3 +112,24 @@ export function formatDate(day: ISODate): string {
   const [year, month, date] = day.slice(0, 10).split("-").map(Number);
   return `${MONTHS[month - 1]} ${date}, ${year}`;
 }
+
+// One formatter per timezone: they're slow to create
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A moment in a timezone: "Oct 13, 2026, 2:05 PM". For the server (which
+ * knows the company's timezone); the browser only formats day strings.
+ */
+export function formatDateTime(date: Date, timeZone: string): string {
+  let formatter = dateTimeFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    dateTimeFormatters.set(timeZone, formatter);
+  }
+  // Some systems put a narrow space before AM/PM; a plain one everywhere
+  return formatter.format(date).replace(/\u202f/g, " ");
+}

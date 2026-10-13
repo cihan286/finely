@@ -21,6 +21,7 @@ import {
   MIN_RULE_TEXT_LENGTH,
 } from "@/lib/finance/category-rules";
 import type { CategoryRule } from "@/types/finance";
+import { recordAudit } from "./audit";
 import {
   DataError,
   escapeLike,
@@ -84,13 +85,20 @@ const DUPLICATE_TEXT = "There is already a rule for this text.";
 export async function createCategoryRule(
   input: CategoryRuleInput,
 ): Promise<string> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
   try {
     const [row] = await db
       .insert(categoryRule)
       .values({ ...values, organizationId })
       .returning({ id: categoryRule.id });
+    await recordAudit(actor, {
+      area: "rule",
+      action: "created",
+      entityId: row.id,
+      summary: `Added a category rule for descriptions containing “${values.matchText}”`,
+    });
     return row.id;
   } catch (error) {
     if (isUniqueViolation(error)) throw new DataError(DUPLICATE_TEXT);
@@ -100,7 +108,8 @@ export async function createCategoryRule(
 
 /** Changes a rule's text or category (owners and admins only). */
 export async function updateCategoryRule(id: string, input: CategoryRuleInput) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
   try {
     const updated = await db
@@ -114,6 +123,12 @@ export async function updateCategoryRule(id: string, input: CategoryRuleInput) {
       )
       .returning({ id: categoryRule.id });
     if (updated.length === 0) throw new DataError("Rule not found.");
+    await recordAudit(actor, {
+      area: "rule",
+      action: "updated",
+      entityId: id,
+      summary: `Changed the category rule for descriptions containing “${values.matchText}”`,
+    });
   } catch (error) {
     if (isUniqueViolation(error)) throw new DataError(DUPLICATE_TEXT);
     throw error;
@@ -208,7 +223,8 @@ export async function applyCategoryRule(id: string): Promise<number> {
 export async function saveCategoryRule(
   input: CategoryRuleInput,
 ): Promise<{ categorized: number }> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
 
   const [existing] = await db
@@ -228,6 +244,12 @@ export async function saveCategoryRule(
   } else {
     await db.insert(categoryRule).values({ ...values, organizationId });
   }
+  await recordAudit(actor, {
+    area: "rule",
+    action: existing ? "updated" : "created",
+    entityId: existing?.id,
+    summary: `${existing ? "Changed the" : "Added a"} category rule for descriptions containing “${values.matchText}”`,
+  });
   return { categorized: await categorizeMatching(organizationId, values.matchText) };
 }
 
@@ -236,7 +258,8 @@ export async function saveCategoryRule(
  * their category.
  */
 export async function deleteCategoryRule(id: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const deleted = await db
     .delete(categoryRule)
     .where(
@@ -245,6 +268,12 @@ export async function deleteCategoryRule(id: string) {
         eq(categoryRule.organizationId, organizationId),
       ),
     )
-    .returning({ id: categoryRule.id });
+    .returning({ id: categoryRule.id, matchText: categoryRule.matchText });
   if (deleted.length === 0) throw new DataError("Rule not found.");
+  await recordAudit(actor, {
+    area: "rule",
+    action: "deleted",
+    entityId: id,
+    summary: `Deleted the category rule for descriptions containing “${deleted[0].matchText}”`,
+  });
 }

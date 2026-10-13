@@ -19,17 +19,22 @@
 import type { Metadata } from "next";
 import AccountSettings from "@/components/dashboard/settings/AccountSettings";
 import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
+import BankConnections from "@/components/dashboard/settings/BankConnections";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import EmailSettings from "@/components/dashboard/settings/EmailSettings";
 import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
+import Link from "next/link";
 import Message from "@/components/common/form/Message";
+import { isBankEnabled } from "@/lib/bank/provider";
 import { listAccounts } from "@/lib/data/accounts";
+import { listBankConnections } from "@/lib/data/bank";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getEmailPreferences } from "@/lib/data/email-notifications";
 import { getCompanySettings } from "@/lib/data/settings";
+import { formatDateTime } from "@/lib/format";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import styles from "./page.module.css";
@@ -47,13 +52,14 @@ export default async function SettingsPage({
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
   const { handedOver } = await searchParams;
-  const [accounts, categories, rules, settings, emailPreferences] =
+  const [accounts, categories, rules, settings, emailPreferences, banks] =
     await Promise.all([
       listAccounts(),
       listCategories(),
       listCategoryRules(),
       getCompanySettings(),
       getEmailPreferences(),
+      listBankConnections(),
     ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
@@ -92,6 +98,14 @@ export default async function SettingsPage({
         <p className={styles.subtitle}>
           Manage {organization.name}&apos;s name, timezone, team, bank accounts and
           categories.
+          {canManageFinances(role) && (
+            <>
+              {" "}
+              <Link href="/dashboard/settings/activity" className={styles.link}>
+                See who changed what
+              </Link>
+            </>
+          )}
         </p>
       </div>
       {handedOver && role !== "owner" && (
@@ -115,6 +129,21 @@ export default async function SettingsPage({
         invitations={invitations}
         emailEnabled={Boolean(process.env.RESEND_API_KEY)}
       />
+      {/* Shown once linking banks is set up, or while a linked bank remains */}
+      {(isBankEnabled || banks.length > 0) && (
+        <BankConnections
+          canManage={canManageFinances(role) && isBankEnabled}
+          connections={banks.map((bank) => ({
+            id: bank.id,
+            institutionName: bank.institutionName,
+            accountCount: bank.accountCount,
+            lastSynced: bank.lastSyncedAt
+              ? formatDateTime(bank.lastSyncedAt, settings.timeZone)
+              : null,
+            lastError: bank.lastError,
+          }))}
+        />
+      )}
       <AccountSettings canManage={canManageFinances(role)} accounts={accounts} />
       <CategorySettings
         canManage={canManageFinances(role)}

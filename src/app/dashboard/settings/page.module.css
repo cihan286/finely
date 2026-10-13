@@ -28,6 +28,16 @@
   font-size: 0.95rem;
 }
 
+/* The link to the activity log, after the subtitle */
+.link {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
 /* Screens narrower than 768px (phones and tablets) */
 @media (max-width: 768px) {
   .page {

@@ -9,8 +9,10 @@
 // `transaction` is one payment in or out of an account, `bill` is a payment
 // the company still has to make (or has made), `attachment` is a receipt or
 // other file added to a transaction, `notification_read` remembers when each
-// person last read the company's notifications, and
-// `notification_preference` which emails each person wants. Every row belongs to exactly one company, so companies never
+// person last read the company's notifications,
+// `notification_preference` which emails each person wants,
+// `bank_connection` is a bank the company linked so its transactions arrive
+// by themselves, and `audit_log` records who changed what. Every row belongs to exactly one company, so companies never
 // see each other's data.
 //
 // For developers: kept apart from schema.ts because that file is regenerated
@@ -67,6 +69,45 @@ export const companySettings = pgTable("company_settings", {
   ...timestamps,
 });
 
+// A bank the company linked (through Plaid), so that its accounts'
+// transactions are imported automatically (see lib/data/bank.ts).
+export const bankConnection = pgTable(
+  "bank_connection",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("bank")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Which service the link goes through; "plaid" for now
+    provider: text("provider").notNull(),
+    // The service's own ID of the link (Plaid calls it an "item")
+    externalId: text("external_id").notNull(),
+    // The bank's name, for the screen, e.g. "Chase"
+    institutionName: text("institution_name").notNull(),
+    // The key that lets us read the bank's data, ENCRYPTED (see
+    // lib/bank/crypto.ts). Never send it to the browser or log it.
+    accessToken: text("access_token").notNull(),
+    // Where the last sync stopped; the next one continues from there
+    cursor: text("cursor"),
+    lastSyncedAt: timestamp("last_synced_at"),
+    // Why the last sync failed, in words for the screen; empty when it worked
+    lastError: text("last_error"),
+    // Who linked it (empty if that person's account was deleted)
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    index("bank_connection_organizationId_idx").on(table.organizationId),
+    // A bank login can only be linked once
+    uniqueIndex("bank_connection_provider_externalId_unique").on(
+      table.provider,
+      table.externalId,
+    ),
+  ],
+);
+
 // A bank account (or cash) the company holds money in. The current balance is
 // the opening balance plus all of the account's transactions.
 export const financialAccount = pgTable(
@@ -82,6 +123,13 @@ export const financialAccount = pgTable(
     // Last four digits of the account number, if there is one
     last4: text("last4"),
     openingBalance: money("opening_balance").default(0).notNull(),
+    // For an account that is synced from a bank: the link it comes through
+    // (emptied when the bank is disconnected; the account stays) and the
+    // bank's own ID of the account
+    connectionId: text("connection_id").references(() => bankConnection.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id"),
     ...timestamps,
   },
   (table) => [index("financial_account_organizationId_idx").on(table.organizationId)],
@@ -171,10 +219,14 @@ export const transaction = pgTable(
     // "completed" | "pending"
     status: text("status").default("completed").notNull(),
     notes: text("notes"),
-    // Who entered it (empty if that person's account was deleted)
+    // Who entered it (empty if that person's account was deleted, or if it
+    // came from a bank)
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    // For a transaction that came from a linked bank: the bank's own ID of
+    // it, so later syncs update it instead of adding it again
+    externalId: text("external_id"),
     ...timestamps,
   },
   (table) => [
@@ -182,6 +234,11 @@ export const transaction = pgTable(
     index("transaction_organization_occurredAt_idx").on(
       table.organizationId,
       table.occurredAt,
+    ),
+    // A bank's transaction exists once per company
+    uniqueIndex("transaction_organization_externalId_unique").on(
+      table.organizationId,
+      table.externalId,
     ),
     index("transaction_accountId_idx").on(table.accountId),
     index("transaction_categoryId_idx").on(table.categoryId),
@@ -282,6 +339,39 @@ export const notificationPreference = pgTable(
     ...timestamps,
   },
   (table) => [primaryKey({ columns: [table.userId, table.organizationId] })],
+);
+
+// Who changed what, and when. Rows are only ever added, never changed; they
+// go when the company is deleted (see lib/data/audit.ts).
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("log")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Who did it; empty for what Finely did by itself (a bank sync) and for
+    // people whose account was deleted since
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    // Their name at that moment, kept so the log still reads well later
+    actorName: text("actor_name"),
+    // What kind of thing it was about: "transaction", "bill", "team", …
+    area: text("area").notNull(),
+    // What happened to it: "created", "updated", "deleted", …
+    action: text("action").notNull(),
+    // The thing's ID, if it has one (it may be gone by now)
+    entityId: text("entity_id"),
+    // What happened, in a sentence for the screen
+    summary: text("summary").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    // The log shows one company's entries, newest first
+    index("audit_log_organization_createdAt_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+  ],
 );
 
 // When a person last pressed "Mark all as read" in a company. Notifications

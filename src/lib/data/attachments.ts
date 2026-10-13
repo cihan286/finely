@@ -28,6 +28,7 @@ import {
 } from "@/lib/finance/attachments";
 import { canManageFinances } from "@/lib/roles";
 import type { Attachment } from "@/types/finance";
+import { recordAudit } from "./audit";
 import { DataError, getFinanceContext } from "./common";
 
 // A transaction's files, oldest first, without their content
@@ -111,14 +112,21 @@ export async function addAttachment(
     );
   }
 
+  const name = cleanFileName(typeof file.name === "string" ? file.name : "");
   await db.insert(attachment).values({
     organizationId,
     transactionId,
-    name: cleanFileName(typeof file.name === "string" ? file.name : ""),
+    name,
     contentType,
     size: file.bytes.length,
     data: Buffer.from(file.bytes).toString("base64"),
     createdById: userId,
+  });
+  await recordAudit(context, {
+    area: "attachment",
+    action: "created",
+    entityId: transactionId,
+    summary: `Attached “${name}” to a transaction`,
   });
   return selectAttachments(transactionId, context);
 }
@@ -133,6 +141,7 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
     .select({
       transactionId: attachment.transactionId,
       createdById: attachment.createdById,
+      name: attachment.name,
     })
     .from(attachment)
     .where(
@@ -147,6 +156,12 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
     .where(
       and(eq(attachment.id, id), eq(attachment.organizationId, context.organizationId)),
     );
+  await recordAudit(context, {
+    area: "attachment",
+    action: "deleted",
+    entityId: row.transactionId,
+    summary: `Deleted the attached file “${row.name}”`,
+  });
   return selectAttachments(row.transactionId, context);
 }
 

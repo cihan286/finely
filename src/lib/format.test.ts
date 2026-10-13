@@ -3,6 +3,7 @@ import {
   formatCompactCurrency,
   formatCurrency,
   formatDate,
+  formatDateTime,
   formatRelativeDate,
   getInitials,
   getMetricChange,
@@ -72,4 +73,11 @@ test("formatRelativeDate", () => {
   expect(formatRelativeDate("2026-09-28", today)).toBe("Sep 28");
   expect(formatRelativeDate("2025-12-31", today)).toBe("Dec 31, 2025");
   expect(formatRelativeDate("2026-12-31", "2027-01-01")).toBe("Yesterday");
+});
+
+test("formatDateTime: the moment in the given timezone", () => {
+  const moment = new Date("2026-10-13T18:05:00Z");
+  expect(formatDateTime(moment, "UTC")).toBe("Oct 13, 2026, 6:05 PM");
+  expect(formatDateTime(moment, "America/New_York")).toBe("Oct 13, 2026, 2:05 PM");
+  expect(formatDateTime(moment, "Asia/Tokyo")).toBe("Oct 14, 2026, 3:05 AM");
 });

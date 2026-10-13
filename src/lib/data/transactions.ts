@@ -43,6 +43,7 @@ import {
 } from "@/db/finance";
 import { afterResponse } from "@/lib/after-response";
 import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
+import { countOf, describeChanges } from "@/lib/finance/audit";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import type { TransactionExportRow } from "@/lib/finance/export";
 import {
@@ -58,6 +59,8 @@ import {
   type TransactionDetails,
   type TransactionStatus,
 } from "@/types/finance";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { recordAudit } from "./audit";
 import { selectRules } from "./category-rules";
 import { alertUnusualCharges } from "./email-notifications";
 import {
@@ -315,7 +318,8 @@ async function parseTransactionInput(
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<string> {
-  const { organizationId, userId, timeZone } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId, userId, timeZone } = actor;
   const values = await parseTransactionInput(input, organizationId, timeZone);
   if (values.categoryId === null) {
     values.categoryId = categoryFromRules(
@@ -327,6 +331,12 @@ export async function createTransaction(
     .insert(transaction)
     .values({ ...values, organizationId, createdById: userId })
     .returning({ id: transaction.id });
+  await recordAudit(actor, {
+    area: "transaction",
+    action: "created",
+    entityId: row.id,
+    summary: `Added the transaction “${values.name}” (${formatCurrency(values.amount, { signed: true })})`,
+  });
   // Far above what this vendor usually charges? Email the team, without
   // making the person wait
   if (values.amount < 0 && values.status === "completed") {
@@ -342,28 +352,74 @@ export async function createTransaction(
  * removes a category on purpose shouldn't get it back.
  */
 export async function updateTransaction(id: string, input: TransactionInput) {
-  const { organizationId, timeZone } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId, timeZone } = actor;
   const values = await parseTransactionInput(input, organizationId, timeZone);
+  const own = and(eq(transaction.id, id), eq(transaction.organizationId, organizationId));
+  // What it was, to say what changed
+  const [before] = await selectTransactions().where(own);
   const updated = await db
     .update(transaction)
     .set(values)
-    .where(
-      and(eq(transaction.id, id), eq(transaction.organizationId, organizationId)),
-    )
+    .where(own)
     .returning({ id: transaction.id });
   if (updated.length === 0) throw new DataError("Transaction not found.");
+
+  const [after] = await selectTransactions().where(own);
+  if (before && after) {
+    const status = (value: string) => (value === "pending" ? "pending" : "completed");
+    const changes = describeChanges([
+      { label: "description", before: before.name, after: after.name },
+      {
+        label: "amount",
+        before: formatCurrency(before.amount, { signed: true }),
+        after: formatCurrency(after.amount, { signed: true }),
+      },
+      {
+        label: "date",
+        before: formatDate(localDay(before.occurredAt, timeZone)),
+        after: formatDate(localDay(after.occurredAt, timeZone)),
+      },
+      { label: "category", before: before.categoryName, after: after.categoryName },
+      { label: "status", before: status(before.status), after: status(after.status) },
+      { label: "notes", before: before.notes, after: after.notes },
+    ]);
+    const moved = before.account !== after.account;
+    // Saved without changing anything: nothing to record
+    if (changes || moved) {
+      await recordAudit(actor, {
+        area: "transaction",
+        action: "updated",
+        entityId: id,
+        summary: `Changed the transaction “${after.name}”: ${[changes, moved && "moved to another account"].filter(Boolean).join(", ")}`,
+      });
+    }
+  }
 }
 
 /** Removes a transaction (owners and admins only). */
 export async function deleteTransaction(id: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId, timeZone } = actor;
   const deleted = await db
     .delete(transaction)
     .where(
       and(eq(transaction.id, id), eq(transaction.organizationId, organizationId)),
     )
-    .returning({ id: transaction.id });
+    .returning({
+      id: transaction.id,
+      name: transaction.name,
+      amount: transaction.amount,
+      occurredAt: transaction.occurredAt,
+    });
   if (deleted.length === 0) throw new DataError("Transaction not found.");
+  const [gone] = deleted;
+  await recordAudit(actor, {
+    area: "transaction",
+    action: "deleted",
+    entityId: id,
+    summary: `Deleted the transaction “${gone.name}” (${formatCurrency(gone.amount, { signed: true })}, ${formatDate(localDay(gone.occurredAt, timeZone))})`,
+  });
 }
 
 /** The most transactions whose category can be changed at once */
@@ -377,7 +433,8 @@ export async function setTransactionsCategory(
   ids: string[],
   categoryId: string | null,
 ): Promise<number> {
-  const { organizationId } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId } = actor;
 
   if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || !id)) {
     throw new DataError("Transactions are invalid.");
@@ -390,12 +447,14 @@ export async function setTransactionsCategory(
   }
 
   const chosen = optionalText(categoryId, "Category", 120);
+  let chosenName: string | null = null;
   if (chosen) {
-    const categoryMatches = await db.$count(
-      category,
-      and(eq(category.id, chosen), eq(category.organizationId, organizationId)),
-    );
-    if (categoryMatches === 0) throw new DataError("Category not found.");
+    const [match] = await db
+      .select({ name: category.name })
+      .from(category)
+      .where(and(eq(category.id, chosen), eq(category.organizationId, organizationId)));
+    if (!match) throw new DataError("Category not found.");
+    chosenName = match.name;
   }
 
   const updated = await db
@@ -408,6 +467,15 @@ export async function setTransactionsCategory(
       ),
     )
     .returning({ id: transaction.id });
+  if (updated.length > 0) {
+    await recordAudit(actor, {
+      area: "transaction",
+      action: "categorized",
+      summary: chosenName
+        ? `Gave ${countOf(updated.length, "transaction")} the category “${chosenName}”`
+        : `Removed the category of ${countOf(updated.length, "transaction")}`,
+    });
+  }
   return updated.length;
 }
 
@@ -428,7 +496,8 @@ export async function importTransactions(
   accountId: string,
   rows: StatementRow[],
 ): Promise<{ imported: number; skipped: number }> {
-  const { organizationId, userId, timeZone } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId, userId, timeZone } = actor;
 
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new DataError("There's nothing to import.");
@@ -524,6 +593,12 @@ export async function importTransactions(
       chunks.push(db.insert(transaction).values(values.slice(i, i + 500)));
     }
     await db.batch(chunks as [(typeof chunks)[number], ...typeof chunks]);
+    await recordAudit(actor, {
+      area: "transaction",
+      action: "imported",
+      entityId: accountId,
+      summary: `Imported ${countOf(toInsert.length, "transaction")} from a bank statement`,
+    });
     // Any of them far above what its vendor usually charges? One email
     // about all of them, without making the person wait
     const charges = values.filter((v) => v.amount < 0).map((v) => v.id);

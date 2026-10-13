@@ -15,6 +15,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { financialAccount, transaction } from "@/db/finance";
 import { ACCOUNT_TYPES, type Account } from "@/types/finance";
+import { recordAudit } from "./audit";
 import {
   DataError,
   getFinanceContext,
@@ -74,17 +75,25 @@ function parseAccountInput(input: AccountInput) {
 
 /** Adds an account (owners and admins only) and returns its ID. */
 export async function createAccount(input: AccountInput): Promise<string> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const [row] = await db
     .insert(financialAccount)
     .values({ ...parseAccountInput(input), organizationId })
-    .returning({ id: financialAccount.id });
+    .returning({ id: financialAccount.id, name: financialAccount.name });
+  await recordAudit(actor, {
+    area: "account",
+    action: "created",
+    entityId: row.id,
+    summary: `Added the bank account “${row.name}”`,
+  });
   return row.id;
 }
 
 /** Changes an account's details (owners and admins only). */
 export async function updateAccount(id: string, input: AccountInput) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const updated = await db
     .update(financialAccount)
     .set(parseAccountInput(input))
@@ -94,13 +103,20 @@ export async function updateAccount(id: string, input: AccountInput) {
         eq(financialAccount.organizationId, organizationId),
       ),
     )
-    .returning({ id: financialAccount.id });
+    .returning({ id: financialAccount.id, name: financialAccount.name });
   if (updated.length === 0) throw new DataError("Account not found.");
+  await recordAudit(actor, {
+    area: "account",
+    action: "updated",
+    entityId: id,
+    summary: `Changed the bank account “${updated[0].name}”`,
+  });
 }
 
 /** Removes an account that has no transactions (owners and admins only). */
 export async function deleteAccount(id: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const transactionCount = await db.$count(
     transaction,
     and(
@@ -121,6 +137,12 @@ export async function deleteAccount(id: string) {
         eq(financialAccount.organizationId, organizationId),
       ),
     )
-    .returning({ id: financialAccount.id });
+    .returning({ id: financialAccount.id, name: financialAccount.name });
   if (deleted.length === 0) throw new DataError("Account not found.");
+  await recordAudit(actor, {
+    area: "account",
+    action: "deleted",
+    entityId: id,
+    summary: `Removed the bank account “${deleted[0].name}”`,
+  });
 }

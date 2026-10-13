@@ -22,6 +22,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   attachment,
+  auditLog,
+  bankConnection,
   bill,
   category,
   categoryRule,
@@ -33,6 +35,7 @@ import {
 } from "@/db/finance";
 import { invitation, member, organization, session, user } from "@/db/schema";
 import { requireOrganization } from "@/lib/session";
+import { recordAudit } from "./audit";
 import { DataError } from "./common";
 
 // The signed-in person and their company; stops anyone but the owner
@@ -55,8 +58,9 @@ export async function transferOwnership(memberId: string) {
   }
 
   const [target] = await db
-    .select({ id: member.id, userId: member.userId })
+    .select({ id: member.id, userId: member.userId, name: user.name })
     .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
     .where(and(eq(member.id, memberId), eq(member.organizationId, company.id)));
   if (!target) throw new DataError("That person isn't in this company.");
   if (target.userId === me.id) throw new DataError("You already own this company.");
@@ -72,6 +76,15 @@ export async function transferOwnership(memberId: string) {
       .set({ role: "admin" })
       .where(and(eq(member.userId, me.id), eq(member.organizationId, company.id))),
   ]);
+  await recordAudit(
+    { organizationId: company.id, userId: me.id, userName: me.name },
+    {
+      area: "team",
+      action: "ownership-transferred",
+      entityId: target.id,
+      summary: `Handed the company over to ${target.name} and became an admin`,
+    },
+  );
 }
 
 /**
@@ -95,6 +108,8 @@ export async function deleteCompany(confirmation: string) {
     db.delete(categoryRule).where(eq(categoryRule.organizationId, id)),
     db.delete(category).where(eq(category.organizationId, id)),
     db.delete(financialAccount).where(eq(financialAccount.organizationId, id)),
+    db.delete(bankConnection).where(eq(bankConnection.organizationId, id)),
+    db.delete(auditLog).where(eq(auditLog.organizationId, id)),
     db.delete(companySettings).where(eq(companySettings.organizationId, id)),
     db.delete(notificationRead).where(eq(notificationRead.organizationId, id)),
     db

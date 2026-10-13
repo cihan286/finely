@@ -15,6 +15,7 @@ import "server-only";
 import { db } from "@/db";
 import { companySettings } from "@/db/finance";
 import { isValidTimeZone } from "@/lib/dates";
+import { recordAudit } from "./audit";
 import { DataError, getFinanceContext } from "./common";
 
 /** The current company's settings */
@@ -42,7 +43,8 @@ export async function createCompanySettings(
 
 /** Changes the company's timezone (owners and admins only). */
 export async function updateTimeZone(timeZone: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   if (typeof timeZone !== "string" || !isValidTimeZone(timeZone)) {
     throw new DataError("Choose a timezone from the list.");
   }
@@ -53,4 +55,9 @@ export async function updateTimeZone(timeZone: string) {
       target: companySettings.organizationId,
       set: { timezone: timeZone, updatedAt: new Date() },
     });
+  await recordAudit(actor, {
+    area: "settings",
+    action: "updated",
+    summary: `Changed the company's timezone to ${timeZone}`,
+  });
 }
