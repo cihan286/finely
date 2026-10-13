@@ -25,7 +25,7 @@ import "server-only";
 import { and, eq, or, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { subscription } from "@/db/finance";
-import { member, organization } from "@/db/schema";
+import { member, organization, user } from "@/db/schema";
 import { appUrl } from "@/lib/app-url";
 import {
   cancelSubscription,
@@ -37,6 +37,7 @@ import {
   planForPrice,
   priceIdFor,
   StripeError,
+  updateCustomerEmail,
   type StripeEvent,
   type StripeSubscription,
 } from "@/lib/billing/stripe";
@@ -48,6 +49,9 @@ import {
   type PaidPlan,
   type PlanKey,
 } from "@/lib/finance/plans";
+import { afterResponse } from "@/lib/after-response";
+import { sendEmail } from "@/lib/email/send";
+import { paymentFailedEmail } from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
 import { DataError } from "./common";
@@ -297,7 +301,8 @@ async function saveSubscription(
   const plan = planForPrice(item?.price?.id);
   const periodEnd = sub.current_period_end ?? item?.current_period_end ?? null;
   const eventAt = new Date(at * 1000);
-  const before = effectivePlan(await selectSubscription(organizationId));
+  const previous = await selectSubscription(organizationId);
+  const before = effectivePlan(previous);
 
   const values = {
     // A price that isn't one of ours can't unlock a plan
@@ -321,6 +326,12 @@ async function saveSubscription(
     .returning({ plan: subscription.plan, status: subscription.status });
   if (saved.length === 0) return false;
 
+  // A payment just failed (Stripe keeps trying for a while): tell the owner,
+  // once, so the plan isn't lost over an expired card
+  if (saved[0].status === "past_due" && previous?.status !== "past_due") {
+    await afterResponse(() => notifyPaymentFailed(organizationId));
+  }
+
   const after = effectivePlan(saved[0]);
   if (after !== before) {
     await recordAudit(
@@ -333,6 +344,38 @@ async function saveSubscription(
     );
   }
   return true;
+}
+
+// Emails a company's owner that the payment for its plan failed. Never
+// throws: it runs after Stripe's message was answered.
+async function notifyPaymentFailed(organizationId: string) {
+  try {
+    const [owner] = await db
+      .select({ name: user.name, email: user.email, company: organization.name })
+      .from(member)
+      .innerJoin(user, eq(member.userId, user.id))
+      .innerJoin(organization, eq(member.organizationId, organization.id))
+      .where(and(eq(member.organizationId, organizationId), eq(member.role, "owner")));
+    if (owner) await sendEmail(paymentFailedEmail(owner, owner.company));
+  } catch (error) {
+    console.error("[billing] Could not email the owner about a failed payment:", error);
+  }
+}
+
+/**
+ * Tells Stripe where a company's receipts and payment notices go from now
+ * on: its new owner's address, after a handover. Never throws: the handover
+ * stands even if Stripe can't be told (the owner can change it under
+ * "Manage billing").
+ */
+export async function updateBillingContact(organizationId: string, email: string) {
+  if (!isBillingEnabled) return;
+  try {
+    const row = await selectSubscription(organizationId);
+    if (row?.stripeCustomerId) await updateCustomerEmail(row.stripeCustomerId, email);
+  } catch (error) {
+    console.error("[billing] Could not update the billing email at Stripe:", error);
+  }
 }
 
 /**

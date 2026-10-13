@@ -98,8 +98,16 @@ interface TransactionsViewProps {
   categories: Category[];
   /** The company's category rules (for the import preview) */
   rules: CategoryRule[];
-  /** After an import: how many transactions were added and skipped */
-  importResult: { imported: number; skipped: number } | null;
+  /**
+   * After an import: how many transactions were added and skipped, and how
+   * many bills they paid
+   */
+  importResult: {
+    imported: number;
+    skipped: number;
+    billsPaid: number;
+    billsMerged: number;
+  } | null;
   /**
    * After saving a transaction with "always use this category": how many
    * other transactions the new rule categorized
@@ -113,14 +121,42 @@ interface TransactionsViewProps {
     | null;
 }
 
-// "Imported 42 transactions. 3 were already there and were skipped."
-function importMessage({ imported, skipped }: { imported: number; skipped: number }) {
+// "Imported 42 transactions. 3 were already there and were skipped. 2 bills
+// were marked as paid."
+function importMessage({
+  imported,
+  skipped,
+  billsPaid,
+  billsMerged,
+}: {
+  imported: number;
+  skipped: number;
+  billsPaid: number;
+  billsMerged: number;
+}) {
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  const added = imported === 0
-    ? "No new transactions were imported."
-    : `Imported ${plural(imported, "transaction")}.`;
-  if (skipped === 0) return added;
-  return `${added} ${plural(skipped, "transaction")} ${skipped === 1 ? "was" : "were"} already there and ${skipped === 1 ? "was" : "were"} skipped.`;
+  const was = (n: number) => (n === 1 ? "was" : "were");
+  const parts = [
+    imported === 0
+      ? "No new transactions were imported."
+      : `Imported ${plural(imported, "transaction")}.`,
+  ];
+  if (skipped > 0) {
+    parts.push(
+      `${plural(skipped, "transaction")} ${was(skipped)} already there and ${was(skipped)} skipped.`,
+    );
+  }
+  if (billsPaid > 0) {
+    parts.push(
+      `${plural(billsPaid, "bill")} ${was(billsPaid)} marked as paid: ${billsPaid === 1 ? "its payment was" : "their payments were"} among them.`,
+    );
+  }
+  if (billsMerged > 0) {
+    parts.push(
+      `${plural(billsMerged, "payment")} that ${was(billsMerged)} recorded when a bill was marked as paid arrived with this file, so the recorded ${billsMerged === 1 ? "one was" : "ones were"} removed.`,
+    );
+  }
+  return parts.join(" ");
 }
 
 export default function TransactionsView({

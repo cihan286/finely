@@ -21,6 +21,7 @@ import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
 import { INSIGHT_PERIODS, type Insights } from "@/lib/finance/insights";
 import { formatCurrency, formatDate, formatRelativeDate } from "@/lib/format";
 import MonthlyChart from "./MonthlyChart";
+import { submitRecurringVisibility } from "@/app/dashboard/insights/actions";
 import PrintButton from "./PrintButton";
 import styles from "./InsightsView.module.css";
 
@@ -50,6 +51,8 @@ interface InsightsViewProps {
   insights: Insights;
   /** Payments that come back regularly, the largest per month first */
   recurring: RecurringPaymentDetails[];
+  /** Payments someone marked "Not regular", to bring back */
+  hiddenRecurring: { key: string; name: string }[];
 }
 
 export default function InsightsView({
@@ -59,6 +62,7 @@ export default function InsightsView({
   canManage,
   insights,
   recurring,
+  hiddenRecurring,
 }: InsightsViewProps) {
   // What the regular payments (money out) add up to per month
   const recurringPerMonth = recurring
@@ -347,23 +351,60 @@ export default function InsightsView({
                         </td>
                         <td>{formatDate(r.nextDay)}</td>
                         <td className={styles.number}>
-                          {r.direction === "out" &&
-                            (r.billed ? (
-                              <span className={styles.muted}>Tracked as a bill</span>
-                            ) : (
-                              <Link
-                                href={billHref(r)}
-                                className={styles.addBill}
-                                aria-label={`Add ${r.name} as a bill`}
+                          <span className={styles.rowActions}>
+                            {r.direction === "out" &&
+                              (r.billed ? (
+                                <span className={styles.muted}>Tracked as a bill</span>
+                              ) : (
+                                <Link
+                                  href={billHref(r)}
+                                  className={styles.addBill}
+                                  aria-label={`Add ${r.name} as a bill`}
+                                >
+                                  Add as bill
+                                </Link>
+                              ))}
+                            {/* Leaves it out of this list and the forecast */}
+                            <form action={submitRecurringVisibility}>
+                              <input type="hidden" name="key" value={r.key} />
+                              <input type="hidden" name="name" value={r.name} />
+                              <button
+                                type="submit"
+                                className={styles.hideButton}
+                                aria-label={`${r.name} is not a regular payment`}
                               >
-                                Add as bill
-                              </Link>
-                            ))}
+                                Not regular
+                              </button>
+                            </form>
+                          </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {/* The ones marked "Not regular", to bring back */}
+            {hiddenRecurring.length > 0 && (
+              <div className={styles.hiddenList}>
+                <span className={styles.muted}>Not counted as regular:</span>
+                {hiddenRecurring.map((h) => (
+                  <form key={h.key} action={submitRecurringVisibility} className={styles.hiddenItem}>
+                    <input type="hidden" name="key" value={h.key} />
+                    <input type="hidden" name="intent" value="show" />
+                    <span>
+                      {h.name}
+                      {h.key.startsWith("in:") && " (money in)"}
+                    </span>
+                    <button
+                      type="submit"
+                      className={styles.hideButton}
+                      aria-label={`Count ${h.name} as a regular payment again`}
+                    >
+                      Show again
+                    </button>
+                  </form>
+                ))}
               </div>
             )}
           </section>

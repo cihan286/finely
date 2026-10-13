@@ -60,7 +60,7 @@ export async function listCategories(): Promise<Category[]> {
 }
 
 // Checks and tidies what was typed into the category form
-function parseCategoryInput(input: CategoryInput) {
+function parseCategoryInput(input: CategoryInput, currency: string) {
   if (typeof input.color !== "string" || !/^#[0-9a-f]{6}$/i.test(input.color)) {
     throw new DataError("Color is invalid.");
   }
@@ -68,7 +68,7 @@ function parseCategoryInput(input: CategoryInput) {
   const budget =
     input.budget === null || input.budget === undefined
       ? null
-      : money(input.budget, "Monthly budget");
+      : money(input.budget, "Monthly budget", currency);
   if (budget !== null && budget <= 0) {
     throw new DataError("Monthly budget must be more than zero. Leave it empty for no budget.");
   }
@@ -93,7 +93,7 @@ export async function createCategory(input: CategoryInput): Promise<string> {
   try {
     const [row] = await db
       .insert(category)
-      .values({ ...parseCategoryInput(input), organizationId })
+      .values({ ...parseCategoryInput(input, actor.currency), organizationId })
       .returning({
         id: category.id,
         name: category.name,
@@ -122,7 +122,7 @@ export async function updateCategory(id: string, input: CategoryInput) {
     const [before] = await db.select(categoryColumns).from(category).where(own);
     const updated = await db
       .update(category)
-      .set(parseCategoryInput(input))
+      .set(parseCategoryInput(input, actor.currency))
       .where(own)
       .returning(categoryColumns);
     if (updated.length === 0) throw new DataError("Category not found.");

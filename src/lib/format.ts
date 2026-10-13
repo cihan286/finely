@@ -58,6 +58,11 @@ export function currencySymbol(currency: string): string {
   );
 }
 
+/** How many decimals a currency's amounts have: 2 for dollars, 0 for yen */
+export function currencyDecimals(currency: string): number {
+  return currencyFormatter(currency).resolvedOptions().maximumFractionDigits ?? 2;
+}
+
 /**
  * What an amount field needs to know about a currency: yen and won have no
  * cents, so their fields take whole numbers ("1500", not "1500.00").
@@ -69,8 +74,7 @@ export function amountInputProps(currency: string): {
   placeholder: string;
   inputMode: "decimal" | "numeric";
 } {
-  const decimals = currencyFormatter(currency).resolvedOptions().maximumFractionDigits ?? 2;
-  return decimals === 0
+  return currencyDecimals(currency) === 0
     ? { step: "1", min: "1", placeholder: "0", inputMode: "numeric" }
     : { step: "0.01", min: "0.01", placeholder: "0.00", inputMode: "decimal" };
 }

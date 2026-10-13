@@ -220,6 +220,14 @@
   color: var(--text-subtle);
 }
 
+/* "A payment of this amount is already in your transactions" */
+.maybePaid {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--primary);
+}
+
 .category {
   display: inline-flex;
   align-items: center;
@@ -268,6 +276,15 @@
 .payLink:hover {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+/* A card's title with a link on the right */
+.cardTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
 }
 
 /* "View payment" and "Undo", side by side */

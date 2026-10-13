@@ -63,6 +63,7 @@ import {
 } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { recordAudit } from "./audit";
+import { settleBillsWith } from "./bills";
 import { selectRules } from "./category-rules";
 import { alertUnusualCharges } from "./email-notifications";
 import {
@@ -291,6 +292,7 @@ async function parseTransactionInput(
   input: TransactionInput,
   organizationId: string,
   timeZone: string,
+  currency: string,
 ) {
   const accountId = requiredText(input.accountId, "Account");
   const categoryId = optionalText(input.categoryId, "Category", 120);
@@ -313,7 +315,7 @@ async function parseTransactionInput(
   if (accountMatches === 0) throw new DataError("Account not found.");
   if (categoryMatches === 0) throw new DataError("Category not found.");
 
-  const amount = money(input.amount, "Amount");
+  const amount = money(input.amount, "Amount", currency);
   if (amount === 0) throw new DataError("Amount can't be zero.");
 
   // Keep the exact moment when the day didn't change; otherwise noon that day
@@ -344,7 +346,12 @@ export async function createTransaction(
 ): Promise<string> {
   const actor = await getFinanceContext();
   const { organizationId, userId, timeZone } = actor;
-  const values = await parseTransactionInput(input, organizationId, timeZone);
+  const values = await parseTransactionInput(
+    input,
+    organizationId,
+    timeZone,
+    actor.currency,
+  );
   if (values.categoryId === null) {
     values.categoryId = categoryFromRules(
       values.name,
@@ -361,6 +368,8 @@ export async function createTransaction(
     entityId: row.id,
     summary: `Added the transaction “${values.name}” (${formatCurrency(values.amount, { signed: true, currency: actor.currency })})`,
   });
+  // The payment of a bill that's still owed? Then that bill is paid
+  if (values.amount < 0) await settleBillsWith(actor, [row.id], { merge: false });
   // Far above what this vendor usually charges? Email the team, without
   // making the person wait
   if (values.amount < 0 && values.status === "completed") {
@@ -378,7 +387,12 @@ export async function createTransaction(
 export async function updateTransaction(id: string, input: TransactionInput) {
   const actor = await getFinanceContext();
   const { organizationId, timeZone } = actor;
-  const values = await parseTransactionInput(input, organizationId, timeZone);
+  const values = await parseTransactionInput(
+    input,
+    organizationId,
+    timeZone,
+    actor.currency,
+  );
   const own = and(eq(transaction.id, id), eq(transaction.organizationId, organizationId));
   // What it was, to say what changed
   const [before] = await selectTransactions().where(own);
@@ -514,12 +528,20 @@ export async function setTransactionsCategory(
  * time. Category names are matched to the company's categories, ignoring
  * upper/lower case; lines without a known category get one from the
  * company's category rules, or stay uncategorized. Either every line is
- * saved or none is.
+ * saved or none is. Unpaid bills whose payment is among the new lines are
+ * marked as paid (`billsPaid` says how many), and payments that were
+ * recorded by hand for a bill and now arrived as well are removed
+ * (`billsMerged`).
  */
 export async function importTransactions(
   accountId: string,
   rows: StatementRow[],
-): Promise<{ imported: number; skipped: number }> {
+): Promise<{
+  imported: number;
+  skipped: number;
+  billsPaid: number;
+  billsMerged: number;
+}> {
   const actor = await getFinanceContext();
   const { organizationId, userId, timeZone } = actor;
 
@@ -554,7 +576,7 @@ export async function importTransactions(
     const line = (message: string) => new DataError(`Row ${index + 1}: ${message}`);
     try {
       const day = isoDay(row?.date, "Date");
-      const amount = money(row.amount, "Amount");
+      const amount = money(row.amount, "Amount", actor.currency);
       if (amount === 0) throw new DataError("Amount can't be zero.");
       const categoryName = optionalText(row.category, "Category", 120);
       const name = requiredText(row.name, "Description");
@@ -598,6 +620,7 @@ export async function importTransactions(
     (p) => duplicateKey(p.day, p.amount, p.name),
   );
 
+  let bills = { paid: 0, merged: 0 };
   if (toInsert.length > 0) {
     // In chunks, sent together so the database saves all of them or none
     const values = toInsert.map((p) => ({
@@ -626,10 +649,17 @@ export async function importTransactions(
     // Any of them far above what its vendor usually charges? One email
     // about all of them, without making the person wait
     const charges = values.filter((v) => v.amount < 0).map((v) => v.id);
+    // Payments of bills that are still owed mark those bills as paid
+    bills = await settleBillsWith(actor, charges);
     await afterResponse(async () => {
       await alertUnusualCharges(organizationId, timeZone, charges);
     });
   }
 
-  return { imported: toInsert.length, skipped: parsed.length - toInsert.length };
+  return {
+    imported: toInsert.length,
+    skipped: parsed.length - toInsert.length,
+    billsPaid: bills.paid,
+    billsMerged: bills.merged,
+  };
 }

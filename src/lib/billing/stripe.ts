@@ -180,6 +180,11 @@ export async function createPortalSession(
   return session.url;
 }
 
+/** Changes where Stripe sends a customer's receipts and payment notices. */
+export async function updateCustomerEmail(customerId: string, email: string): Promise<void> {
+  await stripe("POST", `/customers/${encodeURIComponent(customerId)}`, { email });
+}
+
 /** Ends a subscription right away (when its company is deleted). */
 export async function cancelSubscription(subscriptionId: string): Promise<void> {
   await stripe("DELETE", `/subscriptions/${encodeURIComponent(subscriptionId)}`);

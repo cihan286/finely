@@ -410,6 +410,24 @@ export const auditLog = pgTable(
   ],
 );
 
+// Payments a company said aren't regular, although they look it (see
+// lib/finance/recurring.ts). They're left out of the regular payments and
+// the forecast until someone shows them again.
+export const recurringDismissal = pgTable(
+  "recurring_dismissal",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // What identifies the payment: its direction and vendor, e.g. "out:figma"
+    key: text("key").notNull(),
+    // The vendor's name when it was hidden, to list it by
+    name: text("name").notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.organizationId, table.key] })],
+);
+
 // When a person last pressed "Mark all as read" in a company. Notifications
 // aren't stored: they're worked out from the company's data (see
 // lib/finance/notifications.ts), and the newer ones than this count as unread.

@@ -1,5 +1,26 @@
 import { describe, expect, test } from "vitest";
-import { vendorKey, vendorName } from "./vendors";
+import { sameVendor, vendorKey, vendorName } from "./vendors";
+
+describe("sameVendor", () => {
+  test("one name's words appear in a row in the other", () => {
+    expect(sameVendor("Figma", "FIGMA INC. INV-1004")).toBe(true);
+    expect(sameVendor("Office rent", "OFFICE RENT OCTOBER")).toBe(true);
+    expect(sameVendor("ACME PROPERTIES LLC 2026-10-01", "Acme Properties")).toBe(true);
+    expect(sameVendor("Stripe", "stripe")).toBe(true);
+  });
+
+  test("not other vendors, words out of order, or parts of words", () => {
+    expect(sameVendor("Figma", "NOTION LABS")).toBe(false);
+    expect(sameVendor("Rent office", "OFFICE RENT OCTOBER")).toBe(false);
+    expect(sameVendor("Fig", "FIGMA INC")).toBe(false);
+  });
+
+  test("too little to go by is never a match", () => {
+    expect(sameVendor("AB", "AB")).toBe(false);
+    expect(sameVendor("", "")).toBe(false);
+    expect(sameVendor("#12", "#12")).toBe(false);
+  });
+});
 
 describe("vendorName", () => {
   test("drops reference numbers that change from payment to payment", () => {

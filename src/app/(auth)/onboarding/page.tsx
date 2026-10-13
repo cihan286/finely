@@ -83,6 +83,12 @@ export default async function OnboardingPage({
         Joining a company that already uses Finely? Ask someone there to invite{" "}
         {user.email}.
       </p>
+      {/* Without a company there is no Settings page to do this from */}
+      <p className={styles.footer}>
+        <Link href="/your-account" className={styles.link}>
+          Your name, your data and deleting your account
+        </Link>
+      </p>
     </>
   );
 }

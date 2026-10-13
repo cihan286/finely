@@ -66,7 +66,14 @@ export default async function TransactionsPage({
   // After an import: how many were added and how many skipped
   const imported = single(params.imported);
   const importResult = /^\d+$/.test(imported)
-    ? { imported: Number(imported), skipped: Number(single(params.skipped)) || 0 }
+    ? {
+        imported: Number(imported),
+        skipped: Number(single(params.skipped)) || 0,
+        // Bills that were marked as paid by the import's lines
+        billsPaid: Number(single(params.bills)) || 0,
+        // Payments recorded by hand for a bill that the import replaced
+        billsMerged: Number(single(params.merged)) || 0,
+      }
     : null;
   // After saving with "always use this category": how many the rule caught
   const categorized = single(params.categorized);

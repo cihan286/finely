@@ -4,7 +4,8 @@
 // In plain words: the wording and look of every email Finely sends — password
 // reset, "verify your email address", team invitations, the weekly summary,
 // the alert for an unusually high charge, and the notes about a company
-// being handed over or deleted and about an account being deleted — plus the plain email we get ourselves when
+// being handed over or deleted, a failed payment and an account being
+// deleted — plus the plain email we get ourselves when
 // someone fills in the contact form. Each email has a designed version and
 // a plain-text version.
 //
@@ -241,6 +242,39 @@ ${ownerName}, the owner of ${organizationName}, deleted the company on Finely. I
 Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.
 
 ${url}`,
+  };
+}
+
+/** Sent to a company's owner when the payment for its plan failed */
+export function paymentFailedEmail(
+  to: { name: string; email: string },
+  organizationName: string,
+): Email {
+  const url = `${appUrl}/dashboard/settings#billing`;
+  return {
+    to: to.email,
+    subject: oneLine(`The payment for ${organizationName}'s Finely plan failed`),
+    html: layout({
+      preview: "Update the payment method to keep the plan.",
+      heading: "A payment failed",
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        `The latest payment for <strong>${escapeHtml(organizationName)}</strong>'s plan on Finely didn't go through. The card may have expired or been declined.`,
+        "Nothing changes right away: the plan stays while the payment is tried again over the coming days. If it keeps failing, the company goes back to the Free plan. Nobody is removed from the team, but nobody can be added beyond the Free plan's size.",
+      ],
+      button: { label: "Update the payment method", url },
+      footnote:
+        "Open “Manage billing” there. You get this email because you're the company's owner.",
+    }),
+    text: `Hi ${firstName(to.name)},
+
+The latest payment for ${organizationName}'s plan on Finely didn't go through. The card may have expired or been declined.
+
+Nothing changes right away: the plan stays while the payment is tried again over the coming days. If it keeps failing, the company goes back to the Free plan. Nobody is removed from the team, but nobody can be added beyond the Free plan's size.
+
+Update the payment method under "Manage billing": ${url}
+
+You get this email because you're the company's owner.`,
   };
 }
 
