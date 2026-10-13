@@ -3,13 +3,16 @@
 //
 // In plain words: everything below the top bar on the dashboard's first page —
 // the welcome line, four summary tiles (balance, and money in, out and net
-// over the last 30 days), the cash flow chart, the spending breakdown, recent
-// transactions and the bank accounts with their balances. A company that
+// over the last 30 days), the cash flow chart, the spending breakdown, this
+// month's budgets (how much of each is used), the forecast for the next 30
+// days (where the balance is heading, given unpaid bills and regular
+// payments), recent transactions and the bank accounts with their balances. A company that
 // hasn't added a bank account yet sees how to get started instead.
 //
 // For developers: a server component; only the chart (CashFlowChart) runs in
-// the browser. All figures come from getDashboardSummary() in
-// lib/data/dashboard.ts, via the page.
+// the browser. The figures come from getDashboardSummary() in
+// lib/data/dashboard.ts, getBudgets() in lib/data/budgets.ts and
+// getForecast() in lib/data/recurring.ts, via the page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -29,8 +32,11 @@ import {
 } from "lucide-react";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { DashboardSummary } from "@/lib/data/dashboard";
+import { monthName, monthStart, type BudgetProgress } from "@/lib/finance/budgets";
+import { FORECAST_DAYS, type Forecast } from "@/lib/finance/forecast";
 import {
   formatCurrency,
+  formatDate,
   formatNumber,
   formatRelativeDate,
   getMetricChange,
@@ -57,6 +63,20 @@ interface DashboardHomeProps {
   /** Whether you may add bank accounts (owners and admins) */
   canManage: boolean;
   summary: DashboardSummary;
+  /** This month's budgets, the most used up first */
+  budgets: BudgetProgress[];
+  /** Where the balance is heading over the next 30 days */
+  forecast: Forecast;
+}
+
+// How many expected payments the forecast card lists
+const FORECAST_EVENTS_SHOWN = 6;
+
+// "$120.50 over", "$20.00 left"
+function budgetNote(budget: BudgetProgress): string {
+  return budget.remaining < 0
+    ? `${formatCurrency(-budget.remaining)} over`
+    : `${formatCurrency(budget.remaining)} left`;
 }
 
 export default function DashboardHome({
@@ -64,6 +84,8 @@ export default function DashboardHome({
   organizationName,
   canManage,
   summary,
+  budgets,
+  forecast,
 }: DashboardHomeProps) {
   const {
     metrics,
@@ -230,7 +252,172 @@ export default function DashboardHome({
                   })}
                 </div>
               )}
+              {/* Until a budget exists, say where to set one */}
+              {budgets.length === 0 && canManage && (
+                <Link
+                  href="/dashboard/settings#categories"
+                  className={`${styles.viewAllBtn} ${styles.budgetHint}`}
+                >
+                  Set monthly budgets
+                </Link>
+              )}
             </div>
+          </div>
+
+          {/* How much of each category's monthly budget is used */}
+          {budgets.length > 0 && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>
+                  Budgets ({monthName(summary.today)})
+                </h2>
+                {canManage && (
+                  <Link
+                    href="/dashboard/settings#categories"
+                    className={styles.viewAllBtn}
+                  >
+                    Manage
+                  </Link>
+                )}
+              </div>
+              <div className={styles.budgetGrid}>
+                {budgets.map((budget) => {
+                  const Icon = CATEGORY_ICONS[budget.iconKey].icon;
+                  return (
+                    <Link
+                      key={budget.categoryId}
+                      href={`/dashboard/transactions?category=${budget.categoryId}&from=${monthStart(summary.today)}`}
+                      className={styles.budgetItem}
+                    >
+                      <div className={styles.expenseHeader}>
+                        <div className={styles.expenseCategory}>
+                          <div
+                            className={styles.expenseIcon}
+                            style={{
+                              backgroundColor: `${budget.color}15`,
+                              color: budget.color,
+                            }}
+                          >
+                            <Icon size={14} />
+                          </div>
+                          <span className={styles.expenseName}>{budget.name}</span>
+                        </div>
+                        <span
+                          className={`${styles.budgetNote} ${styles[`budget_${budget.status}`]}`}
+                        >
+                          {budgetNote(budget)}
+                        </span>
+                      </div>
+                      <div
+                        className={styles.progressBarBg}
+                        role="progressbar"
+                        aria-label={`${budget.name} budget used`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.min(Math.round(budget.ratio * 100), 100)}
+                      >
+                        <div
+                          className={`${styles.progressBarFill} ${styles[`budgetFill_${budget.status}`]}`}
+                          style={{ width: `${Math.min(budget.ratio * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className={styles.budgetAmounts}>
+                        {formatCurrency(budget.spent)} of{" "}
+                        {formatCurrency(budget.budget)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Where the balance is heading, given bills and regular payments */}
+          <div className={styles.card} id="forecast">
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>
+                Forecast (next {FORECAST_DAYS} days)
+              </h2>
+              <Link href="/dashboard/insights#recurring" className={styles.viewAllBtn}>
+                Regular payments
+              </Link>
+            </div>
+            {forecast.events.length === 0 ? (
+              <p className={styles.emptyText}>
+                Nothing is expected in the next {FORECAST_DAYS} days. Add your
+                bills, or keep importing statements: once a payment comes back
+                regularly, Finely expects it here.
+              </p>
+            ) : (
+              <div className={styles.forecast}>
+                <div className={styles.forecastFigures}>
+                  <div className={styles.forecastFigure}>
+                    <span className={styles.forecastLabel}>
+                      Expected on {formatDate(forecast.until)}
+                    </span>
+                    <span
+                      className={`${styles.forecastValue} ${forecast.endBalance < 0 ? styles.negative : ""}`}
+                    >
+                      {formatCurrency(forecast.endBalance)}
+                    </span>
+                    <span className={styles.forecastNote}>
+                      {formatCurrency(forecast.endBalance - forecast.startBalance, {
+                        signed: true,
+                      })}{" "}
+                      from today&apos;s {formatCurrency(forecast.startBalance)}
+                    </span>
+                  </div>
+                  <div className={styles.forecastFigure}>
+                    <span className={styles.forecastLabel}>Lowest point</span>
+                    <span
+                      className={`${styles.forecastValue} ${forecast.lowest.balance < 0 ? styles.negative : ""}`}
+                    >
+                      {formatCurrency(forecast.lowest.balance)}
+                    </span>
+                    <span className={styles.forecastNote}>
+                      {forecast.lowest.day === forecast.today
+                        ? "Today"
+                        : `On ${formatDate(forecast.lowest.day)}`}
+                    </span>
+                  </div>
+                  <div className={styles.forecastFigure}>
+                    <span className={styles.forecastLabel}>Expected in / out</span>
+                    <span className={styles.forecastValue}>
+                      {formatCurrency(forecast.moneyIn)} /{" "}
+                      {formatCurrency(forecast.moneyOut)}
+                    </span>
+                    <span className={styles.forecastNote}>
+                      Unpaid bills and regular payments only
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.transactionList}>
+                  {forecast.events.slice(0, FORECAST_EVENTS_SHOWN).map((event, i) => (
+                    <div key={i} className={styles.forecastEvent}>
+                      <div className={styles.txDetails}>
+                        <span className={styles.txName}>{event.name}</span>
+                        <span className={styles.txDate}>
+                          {formatRelativeDate(event.day, forecast.today)} ·{" "}
+                          {event.source === "bill" ? "Bill" : "Regular payment"}
+                        </span>
+                      </div>
+                      <span
+                        className={`${styles.txAmount} ${event.amount > 0 ? styles.positiveAmount : ""}`}
+                      >
+                        {/* "~" when the amount changes from time to time */}
+                        {event.estimated && "~"}
+                        {formatCurrency(event.amount, { signed: true })}
+                      </span>
+                    </div>
+                  ))}
+                  {forecast.events.length > FORECAST_EVENTS_SHOWN && (
+                    <span className={styles.forecastNote}>
+                      and {forecast.events.length - FORECAST_EVENTS_SHOWN} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.dashboardGrid}>

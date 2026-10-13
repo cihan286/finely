@@ -22,12 +22,18 @@ import {
   DataError,
   getFinanceContext,
   isUniqueViolation,
+  money,
   oneOf,
   requiredText,
 } from "./common";
 
-/** What a person fills in when adding or editing a category */
-export type CategoryInput = Omit<Category, "id">;
+/**
+ * What a person fills in when adding or editing a category. Leaving out the
+ * budget (or null) means no budget.
+ */
+export type CategoryInput = Omit<Category, "id" | "budget"> & {
+  budget?: number | null;
+};
 
 // The columns that make up a Category
 const categoryColumns = {
@@ -36,6 +42,7 @@ const categoryColumns = {
   kind: category.kind,
   color: category.color,
   iconKey: category.iconKey,
+  budget: category.monthlyBudget,
 };
 
 /** The company's categories: income first, then expenses, A to Z */
@@ -54,11 +61,23 @@ function parseCategoryInput(input: CategoryInput) {
   if (typeof input.color !== "string" || !/^#[0-9a-f]{6}$/i.test(input.color)) {
     throw new DataError("Color is invalid.");
   }
+  const kind = oneOf(input.kind, CATEGORY_KINDS, "Category type");
+  const budget =
+    input.budget === null || input.budget === undefined
+      ? null
+      : money(input.budget, "Monthly budget");
+  if (budget !== null && budget <= 0) {
+    throw new DataError("Monthly budget must be more than zero. Leave it empty for no budget.");
+  }
+  if (budget !== null && kind !== "expense") {
+    throw new DataError("Only “Money out” categories can have a budget.");
+  }
   return {
     name: requiredText(input.name, "Name", 60),
-    kind: oneOf(input.kind, CATEGORY_KINDS, "Category type"),
+    kind,
     color: input.color.toLowerCase(),
     iconKey: oneOf(input.iconKey, CATEGORY_ICON_KEYS, "Icon"),
+    monthlyBudget: budget,
   };
 }
 

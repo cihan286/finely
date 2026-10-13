@@ -2,8 +2,9 @@
 // Email templates
 //
 // In plain words: the wording and look of every email Finely sends — password
-// reset, "verify your email address" and team invitations. Each email has a
-// designed version and a plain-text version.
+// reset, "verify your email address" and team invitations — plus the plain
+// email we get ourselves when someone fills in the contact form. Each email
+// has a designed version and a plain-text version.
 //
 // For developers: emails can't use our CSS files, so styles are written inline,
 // and buttons are built from tables so they also work in Outlook. Anything a
@@ -12,6 +13,7 @@
 // into convincing phishing.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { ContactMessage } from "@/lib/contact";
 import type { Email } from "./send";
 
 // Brand colors, matching the design tokens in globals.css
@@ -167,5 +169,31 @@ Accept the invitation here:
 ${d.url}
 
 This invitation expires in 48 hours. If you weren't expecting it, you can ignore this email.`,
+  };
+}
+
+// ---------------------------------------------------------------- contact form
+
+/** A visitor's message from the Contact page, sent to us. Replies go to them. */
+export function contactMessageEmail(to: string, m: ContactMessage): Email {
+  const from = m.company ? `${m.name} (${m.company})` : m.name;
+  return {
+    to,
+    replyTo: m.email,
+    subject: oneLine(`Finely contact form: ${from}`),
+    // Plain on purpose: it's for us, and everything in it was typed by a stranger
+    html: `<!doctype html>
+<html lang="en">
+<body style="font-family:Arial,Helvetica,sans-serif;color:${TEXT};font-size:15px;line-height:1.6;">
+<p><strong>${escapeHtml(from)}</strong> &lt;${escapeHtml(m.email)}&gt; wrote through the contact form:</p>
+<p style="white-space:pre-wrap;border-left:3px solid ${BLUE};padding-left:12px;">${escapeHtml(m.message)}</p>
+<p style="font-size:13px;color:${MUTED};">Reply to this email to answer them.</p>
+</body>
+</html>`,
+    text: `${from} <${m.email}> wrote through the contact form:
+
+${m.message}
+
+Reply to this email to answer them.`,
   };
 }

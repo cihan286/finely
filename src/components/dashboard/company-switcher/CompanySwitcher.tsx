@@ -1,23 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Company switcher
 //
-// In plain words: shows the company you're working in, in the top bar. If
-// you belong to more than one company (your own, plus one you were invited
-// to), clicking it opens a list to switch to another. Finely remembers the
-// choice, so your next login opens the same company.
+// In plain words: shows the company you're working in, in the top bar.
+// Clicking it opens a list of your companies (your own, plus ones you were
+// invited to) to switch to another, and "New company" to set up one more.
+// Finely remembers the choice, so your next login opens the same company.
 //
 // For developers: a client component ("use client") for the menu. Switching
 // changes the login's active company on the server (Better Auth checks the
 // person really belongs to it), then goes to the dashboard overview and
 // reloads the data: addresses such as ?edit=<id> belong to the old company.
-// With a single company it's just a label.
+// "New company" opens /onboarding?new=1.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Check, ChevronsUpDown } from "lucide-react";
+import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react";
 import Spinner from "@/components/common/spinner/Spinner";
 import { authClient } from "@/lib/auth-client";
 import { useDismiss } from "@/lib/use-dismiss";
@@ -44,15 +45,6 @@ export default function CompanySwitcher({ current, companies }: CompanySwitcherP
   useDismiss(wrapRef, open, useCallback(() => setOpen(false), []));
 
   const switching = switchingTo !== null && switchingTo !== current.id;
-
-  if (companies.length < 2) {
-    return (
-      <div className={styles.company} title={current.name}>
-        <Building2 size={16} aria-hidden="true" />
-        <span className={styles.name}>{current.name}</span>
-      </div>
-    );
-  }
 
   const switchTo = async (company: Company) => {
     setOpen(false);
@@ -109,6 +101,15 @@ export default function CompanySwitcher({ current, companies }: CompanySwitcherP
               </button>
             );
           })}
+          <Link
+            href="/onboarding?new=1"
+            role="menuitem"
+            className={`${styles.item} ${styles.add}`}
+            onClick={() => setOpen(false)}
+          >
+            <Plus size={16} aria-hidden="true" />
+            <span className={styles.name}>New company</span>
+          </Link>
         </div>
       )}
     </div>

@@ -99,6 +99,16 @@
   font-weight: 600;
 }
 
+/* "New company", under a line below the list */
+.add {
+  margin-top: 0.2rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
 /* Screens narrower than 768px (phones): no room for the name in the bar; the
    icon stays and the list still shows the names */
 @media (max-width: 768px) {

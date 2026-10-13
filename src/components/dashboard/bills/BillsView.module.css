@@ -1,0 +1,324 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bills page styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Covers the page title, the three totals, the tables of
+   bills to pay and recently paid ones, plus how they rearrange on smaller
+   screens. Same look as the Transactions page.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  flex: 1;
+  min-width: 0; /* lets the flex child shrink instead of overflowing */
+  padding: 2rem 3rem;
+  overflow-y: auto;
+  background-color: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* A link inside a message box */
+.messageLink {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Totals */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.tile,
+.card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.tileLabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.tileValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tileNote {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+.danger {
+  color: var(--danger);
+}
+
+/* Cards */
+
+.card {
+  padding: 1.5rem;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.noResults {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem 0;
+}
+
+/* Tables */
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  padding: 0 0.75rem 0.75rem;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.85rem 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+/* The whole row opens the bill: its name's link stretches over it */
+.row {
+  position: relative;
+}
+
+.row:hover {
+  background-color: var(--hover);
+}
+
+.rowLink,
+.paidName {
+  font-weight: 600;
+}
+
+.rowLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.rowLink:focus-visible {
+  outline: none;
+}
+
+.rowLink:focus-visible::after {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+/* The due date with "Due in 3 days" under it */
+.due {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dueNote {
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+}
+
+.dueNote.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.dueNote.dueSoon {
+  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+  font-weight: 600;
+}
+
+.nameCell {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Every month", under the bill's name */
+.repeat {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+}
+
+.category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.categoryDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.amountCell {
+  text-align: right !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The button column sits above the row's link, so pressing "Mark as paid"
+   pays the bill instead of opening it */
+.actionCell {
+  position: relative;
+  z-index: 1;
+  width: 1%;
+  text-align: right;
+}
+
+.payLink {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  font-size: 0.825rem;
+  font-weight: 500;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.payLink:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.viewLink {
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.viewLink:hover {
+  text-decoration: underline;
+}
+
+/* Visually hidden, but read by screen readers */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Screens narrower than 768px (phones and tablets) */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .tiles {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .tile {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .nameCell {
+    max-width: 150px;
+  }
+}
+
+/* Screens narrower than 560px (phones): the category column is hidden, so
+   the rest fits without scrolling */
+@media (max-width: 560px) {
+  .mediumUp {
+    display: none;
+  }
+}

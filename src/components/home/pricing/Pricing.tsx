@@ -27,7 +27,7 @@ interface Plan {
   yearlyPrice: number | null;
   features: string[];
   cta: string;
-  ctaHref?: string;
+  ctaHref: string;
   variant: "primary" | "secondary";
   featured: boolean;
 }
@@ -83,6 +83,7 @@ const plans: Plan[] = [
       "SLA & uptime guarantee",
     ],
     cta: "Contact sales",
+    ctaHref: "/contact",
     variant: "secondary",
     featured: false,
   },

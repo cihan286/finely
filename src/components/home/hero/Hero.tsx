@@ -52,7 +52,7 @@ export default function Hero() {
           <Link className={styles.navLink} href="#pricing">
             Pricing
           </Link>
-          <Link className={styles.navLink} href={"/"}>
+          <Link className={styles.navLink} href="/about">
             About
           </Link>
         </div>
@@ -106,7 +106,7 @@ export default function Hero() {
         </Link>
         <Link
           className={styles.mobileNavLink}
-          href={"/"}
+          href="/about"
           onClick={handleMenuClose}
         >
           About

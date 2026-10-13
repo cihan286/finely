@@ -1,0 +1,327 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Bills page content
+//
+// In plain words: everything on the Bills page — the title and "Add bill"
+// button, three totals (overdue, due in the next 7 days, owed in total), the
+// table of bills still to pay with a "Mark as paid" button on each, and the
+// table of recently paid ones, each linking to its payment.
+//
+// For developers: a Server Component. Clicking a bill or a button changes
+// the address (?edit=<id>, ?pay=<id>, ?new=1), and the page hands back which
+// window to show (`dialog`).
+// ─────────────────────────────────────────────────────────────────────────────
+
+import Link from "next/link";
+import { Plus, Repeat } from "lucide-react";
+import Button from "@/components/common/button/Button";
+import Message from "@/components/common/form/Message";
+import { daysBetween } from "@/lib/dates";
+import {
+  BILL_REPEAT_LABELS,
+  billStatus,
+  summarizeBills,
+} from "@/lib/finance/bills";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { Account, Bill, Category, ISODate } from "@/types/finance";
+import BillDialog, { type BillPrefill } from "./BillDialog";
+import PayBillDialog from "./PayBillDialog";
+import styles from "./BillsView.module.css";
+
+const LIST_PATH = "/dashboard/bills";
+
+interface BillsViewProps {
+  organizationName: string;
+  /** Today in the company's timezone */
+  today: ISODate;
+  /** Whether to show Delete (owners and admins) */
+  canManage: boolean;
+  /** Bills still owed, soonest due first */
+  unpaid: Bill[];
+  /** The most recently paid bills */
+  paid: Bill[];
+  accounts: Account[];
+  categories: Category[];
+  /** Set right after a payment, for the message */
+  paidResult: { nextDueDate: ISODate | null } | null;
+  /** How many regular payments were spotted that aren't bills yet */
+  suggestions: number;
+  /** The window to show, if any */
+  dialog:
+    | { mode: "new"; prefill: BillPrefill }
+    | { mode: "edit"; bill: Bill }
+    | { mode: "pay"; bill: Bill }
+    | null;
+}
+
+// "Due today", "Due in 3 days", "5 days overdue"
+function dueText(dueDate: ISODate, today: ISODate): string {
+  const days = daysBetween(today, dueDate);
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  if (days > 1) return `Due in ${days} days`;
+  return `${-days} ${days === -1 ? "day" : "days"} overdue`;
+}
+
+export default function BillsView({
+  organizationName,
+  today,
+  canManage,
+  unpaid,
+  paid,
+  accounts,
+  categories,
+  paidResult,
+  suggestions,
+  dialog,
+}: BillsViewProps) {
+  const summary = summarizeBills(unpaid, today);
+  const categoryColors = new Map(categories.map((c) => [c.id, c.color]));
+
+  // A category's name with its colored dot
+  const categoryCell = (bill: Bill) => (
+    <span className={styles.category}>
+      <span
+        className={styles.categoryDot}
+        style={{
+          backgroundColor:
+            (bill.categoryId && categoryColors.get(bill.categoryId)) ||
+            "var(--text-subtle)",
+        }}
+        aria-hidden="true"
+      />
+      {bill.category ?? "Uncategorized"}
+    </span>
+  );
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Bills</h1>
+          <p className={styles.subtitle}>
+            What {organizationName} has to pay, and when.
+          </p>
+        </div>
+        <Button
+          href={`${LIST_PATH}?new=1`}
+          variant="primary"
+          size="sm"
+          text="Add bill"
+          icon={<Plus size={16} />}
+        />
+      </div>
+
+      {paidResult && (
+        <Message type="success">
+          The bill was marked as paid and the payment was added to your
+          transactions.
+          {paidResult.nextDueDate &&
+            ` The next one is due ${formatDate(paidResult.nextDueDate)}.`}
+        </Message>
+      )}
+
+      {/* Regular payments found in the history that could be bills */}
+      {suggestions > 0 && (
+        <Message type="info">
+          Finely spotted {suggestions} regular{" "}
+          {suggestions === 1 ? "payment that isn't a bill" : "payments that aren't bills"}{" "}
+          yet.{" "}
+          <Link href="/dashboard/insights#recurring" className={styles.messageLink}>
+            See {suggestions === 1 ? "it" : "them"}
+          </Link>
+        </Message>
+      )}
+
+      {/* Totals of what's still owed */}
+      <div className={styles.tiles}>
+        <div className={styles.tile}>
+          <span className={styles.tileLabel}>Overdue</span>
+          <span
+            className={`${styles.tileValue} ${summary.overdue.count > 0 ? styles.danger : ""}`}
+          >
+            {formatCurrency(summary.overdue.amount)}
+          </span>
+          <span className={styles.tileNote}>
+            {summary.overdue.count} {summary.overdue.count === 1 ? "bill" : "bills"}
+          </span>
+        </div>
+        <div className={styles.tile}>
+          <span className={styles.tileLabel}>Due in the next 7 days</span>
+          <span className={styles.tileValue}>
+            {formatCurrency(summary.dueSoon.amount)}
+          </span>
+          <span className={styles.tileNote}>
+            {summary.dueSoon.count} {summary.dueSoon.count === 1 ? "bill" : "bills"}
+          </span>
+        </div>
+        <div className={styles.tile}>
+          <span className={styles.tileLabel}>Owed in total</span>
+          <span className={styles.tileValue}>
+            {formatCurrency(summary.unpaid.amount)}
+          </span>
+          <span className={styles.tileNote}>
+            {summary.unpaid.count} {summary.unpaid.count === 1 ? "bill" : "bills"}
+          </span>
+        </div>
+      </div>
+
+      {/* Bills still to pay */}
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>To pay</h2>
+        {unpaid.length === 0 ? (
+          <p className={styles.noResults}>
+            {paid.length === 0
+              ? "No bills yet. Add rent, subscriptions or invoices with “Add bill” to see what's coming up."
+              : "Nothing to pay right now."}
+          </p>
+        ) : (
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">Due</th>
+                  <th scope="col">Bill</th>
+                  <th scope="col" className={styles.mediumUp}>
+                    Category
+                  </th>
+                  <th scope="col" className={styles.amountCell}>
+                    Amount
+                  </th>
+                  <th scope="col">
+                    <span className={styles.srOnly}>Pay</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {unpaid.map((bill) => {
+                  const status = billStatus(bill.dueDate, today);
+                  return (
+                    <tr key={bill.id} className={styles.row}>
+                      <td>
+                        <span className={styles.due}>
+                          {formatDate(bill.dueDate)}
+                          <span
+                            className={`${styles.dueNote} ${status === "upcoming" ? "" : styles[status]}`}
+                          >
+                            {dueText(bill.dueDate, today)}
+                          </span>
+                        </span>
+                      </td>
+                      <td className={styles.nameCell}>
+                        {/* The link covers the whole row (see CSS) */}
+                        <Link
+                          href={`${LIST_PATH}?edit=${bill.id}`}
+                          scroll={false}
+                          className={styles.rowLink}
+                        >
+                          {bill.name}
+                        </Link>
+                        {bill.repeat !== "none" && (
+                          <span className={styles.repeat}>
+                            <Repeat size={12} aria-hidden="true" />
+                            {BILL_REPEAT_LABELS[bill.repeat]}
+                          </span>
+                        )}
+                      </td>
+                      <td className={styles.mediumUp}>{categoryCell(bill)}</td>
+                      <td className={styles.amountCell}>
+                        {formatCurrency(bill.amount)}
+                      </td>
+                      <td className={styles.actionCell}>
+                        <Link
+                          href={`${LIST_PATH}?pay=${bill.id}`}
+                          scroll={false}
+                          className={styles.payLink}
+                          aria-label={`Mark ${bill.name} as paid`}
+                        >
+                          Mark as paid
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Recently paid, each with a link to its payment */}
+      {paid.length > 0 && (
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Recently paid</h2>
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">Paid</th>
+                  <th scope="col">Bill</th>
+                  <th scope="col" className={styles.mediumUp}>
+                    Category
+                  </th>
+                  <th scope="col" className={styles.amountCell}>
+                    Amount
+                  </th>
+                  <th scope="col">
+                    <span className={styles.srOnly}>Payment</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paid.map((bill) => (
+                  <tr key={bill.id}>
+                    <td className={styles.muted}>
+                      {bill.paidDay && formatDate(bill.paidDay)}
+                    </td>
+                    <td className={styles.nameCell}>
+                      <span className={styles.paidName}>{bill.name}</span>
+                    </td>
+                    <td className={styles.mediumUp}>{categoryCell(bill)}</td>
+                    <td className={styles.amountCell}>
+                      {formatCurrency(bill.amount)}
+                    </td>
+                    <td className={styles.actionCell}>
+                      {/* Gone if the transaction was deleted since */}
+                      {bill.transactionId && (
+                        <Link
+                          href={`/dashboard/transactions?edit=${bill.transactionId}`}
+                          className={styles.viewLink}
+                          aria-label={`View the payment of ${bill.name}`}
+                        >
+                          View payment
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {dialog && dialog.mode !== "pay" && (
+        <BillDialog
+          // A fresh form for each bill opened
+          key={dialog.mode === "edit" ? dialog.bill.id : "new"}
+          bill={dialog.mode === "edit" ? dialog.bill : null}
+          prefill={dialog.mode === "new" ? dialog.prefill : undefined}
+          categories={categories}
+          canManage={canManage}
+          closeHref={LIST_PATH}
+          today={today}
+        />
+      )}
+      {dialog?.mode === "pay" && (
+        <PayBillDialog
+          key={dialog.bill.id}
+          bill={dialog.bill}
+          accounts={accounts}
+          canManage={canManage}
+          closeHref={LIST_PATH}
+          today={today}
+        />
+      )}
+    </main>
+  );
+}

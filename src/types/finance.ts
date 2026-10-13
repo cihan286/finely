@@ -18,11 +18,15 @@ export type ISODateTime = string; // "2026-10-01T14:41:00"
 // A message in the notifications panel (the bell icon)
 export interface Notification {
   id: string;
-  type: "payment" | "alert" | "bill" | "card" | "system";
+  /** "alert" needs a look soon; "reminder" is housekeeping */
+  type: "alert" | "reminder";
   title: string;
   description: string;
-  time: string;
+  /** The calendar day it's about, in the company's timezone */
+  day: ISODate;
   read: boolean;
+  /** Where clicking it goes */
+  href: string;
 }
 
 // The kinds of bank account: everyday, savings, or money set aside for taxes
@@ -66,6 +70,11 @@ export interface Category {
   /** Hex color for charts, e.g. "#8b5cf6" */
   color: string;
   iconKey: CategoryIconKey;
+  /**
+   * The most to spend in it per calendar month; null without a budget
+   * (always null for "income" categories)
+   */
+  budget: number | null;
 }
 
 // "Transactions whose description contains this text get this category"
@@ -131,6 +140,37 @@ export interface Transaction {
   status: TransactionStatus;
   /** The account's ID */
   account: string;
+}
+
+// How often a bill comes back
+export const BILL_REPEATS = [
+  "none",
+  "weekly",
+  "biweekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+] as const;
+export type BillRepeat = (typeof BILL_REPEATS)[number];
+
+// A payment the company owes (or has paid)
+export interface Bill {
+  id: string;
+  /** Who is paid or what for, e.g. "Office rent" */
+  name: string;
+  /** A positive number */
+  amount: number;
+  /** The calendar day it's due, in the company's timezone */
+  dueDate: ISODate;
+  repeat: BillRepeat;
+  categoryId: string | null;
+  /** The category's name; null if it has none */
+  category: string | null;
+  notes: string | null;
+  /** The day it was paid; null while it's still owed */
+  paidDay: ISODate | null;
+  /** The payment's transaction; null if unpaid or if it was deleted since */
+  transactionId: string | null;
 }
 
 // A transaction with everything an edit form needs

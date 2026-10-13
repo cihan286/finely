@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings page (finely.com/dashboard/settings)
 //
-// In plain words: where you manage your company — its timezone, its team
+// In plain words: where you manage your company — its name and timezone, its team
 // (who's in it, their roles, and invitations), its bank accounts, its
 // categories and its category rules. Owners and admins can change all of
 // these; members can see them.
@@ -76,16 +76,18 @@ export default async function SettingsPage() {
       <div>
         <h1 className={styles.title}>Settings</h1>
         <p className={styles.subtitle}>
-          Manage {organization.name}&apos;s timezone, team, bank accounts and
+          Manage {organization.name}&apos;s name, timezone, team, bank accounts and
           categories.
         </p>
       </div>
       <CompanySettings
         canManage={canManageFinances(role)}
+        organization={{ id: organization.id, name: organization.name }}
         timeZone={settings.timeZone}
         timeZones={timeZones}
       />
       <TeamSettings
+        organization={{ id: organization.id, name: organization.name }}
         role={role}
         members={members}
         invitations={invitations}

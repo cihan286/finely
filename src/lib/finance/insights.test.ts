@@ -69,6 +69,25 @@ describe("buildInsights", () => {
     ]);
   });
 
+  test("descriptions that differ only by a reference number are one vendor", () => {
+    const { vendors } = buildInsights({
+      today: "2026-10-06",
+      period: 3,
+      monthly: [],
+      categorySpending: [],
+      vendors: [
+        { name: "STRIPE ST-ABC1", count: 1, amount: 40 },
+        { name: "Rent", count: 1, amount: 50 },
+        { name: "stripe ST-XYZ2", count: 2, amount: 60 },
+      ],
+      expenses: [],
+    });
+    expect(vendors).toEqual([
+      { name: "STRIPE", count: 3, amount: 100, share: 100 / 150 },
+      { name: "Rent", count: 1, amount: 50, share: 50 / 150 },
+    ]);
+  });
+
   test("no income: no savings rate", () => {
     const empty = buildInsights({
       today: "2026-10-06",
@@ -124,6 +143,15 @@ describe("findUnusualCharges", () => {
     expect(findUnusualCharges([...once, charge("Hotel", 500, "2026-10-01")], today)).toEqual([]);
     const tooOld = [charge("Hotel", 100, "2025-01-01"), charge("Hotel", 100, "2025-02-01")];
     expect(findUnusualCharges([...tooOld, charge("Hotel", 500, "2026-10-01")], today)).toEqual([]);
+  });
+
+  test("compares charges whose descriptions differ only by a reference number", () => {
+    const stripe = [
+      charge("STRIPE ST-ABC1", 100, "2026-08-01"),
+      charge("STRIPE ST-DEF2", 100, "2026-09-01"),
+    ];
+    const result = findUnusualCharges([...stripe, charge("STRIPE ST-XYZ3", 300, "2026-10-01")], today);
+    expect(result.map((c) => [c.name, c.usual])).toEqual([["STRIPE ST-XYZ3", 100]]);
   });
 
   test("only charges from the last 30 days are checked", () => {

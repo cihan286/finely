@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard sidebar (the menu on the left)
 //
-// In plain words: the dashboard's main menu — Dashboard, Transactions,
+// In plain words: the dashboard's main menu — Dashboard, Transactions, Bills,
 // Insights, Settings and Log out. It's narrow (icons only) and widens to show
 // labels when you hover over it or move into it with the Tab key. The current
 // page is highlighted. On phones it becomes a bar along the bottom.
@@ -22,6 +22,7 @@ import Logo from "@/components/common/logo/Logo";
 import {
   LayoutDashboard,
   ArrowRightLeft,
+  Receipt,
   PieChart,
   Settings,
   LogOut,
@@ -35,6 +36,7 @@ const NAV_LINKS = [
     label: "Transactions",
     icon: ArrowRightLeft,
   },
+  { href: "/dashboard/bills", label: "Bills", icon: Receipt },
   { href: "/dashboard/insights", label: "Insights", icon: PieChart },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

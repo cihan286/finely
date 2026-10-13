@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction } from "@/db/finance";
 import { startOfDay, todayIn } from "@/lib/dates";
@@ -70,7 +70,8 @@ export async function getInsights(period: InsightPeriod): Promise<Insights> {
       .leftJoin(category, eq(transaction.categoryId, category.id))
       .where(and(completedBetween(start, end), lt(transaction.amount, 0)))
       .groupBy(transaction.categoryId, category.name, category.color, category.iconKey),
-    // Spending per vendor (same description, ignoring case)
+    // Spending per description (ignoring case); buildInsights() then adds
+    // up the descriptions that belong to one vendor and keeps the largest
     db
       .select({
         name: sql<string>`max(${transaction.name})`,
@@ -79,9 +80,7 @@ export async function getInsights(period: InsightPeriod): Promise<Insights> {
       })
       .from(transaction)
       .where(and(completedBetween(start, end), lt(transaction.amount, 0)))
-      .groupBy(sql`lower(trim(${transaction.name}))`)
-      .orderBy(asc(sql`sum(${transaction.amount})`))
-      .limit(8),
+      .groupBy(sql`lower(trim(${transaction.name}))`),
     // Every expense since the history for unusual charges begins
     db
       .select({

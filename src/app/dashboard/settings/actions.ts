@@ -89,11 +89,14 @@ export async function submitCategory(
   const intent = formField(formData, "intent");
   const id = formField(formData, "id");
   const name = formField(formData, "name").trim();
+  const budget = formField(formData, "budget").trim();
   const input = {
     name,
     kind: formField(formData, "kind") as CategoryKind,
     color: formField(formData, "color"),
     iconKey: formField(formData, "iconKey") as CategoryIconKey,
+    // An empty box means no budget
+    budget: budget === "" ? null : Number(budget),
   };
   try {
     if (intent === "delete") await deleteCategory(id);

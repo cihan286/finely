@@ -5,10 +5,20 @@
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { category, companySettings, financialAccount, transaction } from "@/db/finance";
-import { todayIn } from "@/lib/dates";
+import { bill, category, companySettings, financialAccount, transaction } from "@/db/finance";
+import { addDays, todayIn } from "@/lib/dates";
 import { actAs, createTestCompany, setUpTestDb, testDb } from "./testing";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./accounts";
+import {
+  createBill,
+  deleteBill,
+  getBill,
+  listBills,
+  payBill,
+  updateBill,
+  type BillInput,
+} from "./bills";
+import { getBudgets } from "./budgets";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories";
 import {
   applyCategoryRule,
@@ -20,6 +30,8 @@ import {
 } from "./category-rules";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
+import { listNotifications, markNotificationsRead } from "./notifications";
+import { getForecast, getRecurring } from "./recurring";
 import { updateTimeZone } from "./settings";
 import {
   createTransaction,
@@ -466,5 +478,335 @@ describe("roles", () => {
     ).rejects.toThrow(denied);
     await expect(deleteCategory(globex.categoryId)).rejects.toThrow(denied);
     await expect(updateTimeZone("Europe/Istanbul")).rejects.toThrow(denied);
+  });
+});
+
+describe("notifications", () => {
+  it("reports only the company's own data, and is marked read per company", async () => {
+    // Two new companies, each with an account below zero
+    const seedOverdrawn = async (name: string) => {
+      const company = await createTestCompany(name);
+      actAs(company);
+      const accountId = await createAccount({
+        name: `${name} Checking`,
+        type: "checking",
+        openingBalance: -50,
+      });
+      return { ...company, accountId };
+    };
+    const initech = await seedOverdrawn("initech");
+    const hooli = await seedOverdrawn("hooli");
+
+    actAs(initech);
+    expect((await listNotifications()).map((n) => [n.id, n.read])).toEqual([
+      [`overdrawn-${initech.accountId}`, false],
+    ]);
+    await markNotificationsRead();
+    expect((await listNotifications()).map((n) => n.read)).toEqual([true]);
+
+    actAs(hooli);
+    expect((await listNotifications()).map((n) => [n.id, n.read])).toEqual([
+      [`overdrawn-${hooli.accountId}`, false],
+    ]);
+  });
+
+  it("counts transactions without a category and late pending payments", async () => {
+    const company = await createTestCompany("umbrella");
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Mystery",
+      amount: 10,
+      date: addDays(today, -30),
+      status: "pending",
+    });
+    expect((await listNotifications()).map((n) => n.id).sort()).toEqual([
+      "stale-pending",
+      "uncategorized",
+    ]);
+  });
+});
+
+describe("bills", () => {
+  const billFor = (
+    company: { categoryId: string },
+    overrides: Partial<BillInput> = {},
+  ): BillInput => ({
+    name: "Office rent",
+    amount: 1200,
+    dueDate: addDays(today, 3),
+    repeat: "none",
+    categoryId: company.categoryId,
+    ...overrides,
+  });
+
+  it("can't see, change, pay or delete another company's bills", async () => {
+    actAs(globex);
+    const globexBill = await createBill(billFor(globex, { name: "Globex rent" }));
+
+    actAs(acme);
+    expect((await listBills()).unpaid).toEqual([]);
+    expect(await getBill(globexBill)).toBeNull();
+    await expect(updateBill(globexBill, billFor(acme, { name: "Hacked" }))).rejects.toThrow(
+      "Bill not found.",
+    );
+    await expect(
+      payBill(globexBill, { accountId: acme.accountId, date: today }),
+    ).rejects.toThrow("Bill not found.");
+    await expect(deleteBill(globexBill)).rejects.toThrow("Bill not found.");
+
+    const [row] = await testDb
+      .select({ name: bill.name, paidAt: bill.paidAt })
+      .from(bill)
+      .where(eq(bill.id, globexBill));
+    expect(row).toEqual({ name: "Globex rent", paidAt: null });
+
+    actAs(globex);
+    await deleteBill(globexBill);
+  });
+
+  it("can't use another company's category or pay from its account", async () => {
+    actAs(acme);
+    await expect(
+      createBill(billFor(acme, { categoryId: globex.categoryId })),
+    ).rejects.toThrow("Category not found.");
+    const id = await createBill(billFor(acme));
+    await expect(
+      payBill(id, { accountId: globex.accountId, date: today }),
+    ).rejects.toThrow("Account not found.");
+    expect((await getBill(id))?.paidDay).toBeNull();
+    await deleteBill(id);
+  });
+
+  it("paying records the payment and adds the next bill when it repeats", async () => {
+    const company = await createTestCompany("stark");
+    actAs(company);
+    const accountId = await createAccount({
+      name: "Checking",
+      type: "checking",
+      openingBalance: 5000,
+    });
+    const id = await createBill({
+      name: "Rent",
+      amount: 1200,
+      dueDate: "2026-01-31",
+      repeat: "monthly",
+      categoryId: null,
+    });
+
+    const result = await payBill(id, { accountId, date: "2026-01-30" });
+    expect(result.nextDueDate).toBe("2026-02-28");
+
+    const { unpaid, paid } = await listBills();
+    expect(paid.map((b) => [b.id, b.paidDay, b.transactionId])).toEqual([
+      [id, "2026-01-30", result.transactionId],
+    ]);
+    expect(unpaid.map((b) => [b.name, b.amount, b.dueDate, b.repeat])).toEqual([
+      ["Rent", 1200, "2026-02-28", "monthly"],
+    ]);
+
+    const payment = await getTransaction(result.transactionId);
+    expect(payment).toMatchObject({
+      name: "Rent",
+      amount: -1200,
+      day: "2026-01-30",
+      status: "completed",
+      account: accountId,
+    });
+    expect((await listAccounts())[0].balance).toBe(3800);
+
+    // A paid bill can't be paid again or changed
+    await expect(payBill(id, { accountId, date: "2026-01-30" })).rejects.toThrow(
+      "This bill is already paid.",
+    );
+    await expect(
+      updateBill(id, { name: "Rent", amount: 1, dueDate: today, repeat: "none", categoryId: null }),
+    ).rejects.toThrow("This bill is already paid and can't be changed.");
+    expect((await listTransactions()).total).toBe(1);
+  });
+
+  it("checks what was typed", async () => {
+    actAs(acme);
+    await expect(createBill(billFor(acme, { amount: 0 }))).rejects.toThrow(
+      "Amount must be more than zero.",
+    );
+    await expect(createBill(billFor(acme, { amount: -5 }))).rejects.toThrow(
+      "Amount must be more than zero.",
+    );
+    await expect(createBill(billFor(acme, { dueDate: "2026-02-30" }))).rejects.toThrow(
+      "Due date must be a valid date.",
+    );
+    await expect(
+      createBill(billFor(acme, { repeat: "daily" as BillInput["repeat"] })),
+    ).rejects.toThrow("Repeat is invalid.");
+  });
+
+  it("lets members add, edit and pay bills, but not delete them", async () => {
+    actAs(globex, "member");
+    const id = await createBill(billFor(globex));
+    await updateBill(id, billFor(globex, { name: "Member edit" }));
+    await expect(deleteBill(id)).rejects.toThrow("Only owners and admins can do this.");
+
+    actAs(globex, "admin");
+    await deleteBill(id);
+    expect(await getBill(id)).toBeNull();
+  });
+
+  it("shows up in the notifications when overdue or due soon", async () => {
+    const company = await createTestCompany("wayne");
+    actAs(company);
+    await createBill({ name: "Late", amount: 100, dueDate: addDays(today, -2), repeat: "none", categoryId: null });
+    await createBill({ name: "Soon", amount: 50, dueDate: addDays(today, 2), repeat: "none", categoryId: null });
+    await createBill({ name: "Far", amount: 10, dueDate: addDays(today, 60), repeat: "none", categoryId: null });
+    const ids = (await listNotifications()).map((n) => n.id).sort();
+    expect(ids).toEqual(["bills-due-soon", "bills-overdue"]);
+  });
+});
+
+describe("budgets", () => {
+  const budgetCategory = (name: string, budget: number | null) =>
+    createCategory({ name, kind: "expense", color: "#6366f1", iconKey: "more", budget });
+
+  // A company with one account, and a way to spend from it
+  async function seedBudgetCompany(name: string) {
+    const company = await createTestCompany(name);
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    const spend = (categoryId: string, amount: number, overrides: Partial<TransactionInput> = {}) =>
+      createTransaction({
+        accountId,
+        categoryId,
+        name: "Purchase",
+        amount: -amount,
+        date: today,
+        status: "completed",
+        ...overrides,
+      });
+    return { company, spend };
+  }
+
+  it("counts only this month's completed spending in the company's own categories", async () => {
+    const pied = await seedBudgetCompany("piedpiper");
+    const marketing = await budgetCategory("Marketing", 500);
+    const travel = await budgetCategory("Travel", 1000);
+    const noBudget = await budgetCategory("Misc", null);
+    await pied.spend(marketing, 300);
+    await pied.spend(marketing, 320.5);
+    await pied.spend(marketing, 999, { status: "pending" });
+    await pied.spend(marketing, 999, { date: addDays(today, -45) });
+    await pied.spend(marketing, -50); // money in doesn't reduce what was spent
+    await pied.spend(noBudget, 70);
+
+    const other = await seedBudgetCompany("raviga");
+    const otherMarketing = await budgetCategory("Marketing", 100);
+    await other.spend(otherMarketing, 40);
+
+    actAs(pied.company);
+    expect((await getBudgets()).budgets.map((b) => [b.name, b.spent, b.remaining, b.status])).toEqual([
+      ["Marketing", 620.5, -120.5, "over"],
+      ["Travel", 0, 1000, "ok"],
+    ]);
+    expect(travel).toBeTruthy();
+    // Over budget: the bell says so, with a link to this month's payments
+    const alert = (await listNotifications()).find((n) => n.id.startsWith("budget-"));
+    expect(alert?.id).toBe(`budget-${marketing}-${today.slice(0, 7)}`);
+    expect(alert?.description).toContain("Marketing is $120.50 over its $500.00 budget");
+
+    actAs(other.company);
+    expect((await getBudgets()).budgets.map((b) => [b.name, b.spent, b.status])).toEqual([
+      ["Marketing", 40, "ok"],
+    ]);
+    expect((await listNotifications()).some((n) => n.id.startsWith("budget-"))).toBe(false);
+  });
+
+  it("only accepts a positive budget, on money-out categories, from owners and admins", async () => {
+    actAs(globex);
+    await expect(budgetCategory("Zero", 0)).rejects.toThrow("Monthly budget must be more than zero.");
+    await expect(
+      createCategory({ name: "Grants", kind: "income", color: "#6366f1", iconKey: "income", budget: 100 }),
+    ).rejects.toThrow("Only “Money out” categories can have a budget.");
+
+    const id = await budgetCategory("Snacks", 50);
+    expect((await listCategories()).find((c) => c.id === id)?.budget).toBe(50);
+    // Saving without a budget removes it
+    await updateCategory(id, { name: "Snacks", kind: "expense", color: "#6366f1", iconKey: "more" });
+    expect((await listCategories()).find((c) => c.id === id)?.budget).toBeNull();
+
+    actAs(globex, "member");
+    await expect(
+      updateCategory(id, { name: "Snacks", kind: "expense", color: "#6366f1", iconKey: "more", budget: 9 }),
+    ).rejects.toThrow("Only owners and admins can do this.");
+    actAs(globex);
+    await deleteCategory(id);
+  });
+});
+
+describe("regular payments and the forecast", () => {
+  // A company that paid the same vendor every month, last time yesterday
+  async function seedSubscriber(name: string, vendor: string, amount: number, balance: number) {
+    const company = await createTestCompany(name);
+    actAs(company);
+    const accountId = await createAccount({
+      name: "Checking",
+      type: "checking",
+      openingBalance: balance + amount * 4,
+    });
+    for (const daysAgo of [92, 61, 31, 1]) {
+      await createTransaction({
+        accountId,
+        categoryId: null,
+        name: `${vendor} INV-${daysAgo}00`,
+        amount: -amount,
+        date: addDays(today, -daysAgo),
+        status: "completed",
+      });
+    }
+    return company;
+  }
+
+  it("spots only the company's own regular payments", async () => {
+    const hooli = await seedSubscriber("hooli2", "Figma", 45, 1000);
+    const aviato = await seedSubscriber("aviato", "Notion", 20, 1000);
+
+    actAs(hooli);
+    expect(
+      (await getRecurring()).payments.map((p) => [p.name, p.cadence, p.amount, p.count, p.billed]),
+    ).toEqual([["Figma", "monthly", 45, 4, false]]);
+
+    actAs(aviato);
+    expect((await getRecurring()).payments.map((p) => p.name)).toEqual(["Notion"]);
+  });
+
+  it("forecasts from the company's own balance, bills and regular payments", async () => {
+    const company = await seedSubscriber("bachmanity", "Slack", 100, 500);
+    const other = await seedSubscriber("endframe", "Zoom", 999, 50);
+    actAs(other);
+    await createBill({ name: "Huge", amount: 9000, dueDate: addDays(today, 2), repeat: "none", categoryId: null });
+
+    actAs(company);
+    await createBill({ name: "Rent", amount: 300, dueDate: addDays(today, 5), repeat: "none", categoryId: null });
+    const forecast = await getForecast();
+    expect(forecast.startBalance).toBe(500);
+    expect(forecast.events.map((e) => [e.name, e.amount, e.source])).toEqual([
+      ["Rent", -300, "bill"],
+      ["Slack", -100, "recurring"],
+    ]);
+    expect(forecast.endBalance).toBe(100);
+    expect((await listNotifications()).some((n) => n.id === "cash-shortfall")).toBe(false);
+
+    // Once the regular payment is a bill, it's counted once, as the bill
+    await createBill({ name: "Slack", amount: 100, dueDate: addDays(today, 20), repeat: "monthly", categoryId: null });
+    expect((await getRecurring()).payments.map((p) => p.billed)).toEqual([true]);
+    expect((await getForecast()).events.map((e) => [e.name, e.source])).toEqual([
+      ["Rent", "bill"],
+      ["Slack", "bill"],
+    ]);
+
+    // More bills than money: the bell warns
+    await createBill({ name: "Tax", amount: 400, dueDate: addDays(today, 10), repeat: "none", categoryId: null });
+    expect((await getForecast()).lowest.balance).toBe(-300);
+    expect((await listNotifications()).some((n) => n.id === "cash-shortfall")).toBe(true);
   });
 });

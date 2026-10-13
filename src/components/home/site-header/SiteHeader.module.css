@@ -1,0 +1,69 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Site header styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Logo on the left, page links in the middle, log-in and
+   sign-up on the right; on phones the page links move to a second row.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem 5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--background);
+}
+
+.brand {
+  display: inline-flex;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.link {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.link:hover {
+  opacity: 1;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Screens narrower than 1024px (tablets and small laptops) */
+@media (max-width: 1024px) {
+  .header {
+    padding: 1.25rem 2rem;
+  }
+
+  .links {
+    gap: 1.75rem;
+  }
+}
+
+/* Screens narrower than 768px (phones): page links on their own row */
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    padding: 1rem;
+  }
+
+  .links {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.95rem;
+  }
+}
