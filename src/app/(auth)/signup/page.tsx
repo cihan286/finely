@@ -50,10 +50,16 @@ export default async function SignupPage({
           Log in
         </Link>
       </p>
-      {/* TODO: link these once the Terms and Privacy pages exist */}
       <p className={styles.legal}>
-        By creating an account, you agree to our Terms of Service and Privacy
-        Policy.
+        By creating an account, you agree to our{" "}
+        <Link href="/terms" className={styles.link} target="_blank">
+          Terms of service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className={styles.link} target="_blank">
+          Privacy policy
+        </Link>
+        .
       </p>
     </>
   );

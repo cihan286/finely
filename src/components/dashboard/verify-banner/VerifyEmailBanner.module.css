@@ -55,3 +55,10 @@
     flex-wrap: wrap;
   }
 }
+
+/* The reminder isn't printed */
+@media print {
+  .banner {
+    display: none;
+  }
+}

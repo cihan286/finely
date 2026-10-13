@@ -208,11 +208,12 @@ export function mergeVendors(vendors: VendorSpending[]): VendorSpending[] {
 /**
  * Recent charges well above what the same vendor (same description, apart
  * from reference numbers and ignoring case) usually charges. Biggest jumps
- * first.
+ * first; at most `limit` of them (five, for the Insights page).
  */
 export function findUnusualCharges(
   expenses: ExpenseLine[],
   today: ISODate,
+  limit = MAX_UNUSUAL,
 ): UnusualCharge[] {
   const { recentStart, historyStart } = insightRange(today, 3);
   const vendor = vendorKey;
@@ -247,5 +248,5 @@ export function findUnusualCharges(
   }
   return unusual
     .sort((a, b) => b.percentAbove - a.percentAbove)
-    .slice(0, MAX_UNUSUAL);
+    .slice(0, limit);
 }

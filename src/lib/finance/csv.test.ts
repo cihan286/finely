@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { detectDelimiter, parseCsv } from "./csv";
+import { detectDelimiter, parseCsv, toCsv } from "./csv";
 
 describe("parseCsv", () => {
   test("splits lines and cells", () => {
@@ -42,5 +42,27 @@ describe("detectDelimiter", () => {
     ["single column", ","],
   ])("%j -> %j", (line, expected) => {
     expect(detectDelimiter(`${line}\n1,2;3\t4`)).toBe(expected);
+  });
+});
+
+describe("toCsv", () => {
+  test("writes rows and cells, quoting what needs it", () => {
+    expect(toCsv([["Date", "Description"], ["2026-10-13", 'Smith, "Bob"\nLtd']])).toBe(
+      '\ufeffDate,Description\r\n2026-10-13,"Smith, ""Bob""\nLtd"\r\n',
+    );
+  });
+
+  test("what it writes can be read back", () => {
+    const rows = [
+      ["Name", "Amount"],
+      ['Caf\u00e9 "Lux", Paris', "-12.50"],
+    ];
+    expect(parseCsv(toCsv(rows))).toEqual(rows);
+  });
+
+  test("makes text that looks like a formula harmless, but leaves numbers alone", () => {
+    expect(toCsv([["=SUM(A1:A9)", "+1 555 0100", "@home", "-12.50", "-", 42, "12.5%"]])).toBe(
+      "\ufeff'=SUM(A1:A9),'+1 555 0100,'@home,-12.50,'-,42,12.5%\r\n",
+    );
   });
 });

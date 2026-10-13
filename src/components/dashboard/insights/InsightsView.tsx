@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { AlertTriangle, Landmark } from "lucide-react";
+import { AlertTriangle, Download, Landmark } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { RecurringPaymentDetails } from "@/lib/data/recurring";
@@ -21,6 +21,7 @@ import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
 import { INSIGHT_PERIODS, type Insights } from "@/lib/finance/insights";
 import { formatCurrency, formatDate, formatRelativeDate } from "@/lib/format";
 import MonthlyChart from "./MonthlyChart";
+import PrintButton from "./PrintButton";
 import styles from "./InsightsView.module.css";
 
 // The Bills page with its "Add bill" window open and filled in from a
@@ -67,11 +68,30 @@ export default function InsightsView({
 
   return (
     <main className={styles.page}>
-      <div>
-        <h1 className={styles.title}>Insights</h1>
-        <p className={styles.subtitle}>
-          Trends and patterns in {organizationName}&apos;s money.
-        </p>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Insights</h1>
+          <p className={styles.subtitle}>
+            Trends and patterns in {organizationName}&apos;s money.
+          </p>
+          {/* Only on paper: which period the printout covers */}
+          <p className={styles.printOnly}>
+            Last {period} months, as of {formatDate(today)}.
+          </p>
+        </div>
+        {hasActivity && (
+          <div className={styles.headerActions}>
+            <Button
+              href={`/dashboard/insights/export?months=${period}`}
+              download
+              variant="outline"
+              size="sm"
+              text="Export CSV"
+              icon={<Download size={16} />}
+            />
+            <PrintButton />
+          </div>
+        )}
       </div>
 
       {/* The period: one row above everything it applies to */}

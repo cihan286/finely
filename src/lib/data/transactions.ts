@@ -4,10 +4,12 @@
 // In plain words: lists the company's payments in and out — newest first,
 // searchable and filterable by account, category and date — and lets people
 // add and edit them, one by one or many at once from a bank statement file,
-// and change the category of several at once.
+// change the category of several at once, and export what the filters show.
 // Everyone on the team can add, import and edit transactions; only owners and
 // admins can delete them. New transactions without a category get one from
-// the company's category rules, if a rule fits their description.
+// the company's category rules, if a rule fits their description. When a new
+// charge is far above what its vendor usually charges, the team is emailed
+// (see email-notifications.ts).
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
@@ -18,11 +20,31 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, count, desc, eq, gte, ilike, inArray, isNull, lt, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db } from "@/db";
-import { category, financialAccount, transaction } from "@/db/finance";
-import { addDays, localDay, startOfDay, zonedTime } from "@/lib/dates";
+import {
+  attachment,
+  category,
+  financialAccount,
+  prefixedId,
+  transaction,
+} from "@/db/finance";
+import { afterResponse } from "@/lib/after-response";
+import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
 import { categoryFromRules } from "@/lib/finance/category-rules";
+import type { TransactionExportRow } from "@/lib/finance/export";
 import {
   duplicateKey,
   MAX_IMPORT_ROWS,
@@ -37,6 +59,7 @@ import {
   type TransactionStatus,
 } from "@/types/finance";
 import { selectRules } from "./category-rules";
+import { alertUnusualCharges } from "./email-notifications";
 import {
   DataError,
   dateTime,
@@ -95,6 +118,8 @@ const transactionColumns = {
   status: transaction.status,
   account: transaction.accountId,
   notes: transaction.notes,
+  // How many files are attached (the files themselves aren't read here)
+  attachmentCount: sql<number>`(select count(*) from ${attachment} where ${attachment.transactionId} = ${transaction.id})`.mapWith(Number),
 };
 
 // Transactions with their category's name; add .where() etc. to narrow down
@@ -121,15 +146,12 @@ function toTransactionDetails(
   };
 }
 
-/**
- * One page of the company's transactions, newest first, plus how many match
- * the filters in total (for paging).
- */
-export async function listTransactions(
-  filters: TransactionFilters = {},
-): Promise<{ transactions: TransactionDetails[]; total: number }> {
-  const { organizationId, timeZone } = await getFinanceContext();
-
+// The company's transactions that match the filters
+function matching(
+  filters: TransactionFilters,
+  organizationId: string,
+  timeZone: string,
+) {
   const conditions: SQL[] = [eq(transaction.organizationId, organizationId)];
   const search = optionalText(filters.search, "Search", 100);
   if (search) {
@@ -152,7 +174,18 @@ export async function listTransactions(
     const to = isoDay(filters.to, "End date");
     conditions.push(lt(transaction.occurredAt, startOfDay(addDays(to, 1), timeZone)));
   }
-  const where = and(...conditions);
+  return and(...conditions);
+}
+
+/**
+ * One page of the company's transactions, newest first, plus how many match
+ * the filters in total (for paging).
+ */
+export async function listTransactions(
+  filters: TransactionFilters = {},
+): Promise<{ transactions: TransactionDetails[]; total: number }> {
+  const { organizationId, timeZone } = await getFinanceContext();
+  const where = matching(filters, organizationId, timeZone);
 
   const limit = Math.min(Math.max(Math.trunc(filters.limit ?? 50), 1), 200);
   const offset = Math.max(Math.trunc(filters.offset ?? 0), 0);
@@ -170,6 +203,47 @@ export async function listTransactions(
   return {
     transactions: rows.map((row) => toTransactionDetails(row, timeZone)),
     total,
+  };
+}
+
+/** The most transactions one export file holds */
+export const MAX_EXPORT_ROWS = 20_000;
+
+/**
+ * Every transaction that matches the filters (paging ignored), newest
+ * first, with its account's name, for the export file. `truncated` says
+ * whether there were more than fit.
+ */
+export async function exportTransactions(
+  filters: TransactionFilters = {},
+): Promise<{ rows: TransactionExportRow[]; truncated: boolean; today: ISODate }> {
+  const { organizationId, timeZone } = await getFinanceContext();
+  const rows = await db
+    .select({
+      name: transaction.name,
+      category: category.name,
+      account: financialAccount.name,
+      amount: transaction.amount,
+      occurredAt: transaction.occurredAt,
+      status: transaction.status,
+      notes: transaction.notes,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(transaction.categoryId, category.id))
+    .innerJoin(financialAccount, eq(transaction.accountId, financialAccount.id))
+    .where(matching(filters, organizationId, timeZone))
+    .orderBy(desc(transaction.occurredAt), desc(transaction.createdAt))
+    // One more than fits, to know whether some were left out
+    .limit(MAX_EXPORT_ROWS + 1);
+
+  return {
+    rows: rows.slice(0, MAX_EXPORT_ROWS).map(({ occurredAt, ...row }) => ({
+      ...row,
+      day: localDay(occurredAt, timeZone),
+      status: row.status as TransactionStatus,
+    })),
+    truncated: rows.length > MAX_EXPORT_ROWS,
+    today: todayIn(timeZone),
   };
 }
 
@@ -253,6 +327,13 @@ export async function createTransaction(
     .insert(transaction)
     .values({ ...values, organizationId, createdById: userId })
     .returning({ id: transaction.id });
+  // Far above what this vendor usually charges? Email the team, without
+  // making the person wait
+  if (values.amount < 0 && values.status === "completed") {
+    await afterResponse(async () => {
+      await alertUnusualCharges(organizationId, timeZone, [row.id]);
+    });
+  }
   return row.id;
 }
 
@@ -427,6 +508,8 @@ export async function importTransactions(
   if (toInsert.length > 0) {
     // In chunks, sent together so the database saves all of them or none
     const values = toInsert.map((p) => ({
+      // Chosen here, to know afterwards which ones were added
+      id: prefixedId("tx")(),
       name: p.name,
       amount: p.amount,
       occurredAt: p.occurredAt,
@@ -441,6 +524,12 @@ export async function importTransactions(
       chunks.push(db.insert(transaction).values(values.slice(i, i + 500)));
     }
     await db.batch(chunks as [(typeof chunks)[number], ...typeof chunks]);
+    // Any of them far above what its vendor usually charges? One email
+    // about all of them, without making the person wait
+    const charges = values.filter((v) => v.amount < 0).map((v) => v.id);
+    await afterResponse(async () => {
+      await alertUnusualCharges(organizationId, timeZone, charges);
+    });
   }
 
   return { imported: toInsert.length, skipped: parsed.length - toInsert.length };

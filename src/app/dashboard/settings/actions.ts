@@ -3,8 +3,8 @@
 //
 // In plain words: changes the company's timezone, adds or removes one of its
 // bank accounts, adds, changes or deletes a category or a category rule,
-// hands the company over to another member or deletes it, then reloads the
-// page so it's up to date. If something's wrong, we send
+// hands the company over to another member or deletes it, or saves which
+// emails the person wants, then reloads the page so it's up to date. If something's wrong, we send
 // back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -30,6 +30,7 @@ import {
 } from "@/lib/data/category-rules";
 import { errorMessage } from "@/lib/data/common";
 import { deleteCompany, transferOwnership } from "@/lib/data/company";
+import { updateEmailPreferences } from "@/lib/data/email-notifications";
 import { updateTimeZone } from "@/lib/data/settings";
 import type {
   AccountType,
@@ -185,4 +186,22 @@ export async function submitCompanyDeletion(
   }
   // Outside the try: redirect() works by throwing
   redirect("/onboarding");
+}
+
+/** Saves which emails the signed-in person gets about this company. */
+export async function submitEmailPreferences(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    // A tick box is only sent when it's ticked
+    await updateEmailPreferences({
+      weeklyDigest: formData.has("weeklyDigest"),
+      unusualCharges: formData.has("unusualCharges"),
+    });
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return { error: null, success: "Your email preferences were saved." };
 }

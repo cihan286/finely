@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Frame for the public pages (About, Contact)
+// Frame for the public pages (About, Contact, Terms, Privacy)
 //
 // In plain words: these pages share the same top bar and the same footer as
 // the home page. This file draws both and puts the page between them.

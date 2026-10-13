@@ -36,13 +36,21 @@ import {
   MAX_RULE_TEXT_LENGTH,
   MIN_RULE_TEXT_LENGTH,
 } from "@/lib/finance/category-rules";
-import type { Account, Category, TransactionDetails } from "@/types/finance";
+import type {
+  Account,
+  Attachment,
+  Category,
+  TransactionDetails,
+} from "@/types/finance";
+import Attachments from "./Attachments";
 import forms from "./forms.module.css";
 import styles from "./TransactionDialog.module.css";
 
 interface TransactionDialogProps {
   /** The transaction to edit, or null to add a new one */
   transaction: TransactionDetails | null;
+  /** The files attached to the transaction being edited */
+  attachments: Attachment[];
   accounts: Account[];
   categories: Category[];
   /**
@@ -73,11 +81,19 @@ export default function TransactionDialog(props: TransactionDialogProps) {
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
+      {/* Outside the form: files are saved as soon as they're chosen. A new
+          transaction has to be saved once before it can have files. */}
+      {props.transaction && (
+        <Attachments
+          transactionId={props.transaction.id}
+          initial={props.attachments}
+        />
+      )}
     </Dialog>
   );
 }
 
-interface TransactionFormProps extends TransactionDialogProps {
+interface TransactionFormProps extends Omit<TransactionDialogProps, "attachments"> {
   error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;

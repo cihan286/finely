@@ -4,6 +4,7 @@
    In plain words: this file (CSS) controls how things look — colors, sizes,
    spacing and layout. A readable column in the middle of the page: a small
    label, a big title, an introduction, then sections of text or a form.
+   Also used by the Terms of service and Privacy policy.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .page {
@@ -34,6 +35,13 @@
   color: var(--text-muted);
 }
 
+/* "Last updated: …" under a legal page's introduction */
+.updated {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-subtle);
+}
+
 .section {
   margin-top: 3rem;
 }
@@ -51,6 +59,30 @@
 
 .text + .text {
   margin-top: 0.85rem;
+}
+
+/* A plain bulleted list in running text */
+.list {
+  margin: 0.25rem 0 0.85rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.list strong {
+  color: var(--foreground);
+}
+
+.inlineLink {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
 }
 
 /* A list of short points, each with a bold lead-in */

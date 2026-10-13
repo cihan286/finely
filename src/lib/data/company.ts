@@ -21,11 +21,13 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  attachment,
   bill,
   category,
   categoryRule,
   companySettings,
   financialAccount,
+  notificationPreference,
   notificationRead,
   transaction,
 } from "@/db/finance";
@@ -84,8 +86,10 @@ export async function deleteCompany(confirmation: string) {
 
   const id = company.id;
   await db.batch([
-    // Bills point at their payment, and transactions at their account and
-    // category, so: bills, transactions, then what those belonged to
+    // Files and bills point at their transaction, and transactions at their
+    // account and category, so: files, bills, transactions, then what those
+    // belonged to
+    db.delete(attachment).where(eq(attachment.organizationId, id)),
     db.delete(bill).where(eq(bill.organizationId, id)),
     db.delete(transaction).where(eq(transaction.organizationId, id)),
     db.delete(categoryRule).where(eq(categoryRule.organizationId, id)),
@@ -93,6 +97,9 @@ export async function deleteCompany(confirmation: string) {
     db.delete(financialAccount).where(eq(financialAccount.organizationId, id)),
     db.delete(companySettings).where(eq(companySettings.organizationId, id)),
     db.delete(notificationRead).where(eq(notificationRead.organizationId, id)),
+    db
+      .delete(notificationPreference)
+      .where(eq(notificationPreference.organizationId, id)),
     db.delete(invitation).where(eq(invitation.organizationId, id)),
     db.delete(member).where(eq(member.organizationId, id)),
     // Logins working in it, and people who last used it, open another

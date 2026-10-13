@@ -5,7 +5,14 @@
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { bill, category, companySettings, financialAccount, transaction } from "@/db/finance";
+import {
+  attachment,
+  bill,
+  category,
+  companySettings,
+  financialAccount,
+  transaction,
+} from "@/db/finance";
 import { member, organization, user } from "@/db/schema";
 import { addDays, todayIn } from "@/lib/dates";
 import { actAs, addTestMember, createTestCompany, setUpTestDb, testDb } from "./testing";
@@ -29,7 +36,18 @@ import {
   saveCategoryRule,
   updateCategoryRule,
 } from "./category-rules";
+import {
+  addAttachment,
+  deleteAttachment,
+  getAttachmentFile,
+  listAttachments,
+} from "./attachments";
 import { deleteCompany, transferOwnership } from "./company";
+import {
+  getEmailPreferences,
+  sendWeeklyDigests,
+  updateEmailPreferences,
+} from "./email-notifications";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
@@ -38,6 +56,7 @@ import { updateTimeZone } from "./settings";
 import {
   createTransaction,
   deleteTransaction,
+  exportTransactions,
   getTransaction,
   importTransactions,
   listTransactions,
@@ -47,11 +66,23 @@ import {
 } from "./transactions";
 
 vi.mock("@/db", async () => ({ db: (await import("./testing")).testDb }));
+// Emails aren't sent in tests: they're collected here to look at
+const sentEmails: { to: string; subject: string; text: string }[] = [];
+vi.mock("@/lib/email/send", () => ({
+  sendEmail: async (email: { to: string; subject: string; text: string }) => {
+    sentEmails.push(email);
+    return true;
+  },
+}));
 vi.mock("@/lib/session", async () => ({
   requireOrganization: (await import("./testing")).currentSession,
 }));
 
 type Company = Awaited<ReturnType<typeof createTestCompany>>;
+
+// The smallest things that count as a PDF and as a PNG
+const PDF = new TextEncoder().encode("%PDF-1.4 test");
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
 // Two companies, each with one account, one category and one transaction
 let acme: Company & { accountId: string; categoryId: string; transactionId: string };
@@ -871,7 +902,9 @@ describe("handing over and deleting a company", () => {
         repeat: "monthly",
         categoryId,
       });
-      await payBill(billId, { accountId, date: today });
+      const paid = await payBill(billId, { accountId, date: today });
+      await addAttachment(paid.transactionId, { name: "receipt.pdf", bytes: PDF });
+      await updateEmailPreferences({ weeklyDigest: false, unusualCharges: true });
       await markNotificationsRead();
     }
 
@@ -891,7 +924,7 @@ describe("handing over and deleting a company", () => {
       .from(organization)
       .where(eq(organization.id, doomed.organizationId));
     expect(organizations).toEqual([]);
-    for (const table of [transaction, bill, category, financialAccount]) {
+    for (const table of [transaction, bill, category, financialAccount, attachment]) {
       expect(
         await testDb.$count(table, eq(table.organizationId, doomed.organizationId)),
       ).toBe(0);
@@ -904,6 +937,275 @@ describe("handing over and deleting a company", () => {
     expect((await listAccounts()).length).toBe(1);
     expect((await listBills()).unpaid.length).toBe(1);
     expect((await listCategoryRules()).length).toBe(1);
+    expect(
+      await testDb.$count(attachment, eq(attachment.organizationId, kept.organizationId)),
+    ).toBe(1);
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: false, unusualCharges: true });
     expect(await rolesIn(kept.organizationId)).toEqual({ [kept.userId]: "owner" });
+  });
+});
+
+describe("exporting transactions", () => {
+  it("exports only the company's own transactions, with the same filters as the list", async () => {
+    const company = await createTestCompany("oscorp");
+    const other = await createTestCompany("lexcorp");
+    actAs(other);
+    const otherAccount = await createAccount({ name: "Lex Checking", type: "checking" });
+    await createTransaction(
+      transactionFor({ accountId: otherAccount, categoryId: "" }, { categoryId: null }),
+    );
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Main", type: "checking" });
+    const categoryId = await createCategory({
+      name: "Lab",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    await createTransaction(
+      transactionFor({ accountId, categoryId }, { name: "Spider feed", amount: -80, notes: "Weekly" }),
+    );
+    await createTransaction(
+      transactionFor(
+        { accountId, categoryId },
+        { name: "Grant", amount: 5000, categoryId: null, date: addDays(today, -3), status: "pending" },
+      ),
+    );
+
+    const all = await exportTransactions();
+    expect(all.truncated).toBe(false);
+    expect(all.rows).toEqual([
+      {
+        day: today,
+        name: "Spider feed",
+        category: "Lab",
+        account: "Main",
+        amount: -80,
+        status: "completed",
+        notes: "Weekly",
+      },
+      {
+        day: addDays(today, -3),
+        name: "Grant",
+        category: null,
+        account: "Main",
+        amount: 5000,
+        status: "pending",
+        notes: null,
+      },
+    ]);
+
+    expect((await exportTransactions({ search: "grant" })).rows.map((r) => r.name)).toEqual(["Grant"]);
+    expect((await exportTransactions({ from: today })).rows.map((r) => r.name)).toEqual(["Spider feed"]);
+    // Another company's account as a filter finds nothing
+    expect((await exportTransactions({ accountId: otherAccount })).rows).toEqual([]);
+  });
+});
+
+describe("attachments", () => {
+  it("keeps a company's files to itself", async () => {
+    actAs(globex);
+    const [file] = await addAttachment(globex.transactionId, {
+      name: "C:\\Users\\me\\globex receipt.pdf",
+      bytes: PDF,
+    });
+    expect(file).toMatchObject({
+      name: "globex receipt.pdf",
+      contentType: "application/pdf",
+      size: PDF.length,
+      canDelete: true,
+    });
+    expect((await getAttachmentFile(file.id))?.bytes).toEqual(PDF);
+    expect((await getTransaction(globex.transactionId))?.attachmentCount).toBe(1);
+
+    actAs(acme);
+    expect(await listAttachments(globex.transactionId)).toEqual([]);
+    expect(await getAttachmentFile(file.id)).toBeNull();
+    await expect(deleteAttachment(file.id)).rejects.toThrow("File not found.");
+    await expect(
+      addAttachment(globex.transactionId, { name: "x.pdf", bytes: PDF }),
+    ).rejects.toThrow("Transaction not found.");
+
+    actAs(globex);
+    expect((await listAttachments(globex.transactionId)).map((a) => a.id)).toEqual([file.id]);
+    expect(await deleteAttachment(file.id)).toEqual([]);
+  });
+
+  it("accepts only PDFs and pictures, by their content, up to 4 MB and 10 per transaction", async () => {
+    actAs(acme);
+    const add = (name: string, bytes: Uint8Array) =>
+      addAttachment(acme.transactionId, { name, bytes });
+
+    await expect(
+      add("receipt.pdf", new TextEncoder().encode("<html><script>alert(1)</script>")),
+    ).rejects.toThrow("Only PDF, JPEG, PNG, WebP files can be attached.");
+    await expect(add("empty.pdf", new Uint8Array())).rejects.toThrow("Choose a file to attach.");
+    const tooBig = new Uint8Array(4 * 1024 * 1024 + 1);
+    tooBig.set(PDF);
+    await expect(add("big.pdf", tooBig)).rejects.toThrow("A file can be at most 4.0 MB.");
+
+    // Called .txt, but really a picture: stored as what it is
+    const [picture] = await add("photo.txt", PNG);
+    expect(picture.contentType).toBe("image/png");
+    for (let i = 1; i < 10; i++) await add(`receipt-${i}.pdf`, PDF);
+    await expect(add("one-too-many.pdf", PDF)).rejects.toThrow(
+      "A transaction can have at most 10 files.",
+    );
+
+    // Deleting the transaction deletes its files
+    const id = await createTransaction(transactionFor(acme, { name: "With a file" }));
+    await addAttachment(id, { name: "r.pdf", bytes: PDF });
+    await deleteTransaction(id);
+    expect(await testDb.$count(attachment, eq(attachment.transactionId, id))).toBe(0);
+    for (const file of await listAttachments(acme.transactionId)) await deleteAttachment(file.id);
+  });
+
+  it("lets members delete their own files only", async () => {
+    actAs(globex);
+    const [ownersFile] = await addAttachment(globex.transactionId, { name: "a.pdf", bytes: PDF });
+    await testDb.insert(user).values({ id: "user_pam", name: "Pam", email: "pam@example.com" });
+    const pam = { ...globex, userId: "user_pam" };
+
+    actAs(pam, "member");
+    const files = await addAttachment(globex.transactionId, { name: "b.pdf", bytes: PDF });
+    expect(files.map((f) => [f.name, f.canDelete])).toEqual([
+      ["a.pdf", false],
+      ["b.pdf", true],
+    ]);
+    await expect(deleteAttachment(ownersFile.id)).rejects.toThrow(
+      "Only the person who added this file, an owner or an admin can delete it.",
+    );
+    await deleteAttachment(files[1].id);
+
+    actAs(globex);
+    expect(await deleteAttachment(ownersFile.id)).toEqual([]);
+  });
+});
+
+describe("email notifications", () => {
+  // A company whose owner and a second person have verified addresses, and
+  // that paid one vendor the same amount for three months
+  async function seedTeam(name: string) {
+    const company = await createTestCompany(name);
+    await testDb.update(user).set({ emailVerified: true }).where(eq(user.id, company.userId));
+    const mateId = `user_${name}_mate`;
+    await testDb.insert(user).values({
+      id: mateId,
+      name: `${name} mate`,
+      email: `${name}-mate@example.com`,
+      emailVerified: true,
+    });
+    await addTestMember(company, mateId, "member");
+    // Someone who never verified their address gets no emails
+    const unverifiedId = `user_${name}_new`;
+    await testDb.insert(user).values({
+      id: unverifiedId,
+      name: `${name} new`,
+      email: `${name}-new@example.com`,
+    });
+    await addTestMember(company, unverifiedId, "member");
+
+    actAs(company);
+    const accountId = await createAccount({
+      name: "Checking",
+      type: "checking",
+      openingBalance: 10_000,
+    });
+    for (const daysAgo of [120, 90, 60]) {
+      await createTransaction({
+        accountId,
+        categoryId: null,
+        name: "CloudHost",
+        amount: -100,
+        date: addDays(today, -daysAgo),
+        status: "completed",
+      });
+    }
+    return { ...company, accountId, mate: { ...company, userId: mateId } };
+  }
+  const charge = (accountId: string, amount: number, name = "CloudHost"): TransactionInput => ({
+    accountId,
+    categoryId: null,
+    name,
+    amount: -amount,
+    date: addDays(today, -1),
+    status: "completed",
+  });
+
+  it("emails the company's own team right away about an unusually high charge", async () => {
+    const team = await seedTeam("wonka");
+    await seedTeam("slugworth");
+
+    actAs(team);
+    sentEmails.length = 0;
+    await createTransaction(charge(team.accountId, 105));
+    expect(sentEmails).toEqual([]);
+
+    await createTransaction(charge(team.accountId, 400));
+    expect(sentEmails.map((e) => e.to).sort()).toEqual([
+      "wonka-mate@example.com",
+      "wonka@example.com",
+    ]);
+    expect(sentEmails[0].subject).toBe("Unusually high charge from CloudHost at wonka");
+    expect(sentEmails[0].text).toContain("CloudHost charged $400.00");
+  });
+
+  it("respects each person's choice, per company", async () => {
+    const team = await seedTeam("gringotts");
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: true, unusualCharges: true });
+
+    actAs(team.mate, "member");
+    await updateEmailPreferences({ weeklyDigest: true, unusualCharges: false });
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: true, unusualCharges: false });
+    actAs(team);
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: true, unusualCharges: true });
+
+    sentEmails.length = 0;
+    await createTransaction(charge(team.accountId, 400));
+    expect(sentEmails.map((e) => e.to)).toEqual(["gringotts@example.com"]);
+  });
+
+  it("alerts once about the unusual charges of an imported statement", async () => {
+    const team = await seedTeam("monarch");
+    sentEmails.length = 0;
+    await importTransactions(team.accountId, [
+      { date: addDays(today, -2), name: "CloudHost", amount: -450, category: null },
+      { date: addDays(today, -3), name: "Coffee", amount: -4, category: null },
+      { date: addDays(today, -4), name: "Client payment", amount: 900, category: null },
+    ]);
+    expect(sentEmails.map((e) => e.to).sort()).toEqual([
+      "monarch-mate@example.com",
+      "monarch@example.com",
+    ]);
+    expect(sentEmails[0].text).toContain("CloudHost charged $450.00");
+    expect(sentEmails[0].text).not.toContain("Coffee");
+  });
+
+  it("sends each company its own weekly summary, once, to those who want it", async () => {
+    const team = await seedTeam("tyrell");
+    await createTransaction(charge(team.accountId, 80, "Paper"));
+    await createTransaction({ ...charge(team.accountId, 0, "Sale"), amount: 500 });
+    await createBill({ name: "Rent", amount: 300, dueDate: addDays(today, -1), repeat: "none", categoryId: null });
+    actAs(team.mate, "member");
+    await updateEmailPreferences({ weeklyDigest: false, unusualCharges: true });
+
+    sentEmails.length = 0;
+    const result = await sendWeeklyDigests();
+    expect(result.companies).toBeGreaterThan(0);
+    const mine = sentEmails.filter((e) => e.to.startsWith("tyrell"));
+    expect(mine.map((e) => e.to)).toEqual(["tyrell@example.com"]);
+    expect(mine[0].subject).toBe("tyrell's week: +$420.00 net");
+    expect(mine[0].text).toContain("Money in: $500.00");
+    expect(mine[0].text).toContain("Money out: $80.00");
+    expect(mine[0].text).toContain("In the bank now: $10,120.00");
+    expect(mine[0].text).toContain("1 bill overdue, $300.00 in total.");
+    // Nothing of any other company in it
+    expect(mine[0].text).not.toContain("globex");
+
+    // Run again (a retry, or by mistake): nobody gets it twice
+    sentEmails.length = 0;
+    expect(await sendWeeklyDigests()).toEqual({ companies: 0, emails: 0 });
+    expect(sentEmails).toEqual([]);
   });
 });

@@ -178,3 +178,10 @@
     display: none;
   }
 }
+
+/* The menu isn't printed */
+@media print {
+  .sidebar {
+    display: none;
+  }
+}

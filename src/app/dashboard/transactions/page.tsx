@@ -21,6 +21,7 @@ import TransactionsView, {
 } from "@/components/dashboard/transactions/TransactionsView";
 import { todayIn } from "@/lib/dates";
 import { listAccounts } from "@/lib/data/accounts";
+import { listAttachments } from "@/lib/data/attachments";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getCompanyTimeZone } from "@/lib/data/common";
@@ -71,8 +72,15 @@ export default async function TransactionsPage({
   const ruleResult = /^\d+$/.test(categorized) ? Number(categorized) : null;
 
   const importing = Boolean(single(params.import));
-  const [{ transactions, total }, accounts, categories, rules, editing, timeZone] =
-    await Promise.all([
+  const [
+    { transactions, total },
+    accounts,
+    categories,
+    rules,
+    editing,
+    attachments,
+    timeZone,
+  ] = await Promise.all([
       listTransactions({
         search: query.q,
         accountId: query.account,
@@ -87,6 +95,8 @@ export default async function TransactionsPage({
       // Only the import window needs the rules
       importing ? listCategoryRules() : [],
       editId ? getTransaction(editId) : null,
+      // The files of the transaction being edited
+      editId ? listAttachments(editId) : [],
       getCompanyTimeZone(organization.id),
     ]);
 
@@ -108,7 +118,7 @@ export default async function TransactionsPage({
       // ?import=1 opens the import window
       dialog={
         editing
-          ? { mode: "edit", transaction: editing }
+          ? { mode: "edit", transaction: editing, attachments }
           : accounts.length === 0
             ? null
             : single(params.new)

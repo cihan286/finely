@@ -276,3 +276,10 @@
     display: none;
   }
 }
+
+/* The top bar isn't printed */
+@media print {
+  .topBar {
+    display: none;
+  }
+}
