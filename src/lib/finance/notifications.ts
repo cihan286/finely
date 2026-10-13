@@ -19,7 +19,7 @@
 
 import { localDay } from "@/lib/dates";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { monthName, monthStart } from "@/lib/finance/budgets";
+import { ALL_SPENDING, monthName, monthStart } from "@/lib/finance/budgets";
 import type { UnusualCharge } from "@/lib/finance/insights";
 import type { ISODate, Notification } from "@/types/finance";
 
@@ -70,6 +70,11 @@ export interface NotificationFacts {
   /** Transactions without a category; `at` is when the latest was entered */
   uncategorized: { count: number; at: Date | null };
 }
+
+// Where a budget's notification leads: the month's transactions, in its
+// category (all of them for the overall budget)
+const budgetHref = (categoryId: string, today: ISODate) =>
+  `/dashboard/transactions?${categoryId === ALL_SPENDING ? "" : `category=${categoryId}&`}from=${monthStart(today)}`;
 
 const plural = (count: number, one: string, many: string) =>
   count === 1 ? `1 ${one}` : `${count} ${many}`;
@@ -128,7 +133,7 @@ export function buildNotifications(
       type: "alert",
       title: "Over budget",
       description: `${category.name} is ${formatCurrency(category.spent - category.budget, { currency: currency })} over its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}.`,
-      href: `/dashboard/transactions?category=${category.categoryId}&from=${monthStart(today)}`,
+      href: budgetHref(category.categoryId, today),
       at: category.at,
     });
   }
@@ -140,7 +145,7 @@ export function buildNotifications(
       type: "reminder",
       title: "Budget nearly used up",
       description: `${category.name} has used ${Math.floor((category.spent / category.budget) * 100)}% of its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}: ${formatCurrency(category.budget - category.spent, { currency: currency })} left.`,
-      href: `/dashboard/transactions?category=${category.categoryId}&from=${monthStart(today)}`,
+      href: budgetHref(category.categoryId, today),
       at: category.at,
     });
   }

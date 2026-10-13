@@ -21,6 +21,12 @@ import { addAttachment, deleteAttachment } from "@/lib/data/attachments";
 import { saveCategoryRule } from "@/lib/data/category-rules";
 import { errorMessage } from "@/lib/data/common";
 import {
+  ATTACHMENT_TYPES,
+  detectAttachmentType,
+  formatFileSize,
+  MAX_ATTACHMENT_BYTES,
+} from "@/lib/finance/attachments";
+import {
   createTransaction,
   deleteTransaction,
   importTransactions,
@@ -75,6 +81,28 @@ export async function submitTransaction(
   const id = formField(formData, "id");
   // How many other transactions the new rule categorized, if one was made
   let categorized: number | null = null;
+  // A receipt chosen while adding a transaction
+  const chosen = formData.get("receipt");
+  const receipt =
+    !id && chosen instanceof File && chosen.size > 0
+      ? { name: chosen.name, bytes: new Uint8Array(await chosen.arrayBuffer()) }
+      : null;
+  // Checked before anything is saved: if the file were refused afterwards,
+  // sending the form again would add the transaction twice
+  if (receipt) {
+    if (receipt.bytes.length > MAX_ATTACHMENT_BYTES) {
+      return {
+        error: `A file can be at most ${formatFileSize(MAX_ATTACHMENT_BYTES)}. This one is ${formatFileSize(receipt.bytes.length)}.`,
+      };
+    }
+    if (!detectAttachmentType(receipt.bytes)) {
+      return {
+        error: `Only ${Object.values(ATTACHMENT_TYPES).join(", ")} files can be attached.`,
+      };
+    }
+  }
+  // Set when the transaction was saved but its file wasn't
+  let withoutFile: string | null = null;
   try {
     if (formField(formData, "intent") === "delete") {
       await deleteTransaction(id);
@@ -93,12 +121,24 @@ export async function submitTransaction(
         });
         categorized = rule.categorized;
       }
-      if (id) await updateTransaction(id, input);
-      else await createTransaction(input);
+      if (id) {
+        await updateTransaction(id, input);
+      } else {
+        const newId = await createTransaction(input);
+        if (receipt) {
+          try {
+            await addAttachment(newId, receipt);
+          } catch {
+            withoutFile = newId;
+          }
+        }
+      }
     }
   } catch (error) {
     return { error: errorMessage(error) };
   }
+  // The transaction is there; open it so the file can be added again
+  if (withoutFile) redirect(`${LIST_PATH}?edit=${withoutFile}`);
   // Outside the try: redirect() works by throwing
   const path = returnPath(formData.get("returnTo"));
   redirect(

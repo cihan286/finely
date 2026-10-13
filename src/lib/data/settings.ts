@@ -13,17 +13,56 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { companySettings } from "@/db/finance";
 import { isValidTimeZone } from "@/lib/dates";
 import { CURRENCIES, isCurrency } from "@/lib/finance/currencies";
 import { recordAudit } from "./audit";
-import { DataError, getFinanceContext } from "./common";
+import { formatCurrency } from "@/lib/format";
+import { DataError, getFinanceContext, money } from "./common";
 
 /** The current company's settings */
 export async function getCompanySettings() {
-  const { timeZone, currency } = await getFinanceContext();
-  return { timeZone, currency };
+  const { organizationId, timeZone, currency } = await getFinanceContext();
+  const [row] = await db
+    .select({ monthlyBudget: companySettings.monthlyBudget })
+    .from(companySettings)
+    .where(eq(companySettings.organizationId, organizationId));
+  return {
+    timeZone,
+    currency,
+    /** The most to spend per month in total; null without an overall budget */
+    monthlyBudget: row?.monthlyBudget ?? null,
+  };
+}
+
+/**
+ * Sets the company's overall monthly budget, or removes it (null). Owners
+ * and admins only.
+ */
+export async function updateOverallBudget(amount: number | null) {
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId, currency } = actor;
+  const monthlyBudget = amount === null ? null : money(amount, "Monthly budget", currency);
+  if (monthlyBudget !== null && monthlyBudget <= 0) {
+    throw new DataError("Monthly budget must be more than zero. Leave it empty for no budget.");
+  }
+  await db
+    .insert(companySettings)
+    .values({ organizationId, monthlyBudget })
+    .onConflictDoUpdate({
+      target: companySettings.organizationId,
+      set: { monthlyBudget, updatedAt: new Date() },
+    });
+  await recordAudit(actor, {
+    area: "category",
+    action: "updated",
+    summary:
+      monthlyBudget === null
+        ? "Removed the company's overall monthly budget"
+        : `Set the company's overall monthly budget to ${formatCurrency(monthlyBudget, { currency })}`,
+  });
 }
 
 /** Sets up a new company's settings, e.g. with its creator's timezone. */

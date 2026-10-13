@@ -42,7 +42,11 @@ import { errorMessage } from "@/lib/data/common";
 import { deleteCompany, transferOwnership } from "@/lib/data/company";
 import { updateEmailPreferences } from "@/lib/data/email-notifications";
 import { deleteOwnAccount } from "@/lib/data/person";
-import { updateCurrency, updateTimeZone } from "@/lib/data/settings";
+import {
+  updateCurrency,
+  updateOverallBudget,
+  updateTimeZone,
+} from "@/lib/data/settings";
 import type { BillingInterval, PaidPlan } from "@/lib/finance/plans";
 import type {
   AccountType,
@@ -80,8 +84,8 @@ export async function submitAccount(
 }
 
 /**
- * Changes the company's timezone, or its currency when the form sends one
- * (owners and admins only).
+ * Changes the company's timezone, or its currency or overall monthly budget
+ * when the form sends one (owners and admins only).
  */
 export async function submitCompanySettings(
   _previous: ActionState,
@@ -89,6 +93,23 @@ export async function submitCompanySettings(
 ): Promise<ActionState> {
   const currency = formField(formData, "currency");
   const timeZone = formField(formData, "timezone");
+  // The budget form sends its box even when it's empty (= no budget)
+  if (formData.has("overallBudget")) {
+    const typed = formField(formData, "overallBudget").trim();
+    try {
+      await updateOverallBudget(typed === "" ? null : Number(typed));
+    } catch (error) {
+      return { error: errorMessage(error) };
+    }
+    refresh();
+    return {
+      error: null,
+      success:
+        typed === ""
+          ? "The overall budget was removed."
+          : "The overall monthly budget was saved.",
+    };
+  }
   try {
     if (currency) await updateCurrency(currency);
     else await updateTimeZone(timeZone);

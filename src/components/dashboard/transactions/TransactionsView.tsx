@@ -294,7 +294,7 @@ export default function TransactionsView({
               <Input
                 name="q"
                 type="search"
-                placeholder="Description, notes, category or amount"
+                placeholder="Description, notes, category, account or amount"
                 aria-label="Search transactions"
                 // Show a search made from the top bar while this page is open
                 key={query.q}

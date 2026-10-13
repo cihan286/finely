@@ -32,6 +32,12 @@ import Message from "@/components/common/form/Message";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
 import { amountInputProps } from "@/lib/format";
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_TYPES,
+  formatFileSize,
+  MAX_ATTACHMENT_BYTES,
+} from "@/lib/finance/attachments";
 import { initialActionState } from "@/lib/action-state";
 import {
   MAX_RULE_TEXT_LENGTH,
@@ -294,6 +300,18 @@ function TransactionForm({
           defaultValue={transaction?.notes ?? ""}
         />
       </Field>
+
+      {/* While adding: one receipt right away. More can be added afterwards,
+          by opening the transaction. */}
+      {isNew && (
+        <Field
+          label="Receipt or invoice"
+          optional
+          hint={`${Object.values(ATTACHMENT_TYPES).join(", ")}, up to ${formatFileSize(MAX_ATTACHMENT_BYTES)}. Open the transaction later to add more.`}
+        >
+          <Input name="receipt" type="file" accept={ATTACHMENT_ACCEPT} />
+        </Field>
+      )}
 
       <div className={forms.footer}>
         {!isNew && canManage && (

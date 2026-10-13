@@ -141,6 +141,7 @@ export default async function SettingsPage({
         organization={{ id: organization.id, name: organization.name }}
         timeZone={settings.timeZone}
         currency={settings.currency}
+        monthlyBudget={settings.monthlyBudget}
         timeZones={timeZones}
       />
       <TeamSettings

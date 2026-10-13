@@ -4,7 +4,8 @@
 // In plain words: a spending category can have a monthly budget ("Marketing:
 // $2,000 a month"). This compares each budget with what was spent in that
 // category so far this month, and says whether it's fine, nearly used up
-// (80% or more) or over.
+// (80% or more) or over. A company can also have one budget for everything
+// it spends in a month; it's treated like a category called "All spending".
 //
 // For developers: pure functions, unit-tested in budgets.test.ts. The month
 // is the calendar month in the company's timezone; the spending is fetched
@@ -12,6 +13,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { CategoryIconKey, ISODate } from "@/types/finance";
+
+/**
+ * What stands in for a category's ID in the company's overall budget (real
+ * category IDs start with "cat_")
+ */
+export const ALL_SPENDING = "all";
+/** What the overall budget is called on screen */
+export const ALL_SPENDING_NAME = "All spending";
 
 /** From this share of the budget on, a category counts as "nearly used up" */
 export const NEAR_BUDGET_RATIO = 0.8;
@@ -68,8 +77,12 @@ export function budgetStatus(spent: number, budget: number): BudgetStatus {
   return spent >= budget * NEAR_BUDGET_RATIO ? "near" : "ok";
 }
 
-/** Each budget's progress, the most used up first. */
+/**
+ * Each budget's progress: the overall budget first if there is one, then
+ * the categories', the most used up first.
+ */
 export function buildBudgets(spending: BudgetSpending[]): BudgetProgress[] {
+  const overallFirst = (b: BudgetSpending) => (b.categoryId === ALL_SPENDING ? 0 : 1);
   return spending
     .map((b) => ({
       ...b,
@@ -78,5 +91,10 @@ export function buildBudgets(spending: BudgetSpending[]): BudgetProgress[] {
       ratio: b.spent / b.budget,
       status: budgetStatus(b.spent, b.budget),
     }))
-    .sort((a, b) => b.ratio - a.ratio || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        overallFirst(a) - overallFirst(b) ||
+        b.ratio - a.ratio ||
+        a.name.localeCompare(b.name),
+    );
 }
