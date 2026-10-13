@@ -45,6 +45,7 @@ import {
 } from "@/lib/finance/category-rules";
 import type {
   Account,
+  Card,
   Attachment,
   Category,
   TransactionDetails,
@@ -60,6 +61,8 @@ interface TransactionDialogProps {
   attachments: Attachment[];
   accounts: Account[];
   categories: Category[];
+  /** The company's payment cards, to say which one paid */
+  cards: Card[];
   /** The company's currency, e.g. "USD" */
   currency: string;
   /**
@@ -113,6 +116,7 @@ function TransactionForm({
   transaction,
   accounts,
   categories,
+  cards,
   currency,
   canManage,
   closeHref,
@@ -251,6 +255,32 @@ function TransactionForm({
           </Select>
         </Field>
       </div>
+
+      {/* Only once the company has cards; archived ones can't be chosen,
+          but the one this transaction already has stays */}
+      {cards.length > 0 && (
+        <Field
+          label="Paid with"
+          optional
+          hint={
+            isNew
+              ? "Left empty, the card is taken from the description if it names one (“CARD 4821”)."
+              : undefined
+          }
+        >
+          <Select name="cardId" defaultValue={transaction?.cardId ?? ""}>
+            <option value="">No card</option>
+            {cards
+              .filter((c) => !c.archived || c.id === transaction?.cardId)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} •••• {c.last4}
+                  {c.archived ? " (archived)" : ""}
+                </option>
+              ))}
+          </Select>
+        </Field>
+      )}
 
       {/* Make it a rule: owners and admins only */}
       {canManage && categories.length > 0 && (

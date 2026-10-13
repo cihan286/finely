@@ -33,6 +33,7 @@ import {
 import type { Notification } from "@/types/finance";
 import { selectPossiblyPaid } from "./bills";
 import { selectBudgetSpending } from "./budgets";
+import { selectCardSpending } from "./cards";
 import { getFinanceContext } from "./common";
 import { getForecast } from "./recurring";
 
@@ -61,6 +62,7 @@ export async function listNotifications(): Promise<Notification[]> {
     [uncategorized],
     [read],
     possiblyPaid,
+    cards,
   ] = await Promise.all([
       // Every completed expense since the history for unusual charges begins
       db
@@ -150,6 +152,8 @@ export async function listNotifications(): Promise<Notification[]> {
         ),
       // Unpaid bills that a payment already there may have paid
       selectPossiblyPaid(organizationId),
+      // What each payment card spent this month
+      selectCardSpending(organizationId, timeZone, today),
     ]);
 
   const enteredAt = new Map(expenses.map((e) => [e.id, e.createdAt]));
@@ -214,6 +218,21 @@ export async function listNotifications(): Promise<Notification[]> {
       ),
       overdueBills: billFacts("overdue"),
       billsDueSoon: billFacts("dueSoon"),
+      cardsOverLimit: cards.flatMap((c) =>
+        // Over the limit means something was spent, so there's a latest payment
+        !c.archived && c.monthlyLimit !== null && c.spent > c.monthlyLimit && c.changedAt
+          ? [
+              {
+                id: c.id,
+                name: c.name,
+                last4: c.last4,
+                limit: c.monthlyLimit,
+                spent: c.spent,
+                at: c.changedAt,
+              },
+            ]
+          : [],
+      ),
       billsMaybePaid: {
         count: possiblyPaid.length,
         billId: possiblyPaid.length === 1 ? possiblyPaid[0].billId : null,

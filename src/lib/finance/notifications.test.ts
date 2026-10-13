@@ -7,6 +7,7 @@ const nothing: NotificationFacts = {
   cashShortfall: null,
   overBudget: [],
   nearBudget: [],
+  cardsOverLimit: [],
   overdueBills: { count: 0, amount: 0, at: null },
   billsDueSoon: { count: 0, amount: 0, at: null },
   billsMaybePaid: { count: 0, billId: null, at: null },
@@ -41,6 +42,7 @@ describe("buildNotifications", () => {
         cashShortfall: null,
         overBudget: [],
         nearBudget: [],
+        cardsOverLimit: [],
         overdueBills: { count: 0, amount: 0, at: null },
         billsDueSoon: { count: 0, amount: 0, at: null },
         billsMaybePaid: { count: 0, billId: null, at: null },
@@ -163,6 +165,37 @@ describe("buildNotifications", () => {
     const [several] = buildNotifications(facts(3, null), null, "UTC", "2026-10-06");
     expect(several.href).toBe("/dashboard/bills");
     expect(several.description).toContain("3 unpaid bills have");
+  });
+
+  test("says when a card went over its monthly limit", () => {
+    const [alert] = buildNotifications(
+      {
+        ...nothing,
+        cardsOverLimit: [
+          {
+            id: "card_1",
+            name: "Marketing card",
+            last4: "4821",
+            limit: 500,
+            spent: 620.5,
+            at: at("2026-10-05T09:00:00Z"),
+          },
+        ],
+      },
+      null,
+      "UTC",
+      "2026-10-06",
+    );
+    expect(alert).toEqual({
+      id: "card-card_1-2026-10",
+      type: "alert",
+      title: "Card over its limit",
+      description:
+        "Marketing card (•••• 4821) has spent $620.50 of its $500.00 limit for October.",
+      href: "/dashboard/transactions?card=card_1&from=2026-10-01",
+      day: "2026-10-05",
+      read: false,
+    });
   });
 
   test("warns when the forecast expects the balance to drop below zero", () => {

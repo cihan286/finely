@@ -33,6 +33,14 @@ import {
 } from "./bills";
 import { exportAuditLog, listAuditLog } from "./audit";
 import { getBudgets } from "./budgets";
+import {
+  createCard,
+  deleteCard,
+  getCard,
+  listCards,
+  setCardArchived,
+  updateCard,
+} from "./cards";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories";
 import {
   applyCategoryRule,
@@ -1319,6 +1327,156 @@ describe("regular payments and the forecast", () => {
     await createBill({ name: "Tax", amount: 400, dueDate: addDays(today, 10), repeat: "none", categoryId: null });
     expect((await getForecast()).lowest.balance).toBe(-300);
     expect((await listNotifications()).some((n) => n.id === "cash-shortfall")).toBe(true);
+  });
+});
+
+describe("payment cards", () => {
+  const cardInput = (overrides: Partial<Parameters<typeof createCard>[0]> = {}) => ({
+    name: "Marketing card",
+    last4: "4821",
+    holderId: null,
+    monthlyLimit: null,
+    ...overrides,
+  });
+
+  it("belong to one company, and only owners and admins change them", async () => {
+    const company = await createTestCompany("visa-co");
+    const other = await createTestCompany("amex-co");
+    actAs(company, "member");
+    await expect(createCard(cardInput())).rejects.toThrow("Only owners and admins can do this.");
+
+    actAs(company);
+    await expect(createCard(cardInput({ last4: "48" }))).rejects.toThrow(
+      "Last four digits must be exactly 4 digits.",
+    );
+    await expect(createCard(cardInput({ monthlyLimit: 0 }))).rejects.toThrow(
+      "Monthly limit must be more than zero.",
+    );
+    // The holder has to be on this team
+    await expect(createCard(cardInput({ holderId: other.userId }))).rejects.toThrow(
+      "The card holder isn't on this team.",
+    );
+    const id = await createCard(cardInput({ holderId: company.userId, monthlyLimit: 500 }));
+    expect(await getCard(id)).toMatchObject({
+      name: "Marketing card",
+      last4: "4821",
+      holderId: company.userId,
+      monthlyLimit: 500,
+      archived: false,
+    });
+
+    // Everyone on the team sees them; another company sees and changes nothing
+    actAs(company, "member");
+    expect((await listCards()).cards.map((c) => c.name)).toEqual(["Marketing card"]);
+    actAs(other);
+    expect((await listCards()).cards).toEqual([]);
+    expect(await getCard(id)).toBeNull();
+    await expect(updateCard(id, cardInput({ name: "Mine now" }))).rejects.toThrow("Card not found.");
+    await expect(setCardArchived(id, true)).rejects.toThrow("Card not found.");
+    await expect(deleteCard(id)).rejects.toThrow("Card not found.");
+
+    actAs(company);
+    await updateCard(id, cardInput({ name: "Ads card", monthlyLimit: 800 }));
+    expect((await listAuditLog({ area: "card" })).entries.map((e) => e.summary)).toEqual([
+      "Changed the card “Ads card” (•••• 4821): name from Marketing card to Ads card, holder from visa-co owner to none, monthly limit from $500.00 a month to $800.00 a month",
+      "Added the card “Marketing card” (•••• 4821)",
+    ]);
+  });
+
+  it("add up what each card spent this month and warn when one is over its limit", async () => {
+    const company = await createTestCompany("spender-co");
+    const other = await createTestCompany("saver-co");
+    actAs(other);
+    const otherAccount = await createAccount({ name: "Other", type: "checking" });
+    const theirs = await createCard(cardInput({ last4: "1111", monthlyLimit: 10 }));
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    const ads = await createCard(cardInput({ name: "Ads", last4: "4821", monthlyLimit: 500 }));
+    const travel = await createCard(cardInput({ name: "Travel", last4: "0007" }));
+    const pay = (name: string, amount: number, extra: Partial<TransactionInput> = {}) =>
+      createTransaction({
+        accountId,
+        categoryId: null,
+        name,
+        amount: -amount,
+        date: today,
+        status: "completed",
+        ...extra,
+      });
+
+    // Chosen by hand, and recognized from the description
+    const chosen = await pay("Billboard", 300, { cardId: ads });
+    const recognized = await pay("GOOGLE ADS CARD 4821", 150);
+    expect((await getTransaction(recognized))?.cardId).toBe(ads);
+    // A choice made by hand wins over the description
+    const overruled = await pay("HOTEL CARD 4821", 90, { cardId: travel });
+    expect((await getTransaction(overruled))?.cardId).toBe(travel);
+    // Not counted: pending, money in, and another company's card
+    await pay("Pending ad", 999, { cardId: ads, status: "pending" });
+    await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Refund CARD 4821",
+      amount: 40,
+      date: today,
+      status: "completed",
+    });
+    await expect(pay("Sneaky", 5, { cardId: theirs })).rejects.toThrow("Card not found.");
+
+    // An imported statement names cards too
+    await importTransactions(accountId, [
+      { date: today, name: "META ADS **** 4821", amount: -100, category: null },
+      { date: today, name: "INVOICE 4821", amount: -70, category: null },
+    ]);
+
+    const { cards } = await listCards();
+    expect(cards.map((c) => [c.name, c.spent, c.payments, c.status])).toEqual([
+      ["Ads", 550, 3, "over"],
+      ["Travel", 90, 1, null],
+    ]);
+    expect(
+      (await listTransactions({ cardId: ads })).transactions.map((t) => t.name).sort(),
+    ).toEqual(["Billboard", "GOOGLE ADS CARD 4821", "META ADS **** 4821", "Pending ad"]);
+    const alert = (await listNotifications()).find((n) => n.id.startsWith(`card-${ads}`));
+    expect(alert).toMatchObject({
+      title: "Card over its limit",
+      description: expect.stringContaining("Ads (•••• 4821) has spent $550.00 of its $500.00 limit"),
+    });
+
+    // The other company's card of other digits saw none of it
+    actAs(other);
+    await createTransaction({
+      accountId: otherAccount,
+      categoryId: null,
+      name: "Coffee CARD 4821",
+      amount: -3,
+      date: today,
+      status: "completed",
+    });
+    expect((await listCards()).cards.map((c) => [c.spent, c.payments])).toEqual([[0, 0]]);
+
+    // Archived: no longer chosen or recognized, but its payments stay with it
+    actAs(company);
+    await setCardArchived(ads, true);
+    await expect(pay("New ad", 5, { cardId: ads })).rejects.toThrow("This card is archived.");
+    expect((await getTransaction(await pay("LATE AD CARD 4821", 5)))?.cardId).toBeNull();
+    await updateTransaction(chosen, {
+      accountId,
+      categoryId: null,
+      name: "Billboard, corrected",
+      amount: -300,
+      date: today,
+      status: "completed",
+      cardId: ads,
+    });
+    expect((await getTransaction(chosen))?.cardId).toBe(ads);
+    expect((await listNotifications()).some((n) => n.id.startsWith(`card-${ads}`))).toBe(false);
+
+    // Deleted: its payments stay, without a card
+    await deleteCard(ads);
+    expect((await getTransaction(chosen))?.cardId).toBeNull();
+    expect((await listTransactions()).total).toBe(8);
   });
 });
 

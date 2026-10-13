@@ -26,6 +26,7 @@ import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { countBillsMatching } from "@/lib/data/bills";
+import { listCards } from "@/lib/data/cards";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -59,6 +60,7 @@ export default async function TransactionsPage({
     q: single(params.q).slice(0, 100),
     account: single(params.account),
     category: single(params.category),
+    card: single(params.card),
     from: isoDay(single(params.from)),
     to: isoDay(single(params.to)),
     page: Math.max(Math.trunc(Number(single(params.page))) || 1, 1),
@@ -90,11 +92,13 @@ export default async function TransactionsPage({
     attachments,
     timeZone,
     matchingBills,
+    { cards },
   ] = await Promise.all([
       listTransactions({
         search: query.q,
         accountId: query.account,
         categoryId: query.category,
+        cardId: query.card,
         from: query.from,
         to: query.to,
         limit: PAGE_SIZE,
@@ -110,6 +114,7 @@ export default async function TransactionsPage({
       getCompanyTimeZone(organization.id),
       // The top bar's search lands here; bills with that text are a click away
       query.q ? countBillsMatching(query.q) : 0,
+      listCards(),
     ]);
 
   return (
@@ -127,6 +132,7 @@ export default async function TransactionsPage({
       rules={rules}
       importResult={importResult}
       matchingBills={matchingBills}
+      cards={cards}
       ruleResult={ruleResult}
       // ?new=1 opens an empty form; ?edit=<id> opens that transaction;
       // ?import=1 opens the import window

@@ -6,7 +6,8 @@
 // charges, an account that has gone below zero, a balance that is expected
 // to run short within 30 days, a category that went over
 // its monthly budget or has nearly used it up, bills that are overdue or
-// due within a week or that a payment already there may have paid, payments that have been "pending" for more than a
+// due within a week or that a payment already there may have paid, a
+// payment card over its monthly limit, payments that have been "pending" for more than a
 // week, and transactions without a category.
 // Nothing is stored: each one is worked out from the data, and disappears by
 // itself once it's dealt with.
@@ -59,6 +60,15 @@ export interface NotificationFacts {
   overdueBills: { count: number; amount: number; at: Date | null };
   /** Unpaid bills due within a week; `at` is when the latest came that close */
   billsDueSoon: { count: number; amount: number; at: Date | null };
+  /** Payment cards over their monthly limit, and when each last changed */
+  cardsOverLimit: {
+    id: string;
+    name: string;
+    last4: string;
+    limit: number;
+    spent: number;
+    at: Date;
+  }[];
   /**
    * Unpaid bills for which a payment of the same amount is already among
    * the transactions; `billId` is set when it's just one, `at` is when the
@@ -147,6 +157,18 @@ export function buildNotifications(
       description: `${category.name} has used ${Math.floor((category.spent / category.budget) * 100)}% of its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}: ${formatCurrency(category.budget - category.spent, { currency: currency })} left.`,
       href: budgetHref(category.categoryId, today),
       at: category.at,
+    });
+  }
+
+  for (const card of facts.cardsOverLimit) {
+    items.push({
+      // One per month: next month's is a new notification
+      id: `card-${card.id}-${today.slice(0, 7)}`,
+      type: "alert",
+      title: "Card over its limit",
+      description: `${card.name} (•••• ${card.last4}) has spent ${formatCurrency(card.spent, { currency: currency })} of its ${formatCurrency(card.limit, { currency: currency })} limit for ${monthName(today)}.`,
+      href: `/dashboard/transactions?card=${card.id}&from=${monthStart(today)}`,
+      at: card.at,
     });
   }
 

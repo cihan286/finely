@@ -14,6 +14,7 @@
 export const AUDIT_AREAS = {
   transaction: "Transactions",
   bill: "Bills",
+  card: "Cards",
   account: "Bank accounts",
   bank: "Bank connections",
   category: "Categories & budgets",

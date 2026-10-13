@@ -6,7 +6,7 @@
 // (not just the page on screen), ready for a spreadsheet or an accountant.
 //
 // For developers: a route handler, because it answers with a file instead
-// of a page. It takes the same ?q, account, category, from and to as the
+// of a page. It takes the same ?q, account, category, card, from and to as the
 // page. exportTransactions() finds the company itself and sends visitors who
 // aren't logged in to /login, like every data function.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       search: (params.get("q") ?? "").slice(0, 100),
       accountId: params.get("account") ?? "",
       categoryId: params.get("category") ?? "",
+      cardId: params.get("card") ?? "",
       from: params.get("from") ?? "",
       to: params.get("to") ?? "",
     });

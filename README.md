@@ -11,8 +11,8 @@ categories, the dashboard,
 with receipts attached, bills, budgets, the Insights page (with the regular
 payments it spots), a 30-day forecast, exports, search, notifications and
 email notifications (a weekly summary and alerts), an activity log, a
-currency per company and paid plans through Stripe all work with real data.
-Payment cards aren't built yet.
+currency per company, payment cards and paid plans through Stripe all work
+with real data.
 
 ## How accounts work
 
@@ -145,6 +145,7 @@ src/
 │       │                   attached files (attachments/[id]/route.ts)
 │       ├── bills/          Bills to pay, add/edit, "Mark as paid", undoing a
 │       │                   payment, and CSV export
+│       ├── cards/          The company's payment cards and what each spent
 │       ├── budgets/        This month's budgets as a CSV file (no page)
 │       ├── insights/       Trends over 3/6/12 months, vendors, unusual charges,
 │       │                   regular payments; CSV export and printing
@@ -173,6 +174,7 @@ src/
 │   │   ├── dashboard-summary.ts  The dashboard's numbers
 │   │   ├── insights.ts           The Insights page's numbers
 │   │   ├── bills.ts              When bills are due, and when they come back
+│   │   ├── cards.ts              Card limits, and which card a line names
 │   │   ├── budgets.ts            How much of each monthly budget is used
 │   │   ├── recurring.ts          Spotting payments that come back regularly
 │   │   ├── forecast.ts           Where the balance is heading in 30 days
@@ -639,6 +641,31 @@ payment: the bill is owed again, the transaction that "Mark as paid" recorded
 is deleted (one that was already there stays), and the next bill of a
 repeating one is removed unless someone changed or paid it since.
 
+## Payment cards
+
+The **Cards** page lists the company's payment cards: the ones its bank
+issued. Finely doesn't issue cards and can't block one; it keeps track of
+who spends what. A card has a name, the last four digits of its number (the
+full number is never asked for), optionally the team member who carries it,
+and optionally a **monthly limit**. Each card shows what was paid with it
+this month against that limit (blue, amber from 80%, red once it's over),
+and links to its payments. When a card goes over its limit, the bell says so
+once per month. Owners and admins add, edit, archive and delete cards;
+everyone on the team sees them.
+
+A transaction can say which card paid it ("Paid with" in its window, and a
+**Card** filter on the Transactions page). For money out that arrives without
+one — typed in, imported or synced from a bank — the card is taken from the
+description when it names one the way banks do: "CARD 4821", "**** 4821",
+"ending in 4821" (`cardFromDescription()` in `lib/finance/cards.ts`). Four
+digits that aren't presented as a card's, like an invoice number, don't
+count.
+
+An **archived** card (cancelled or expired) keeps its past payments but
+can't be chosen or recognized any more. Deleting a card leaves its
+transactions in place, without a card. Like the budgets, only completed
+money out counts, in the calendar month of the company's timezone.
+
 ## Budgets
 
 A "Money out" category can have a **monthly budget** (Settings → Categories,
@@ -771,7 +798,10 @@ Finely is a portfolio project. It aims to have what a SaaS app for
 businesses needs, and it isn't meant to be run for paying customers as it
 is. What's missing at that level:
 
-- **Payment cards** aren't built.
+- **Payment cards** are for keeping track of cards the company's bank
+  issued: Finely doesn't issue cards, and a limit warns but can't stop a
+  payment. A card is only recognized in a description that shows its last
+  four digits.
 - **Currencies:** one per company. There are no accounts in other
   currencies and nothing is converted.
 - **Bills** can't be paid in parts. A payment that arrives pays its bill by
