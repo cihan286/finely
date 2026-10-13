@@ -98,7 +98,10 @@ async function stripe<T>(
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) {
     const code = data?.error?.code ?? data?.error?.type ?? `http_${response.status}`;
-    console.error(`[stripe] ${method} ${path} failed: ${code}`);
+    // Stripe's own explanation says what to fix (a setting, a parameter)
+    console.error(
+      `[stripe] ${method} ${path} failed: ${code}${data?.error?.message ? `: ${data.error.message}` : ""}`,
+    );
     throw new StripeError(`Stripe refused ${method} ${path}.`, String(code));
   }
   return data as T;
@@ -119,8 +122,8 @@ export async function createCheckoutSession(input: {
   email: string;
   successUrl: string;
   cancelUrl: string;
-}): Promise<string> {
-  const session = await stripe<{ url: string }>("POST", "/checkout/sessions", {
+}): Promise<{ id: string; url: string }> {
+  const session = await stripe<{ id: string; url: string }>("POST", "/checkout/sessions", {
     mode: "subscription",
     line_items: { 0: { price: priceIdFor(input.plan, input.interval), quantity: 1 } },
     client_reference_id: input.organizationId,
@@ -132,7 +135,34 @@ export async function createCheckoutSession(input: {
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
   });
-  return session.url;
+  return { id: session.id, url: session.url };
+}
+
+/** A payment page that was opened earlier, and how it ended (if it has) */
+export interface StripeCheckoutSession {
+  id: string;
+  /** "open" = not paid yet, "complete" = paid, "expired" = given up on */
+  status: "open" | "complete" | "expired";
+  /** The page's address while it's open */
+  url: string | null;
+  /** The company it was opened for (our ID) */
+  client_reference_id: string | null;
+  /** The subscription the payment started; null until it's paid */
+  subscription: (StripeSubscription & { created: number }) | null;
+  line_items?: { data: { price: { id: string } | null }[] };
+}
+
+/** Looks up a payment page, with the subscription it led to and its price. */
+export async function getCheckoutSession(id: string): Promise<StripeCheckoutSession> {
+  return stripe<StripeCheckoutSession>(
+    "GET",
+    `/checkout/sessions/${encodeURIComponent(id)}?expand%5B%5D=subscription&expand%5B%5D=line_items`,
+  );
+}
+
+/** Closes a payment page that is still open, so it can't be paid any more. */
+export async function expireCheckoutSession(id: string): Promise<void> {
+  await stripe("POST", `/checkout/sessions/${encodeURIComponent(id)}/expire`);
 }
 
 /**

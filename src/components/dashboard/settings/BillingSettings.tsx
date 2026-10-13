@@ -76,9 +76,9 @@ export default function BillingSettings({
       {state.error && <Message type="error">{state.error}</Message>}
       {justPaid && (
         <Message type="success">
-          Thank you! Your plan is updated as soon as Stripe confirms the
-          payment, usually within a minute. Reload the page if it still shows
-          the old plan.
+          {plan === "free"
+            ? "Thank you! Your plan is updated as soon as Stripe confirms the payment, usually within a minute. Reload the page if it still shows the old plan."
+            : `Thank you! ${PLANS[plan].name} is active for your company.`}
         </Message>
       )}
       <section className={shared.card}>

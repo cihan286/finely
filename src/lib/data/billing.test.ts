@@ -23,9 +23,12 @@ vi.mock("@/lib/session", async () => ({
   requireOrganization: (await import("./testing")).currentSession,
 }));
 
-// The pretend Stripe: what it was asked, and whether it should refuse
+// The pretend Stripe: what it was asked, the payment pages it opened, and
+// whether it should refuse
 const stripe = vi.hoisted(() => ({
   checkouts: [] as Record<string, unknown>[],
+  sessions: new Map<string, Record<string, unknown>>(),
+  expired: [] as string[],
   portals: [] as string[],
   cancelled: [] as string[],
   failCancel: null as string | null,
@@ -44,9 +47,28 @@ vi.mock("@/lib/billing/stripe", () => {
     isBillingEnabled: true,
     planForPrice: (id: string | null | undefined) =>
       ({ price_starter: "starter", price_growth: "growth" })[id ?? ""] ?? null,
+    priceIdFor: (plan: string) => `price_${plan}`,
     createCheckoutSession: async (input: Record<string, unknown>) => {
       stripe.checkouts.push(input);
-      return "https://stripe.test/checkout";
+      const id = `cs_${stripe.sessions.size + 1}`;
+      stripe.sessions.set(id, {
+        id,
+        status: "open",
+        url: `https://stripe.test/checkout/${id}`,
+        client_reference_id: input.organizationId,
+        subscription: null,
+        line_items: { data: [{ price: { id: `price_${input.plan}` } }] },
+      });
+      return { id, url: `https://stripe.test/checkout/${id}` };
+    },
+    getCheckoutSession: async (id: string) => {
+      const session = stripe.sessions.get(id);
+      if (!session) throw new StripeError("unknown", "resource_missing");
+      return session;
+    },
+    expireCheckoutSession: async (id: string) => {
+      stripe.expired.push(id);
+      Object.assign(stripe.sessions.get(id)!, { status: "expired", url: null });
     },
     createPortalSession: async (customerId: string) => {
       stripe.portals.push(customerId);
@@ -91,6 +113,7 @@ const event = (
 beforeAll(setUpTestDb);
 beforeEach(() => {
   stripe.checkouts = [];
+  stripe.expired = [];
   stripe.portals = [];
   stripe.cancelled = [];
   stripe.failCancel = null;
@@ -187,7 +210,9 @@ describe("paying", () => {
       startCheckout("platinum" as "starter", "monthly"),
     ).rejects.toThrow("Choose a plan.");
 
-    expect(await startCheckout("growth", "yearly")).toBe("https://stripe.test/checkout");
+    expect(await startCheckout("growth", "yearly")).toMatch(
+      /^https:\/\/stripe\.test\/checkout\/cs_\d+$/,
+    );
     expect(stripe.checkouts).toMatchObject([
       { organizationId: company.organizationId, plan: "growth", interval: "yearly", customerId: null },
     ]);
@@ -209,6 +234,105 @@ describe("paying", () => {
     );
     await startCheckout("starter", "monthly");
     expect(stripe.checkouts[0]).toMatchObject({ customerId: `cus_${company.organizationId}` });
+  });
+});
+
+describe("a payment page that was opened", () => {
+  // What Stripe says about a page once it's paid
+  const pay = (sessionUrl: string, organizationId: string, price = "price_starter") => {
+    const session = stripe.sessions.get(sessionUrl.split("/").pop()!)!;
+    Object.assign(session, {
+      status: "complete",
+      url: null,
+      subscription: {
+        ...event(organizationId, { price }).data.object,
+        created: 1_800_000_000,
+      },
+    });
+  };
+
+  it("is used again instead of opening a second one, so nobody pays twice", async () => {
+    const company = await createTestCompany("patient-co");
+    actAs(company);
+    const first = await startCheckout("starter", "monthly");
+    // Clicked again, without having paid
+    expect(await startCheckout("starter", "monthly")).toBe(first);
+    expect(stripe.checkouts.length).toBe(1);
+    expect(await getBilling()).toMatchObject({ plan: "free", hasCustomer: false });
+
+    // Another plan after all: the first page is closed, so only one can be paid
+    const second = await startCheckout("growth", "monthly");
+    expect(second).not.toBe(first);
+    expect(stripe.expired).toEqual([first.split("/").pop()]);
+    expect(await startCheckout("growth", "monthly")).toBe(second);
+    expect(stripe.checkouts.length).toBe(2);
+  });
+
+  it("gives the plan as soon as it's paid, without waiting for Stripe's message", async () => {
+    const company = await createTestCompany("eager-co");
+    actAs(company);
+    const url = await startCheckout("starter", "monthly");
+    pay(url, company.organizationId);
+
+    // Back on the Settings page: Stripe's message hasn't arrived
+    expect(await getBilling()).toMatchObject({ plan: "starter", memberLimit: 5, hasCustomer: true });
+    expect(await memberLimitFor(company.organizationId)).toBe(5);
+    // And there's nothing to buy a second time
+    await expect(startCheckout("starter", "monthly")).rejects.toThrow(
+      "This company already has a plan.",
+    );
+    expect(stripe.checkouts.length).toBe(1);
+
+    // Stripe's message arrives after all, and later ones still count
+    await applySubscriptionEvent(
+      event(company.organizationId, { type: "customer.subscription.created" }),
+    );
+    await applySubscriptionEvent(event(company.organizationId, { price: "price_growth" }));
+    expect(await getBilling()).toMatchObject({ plan: "growth" });
+    expect((await listAuditLog({ area: "settings" })).entries.map((e) => e.summary)).toEqual([
+      "The company's plan changed from Starter to Growth",
+      "The company's plan changed from Free to Starter",
+    ]);
+  });
+
+  it("paid in one tab while choosing again in another: no second page", async () => {
+    const company = await createTestCompany("two-tabs-co");
+    actAs(company);
+    pay(await startCheckout("growth", "yearly"), company.organizationId, "price_growth");
+    await expect(startCheckout("growth", "yearly")).rejects.toThrow(
+      "This company already has a plan.",
+    );
+    expect(await getBilling()).toMatchObject({ plan: "growth" });
+  });
+
+  it("that expired, or was for another company, is forgotten", async () => {
+    const company = await createTestCompany("slow-co");
+    const other = await createTestCompany("sneaky-co");
+    actAs(company);
+    const first = await startCheckout("starter", "monthly");
+    Object.assign(stripe.sessions.get(first.split("/").pop()!)!, { status: "expired", url: null });
+    const second = await startCheckout("starter", "monthly");
+    expect(second).not.toBe(first);
+
+    // A paid page of another company never gives this one a plan
+    actAs(other);
+    const theirs = await startCheckout("growth", "monthly");
+    pay(theirs, other.organizationId, "price_growth");
+    await testDb
+      .update(subscription)
+      .set({ checkoutSessionId: theirs.split("/").pop()! })
+      .where(eq(subscription.organizationId, company.organizationId));
+    actAs(company);
+    expect(await getBilling()).toMatchObject({ plan: "free" });
+  });
+
+  it("is closed when its company is deleted", async () => {
+    const company = await createTestCompany("leaving-co");
+    actAs(company);
+    const url = await startCheckout("starter", "monthly");
+    await deleteCompany("leaving-co");
+    expect(stripe.expired).toEqual([url.split("/").pop()]);
+    expect(stripe.cancelled).toEqual([]);
   });
 });
 

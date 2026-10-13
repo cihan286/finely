@@ -369,6 +369,11 @@ export const subscription = pgTable("subscription", {
   // When the Stripe message this row comes from happened, so an older
   // message arriving late doesn't overwrite a newer one
   eventAt: timestamp("event_at"),
+  // Stripe's payment page that was last opened for this company, until we
+  // know how it ended (paid or expired). While it's set, no second payment
+  // page is opened, so nobody pays twice. A company that never paid has a
+  // row with plan "free" and status "none" just to hold this.
+  checkoutSessionId: text("checkout_session_id"),
   ...timestamps,
 });
 
