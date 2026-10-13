@@ -73,6 +73,17 @@
   gap: 0.4rem;
 }
 
+/* A picture, shown small */
+.thumbnail {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--background);
+}
+
 .item {
   display: flex;
   align-items: center;

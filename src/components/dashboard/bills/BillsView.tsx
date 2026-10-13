@@ -12,8 +12,9 @@
 // hands back which window to show (`dialog`).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import Form from "next/form";
 import Link from "next/link";
-import { Download, Plus, Repeat } from "lucide-react";
+import { Download, Plus, Repeat, Search } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { daysBetween } from "@/lib/dates";
@@ -54,6 +55,8 @@ interface BillsViewProps {
    * already among the transactions
    */
   possiblyPaid: string[];
+  /** What the lists are narrowed down to (?q=…); "" for everything */
+  search: string;
   /** Whether there are more paid bills than the ones listed */
   morePaid: boolean;
   /** Whether every paid bill is listed (?history=1) */
@@ -95,6 +98,7 @@ export default function BillsView({
   unpaid,
   paid,
   possiblyPaid,
+  search,
   morePaid,
   allPaid,
   accounts,
@@ -182,8 +186,31 @@ export default function BillsView({
         </Message>
       )}
 
-      {/* Totals of what's still owed */}
-      <div className={styles.tiles}>
+      {/* Narrows both lists down; submitting it changes the address */}
+      <Form action={LIST_PATH} className={styles.searchBox}>
+        <Search size={16} className={styles.searchIcon} aria-hidden="true" />
+        <input
+          name="q"
+          type="search"
+          placeholder="Search bills by name, notes or category"
+          aria-label="Search bills"
+          key={search}
+          defaultValue={search}
+          maxLength={100}
+          className={styles.search}
+        />
+      </Form>
+      {search && (
+        <p className={styles.searchNote}>
+          Showing bills that match “{search}”.{" "}
+          <Link href={LIST_PATH} className={styles.viewLink}>
+            Show all bills
+          </Link>
+        </p>
+      )}
+
+      {/* Totals of what's still owed (of everything, so not while searching) */}
+      <div className={styles.tiles} hidden={Boolean(search)}>
         <div className={styles.tile}>
           <span className={styles.tileLabel}>Overdue</span>
           <span
@@ -220,9 +247,11 @@ export default function BillsView({
         <h2 className={styles.cardTitle}>To pay</h2>
         {unpaid.length === 0 ? (
           <p className={styles.noResults}>
-            {paid.length === 0
-              ? "No bills yet. Add rent, subscriptions or invoices with “Add bill” to see what's coming up."
-              : "Nothing to pay right now."}
+            {search
+              ? "No unpaid bill matches your search."
+              : paid.length === 0
+                ? "No bills yet. Add rent, subscriptions or invoices with “Add bill” to see what's coming up."
+                : "Nothing to pay right now."}
           </p>
         ) : (
           <div className={styles.tableScroll}>
@@ -309,7 +338,10 @@ export default function BillsView({
           <div className={styles.cardTitleRow}>
             <h2 className={styles.cardTitle}>{allPaid ? "Paid" : "Recently paid"}</h2>
             {morePaid && (
-              <Link href={`${LIST_PATH}?history=1`} className={styles.viewLink}>
+              <Link
+                href={`${LIST_PATH}?history=1${search ? `&q=${encodeURIComponent(search)}` : ""}`}
+                className={styles.viewLink}
+              >
                 Show all paid bills
               </Link>
             )}

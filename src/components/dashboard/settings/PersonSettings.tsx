@@ -2,14 +2,16 @@
 // "Your account" settings
 //
 // In plain words: the last section of Settings, about you rather than the
-// company. You can correct your name. "Download my data" saves a file with
-// what Finely holds about you.
+// company. You can correct your name and change your password. "Download my
+// data" saves a file with what Finely holds about you.
 // "Delete my account" removes you from Finely for good, after you typed your
 // email address to confirm. Someone who still owns a company is told to hand
 // it over or delete it first.
 //
-// For developers: a client component ("use client"). The name is saved by
-// Better Auth (authClient.updateUser). The deletion form is sent to the
+// For developers: a client component ("use client"). The name and the
+// password are saved by Better Auth (authClient.updateUser and
+// .changePassword, which asks for the current password and logs every other
+// device out). The deletion form is sent to the
 // submitAccountDeletion server action, which checks everything again
 // (lib/data/person.ts) and then goes to the login page. The download is a
 // plain link to a route that answers with a file. Also shown on
@@ -28,7 +30,11 @@ import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
-import { Input } from "@/components/common/form/controls";
+import { Input, PasswordInput } from "@/components/common/form/controls";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from "@/components/auth/passwordRules";
 import Message from "@/components/common/form/Message";
 import { submitAccountDeletion } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
@@ -42,6 +48,8 @@ interface PersonSettingsProps {
   name: string;
   /** The signed-in person's email address, to type as confirmation */
   email: string;
+  /** Whether they sign in with a password (not only with Google) */
+  hasPassword: boolean;
   /** The companies this person owns; while there are any, deleting is refused */
   ownedCompanies: string[];
 }
@@ -49,6 +57,7 @@ interface PersonSettingsProps {
 export default function PersonSettings({
   name,
   email,
+  hasPassword,
   ownedCompanies,
 }: PersonSettingsProps) {
   const router = useRouter();
@@ -71,6 +80,38 @@ export default function PersonSettings({
     if (!confirmed || blocked) return;
     const formData = new FormData(e.currentTarget);
     startTransition(() => dispatch(formData));
+  };
+
+  const [changing, setChanging] = useState(false);
+
+  const handlePassword = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    setChanging(true);
+    setRenamed(null);
+    const { error } = await authClient.changePassword({
+      currentPassword: String(formData.get("currentPassword")),
+      newPassword: String(formData.get("newPassword")),
+      // Whoever knew the old password is logged out everywhere else
+      revokeOtherSessions: true,
+    });
+    setChanging(false);
+    if (error) {
+      setRenamed({
+        type: "error",
+        text:
+          error.code === "INVALID_PASSWORD"
+            ? "The current password isn't right."
+            : (error.message ?? "Could not change your password. Please try again."),
+      });
+      return;
+    }
+    form.reset();
+    setRenamed({
+      type: "success",
+      text: "Your password was changed. Other devices were logged out.",
+    });
   };
 
   const handleRename = async (e: SubmitEvent<HTMLFormElement>) => {
@@ -128,6 +169,49 @@ export default function PersonSettings({
           />
         </form>
       </section>
+
+      {/* Someone who only signs in with Google has no password here */}
+      {hasPassword && (
+        <section className={shared.card}>
+          <div className={shared.cardHeader}>
+            <h2 className={shared.cardTitle}>Your password</h2>
+            <p className={shared.cardHint}>
+              Changing it logs you out on every other device.
+            </p>
+          </div>
+          <form className={styles.form} onSubmit={handlePassword}>
+            <Field label="Current password" className={styles.grow}>
+              <PasswordInput
+                name="currentPassword"
+                autoComplete="current-password"
+                maxLength={MAX_PASSWORD_LENGTH}
+                required
+              />
+            </Field>
+            <Field
+              label="New password"
+              hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+              className={styles.grow}
+            >
+              <PasswordInput
+                name="newPassword"
+                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
+                maxLength={MAX_PASSWORD_LENGTH}
+                required
+              />
+            </Field>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={changing}
+              text={changing ? "Changing" : "Change"}
+              disabled={changing}
+            />
+          </form>
+        </section>
+      )}
 
       <section className={shared.card}>
         <div className={shared.cardHeader}>

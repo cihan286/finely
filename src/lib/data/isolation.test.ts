@@ -18,6 +18,7 @@ import { addDays, todayIn } from "@/lib/dates";
 import { actAs, addTestMember, createTestCompany, setUpTestDb, testDb } from "./testing";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./accounts";
 import {
+  countBillsMatching,
   createBill,
   deleteBill,
   exportBills,
@@ -963,6 +964,45 @@ describe("bills", () => {
     });
     // April's bill is still there, once
     expect((await listBills()).unpaid.map((b) => b.dueDate)).toEqual(["2026-04-05"]);
+  });
+
+  it("searches the company's own bills by name, notes and category", async () => {
+    const company = await createTestCompany("bolton");
+    const other = await createTestCompany("karstark");
+    actAs(other);
+    await createBill({ name: "Dreadfort rent", amount: 10, dueDate: today, repeat: "none", categoryId: null });
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    const categoryId = await createCategory({
+      name: "Kennels",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    await createBill({ name: "Dreadfort rent", amount: 500, dueDate: today, repeat: "none", categoryId: null });
+    await createBill({ name: "Hounds", amount: 60, dueDate: today, repeat: "none", categoryId });
+    const paid = await createBill({
+      name: "Salt",
+      amount: 5,
+      dueDate: today,
+      repeat: "none",
+      categoryId: null,
+      notes: "For the 100% rent-free cellar",
+    });
+    await payBill(paid, { accountId, date: today });
+
+    const found = await listBills({ search: " RENT " });
+    expect(found.unpaid.map((b) => b.name)).toEqual(["Dreadfort rent"]);
+    expect(found.paid.map((b) => b.name)).toEqual(["Salt"]);
+    expect((await listBills({ search: "kennel" })).unpaid.map((b) => b.name)).toEqual(["Hounds"]);
+    // Taken literally: "%" isn't "anything"
+    expect((await listBills({ search: "100%" })).paid.length).toBe(1);
+    expect((await listBills({ search: "%%" })).unpaid).toEqual([]);
+    expect(await countBillsMatching("rent")).toBe(2);
+    expect(await countBillsMatching("  ")).toBe(0);
+    actAs(other);
+    expect(await countBillsMatching("rent")).toBe(1);
   });
 
   it("lists every paid bill when asked", async () => {

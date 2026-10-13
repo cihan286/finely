@@ -20,6 +20,29 @@ const regular = (overrides: Partial<RecurringPayment>): RecurringPayment => ({
 });
 
 describe("buildForecast", () => {
+  test("a pending payment that is an unpaid bill's is counted once, as the bill", () => {
+    const forecast = buildForecast({
+      today,
+      balance: 1000,
+      bills: [{ name: "Office rent", amount: 400, dueDate: "2026-10-20", repeat: "none" }],
+      pending: [
+        { name: "OFFICE RENT OCT", amount: -400, day: "2026-10-18" },
+        // A second one of the same kind is a second payment
+        { name: "OFFICE RENT OCT", amount: -400, day: "2026-10-19" },
+        // Another vendor, and another amount, are their own payments
+        { name: "Laptop", amount: -400, day: "2026-10-18" },
+        { name: "Office rent", amount: -450, day: "2026-10-18" },
+      ],
+      recurring: [],
+    });
+    expect(forecast.events.map((e) => [e.name, e.amount, e.source])).toEqual([
+      ["Office rent", -450, "pending"],
+      ["Laptop", -400, "pending"],
+      ["OFFICE RENT OCT", -400, "pending"],
+      ["Office rent", -400, "bill"],
+    ]);
+  });
+
   test("counts pending payments, late ones today, and skips ones after the 30 days", () => {
     const forecast = buildForecast({
       today,

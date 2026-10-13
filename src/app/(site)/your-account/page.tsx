@@ -14,7 +14,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PersonSettings from "@/components/dashboard/settings/PersonSettings";
-import { listOwnedCompanies } from "@/lib/data/person";
+import { hasPassword, listOwnedCompanies } from "@/lib/data/person";
 import { requireUser } from "@/lib/session";
 import styles from "../site.module.css";
 
@@ -26,7 +26,10 @@ export const metadata: Metadata = {
 
 export default async function YourAccountPage() {
   const user = await requireUser();
-  const ownedCompanies = await listOwnedCompanies();
+  const [ownedCompanies, passwordSet] = await Promise.all([
+    listOwnedCompanies(),
+    hasPassword(),
+  ]);
 
   return (
     <>
@@ -42,6 +45,7 @@ export default async function YourAccountPage() {
       <PersonSettings
         name={user.name}
         email={user.email}
+        hasPassword={passwordSet}
         ownedCompanies={ownedCompanies}
       />
     </>

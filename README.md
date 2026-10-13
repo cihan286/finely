@@ -4,7 +4,7 @@ Financial clarity for modern businesses. Finely is a SaaS app that helps
 businesses track expenses, follow their cash flow and turn financial data into
 actionable insights.
 
-**Status:** early development. The landing page, sign-up/login, business
+**Status:** a portfolio project, in active development. The landing page, sign-up/login, business
 accounts (companies with teams and invitations), bank accounts, transactions
 (added by hand, imported from a bank's CSV or synced from a linked bank),
 categories, the dashboard,
@@ -459,7 +459,8 @@ with `STRIPE_WEBHOOK_SECRET`. A message that isn't signed, or is older than
 five minutes, is refused; late and repeated ones change nothing. While a
 failed payment is being retried (`past_due`) the plan stays; once Stripe
 gives up or the subscription is cancelled, the company is on Free again.
-When a payment first fails, the company's owner gets an email saying so.
+When a payment first fails, the company's owner gets an email saying so,
+and another when the paid plan ends.
 Deleting a company cancels its subscription at Stripe first, and handing one
 over makes the new owner's address the one Stripe sends receipts to.
 
@@ -678,6 +679,8 @@ finds the same at `/your-account` (linked from the company setup page).
 
 - **Your name** can be corrected; teammates see the new one everywhere
   except in what the activity logs already recorded.
+- **Your password** can be changed by typing the current one (for people
+  who sign in with a password); every other device is logged out.
 - **Download my data** saves a JSON file with what Finely holds about the
   person: profile, how they sign in, where they're logged in, their
   companies with their email choices, the invitations they sent, and what
@@ -698,8 +701,7 @@ describe what Finely really does: what it stores, the services it relies on
 (Vercel, Neon, Resend, Sentry, Google sign-in) and that its only cookies are
 the login ones. **Keep the privacy policy true:** when a service, a cookie
 or a kind of stored data is added, change the page and its "Last updated"
-date in the same commit. Neither text was written by a lawyer; see the
-limitations below.
+date in the same commit. They're plain descriptions, not legal documents.
 
 ## Regular payments and the forecast
 
@@ -729,14 +731,17 @@ The dashboard's **Forecast** starts from today's balances and adds what's
 expected in the next 30 days: unpaid bills (an overdue one counts today),
 payments that are still pending (they aren't in the balance yet; one dated in
 the past counts today), and regular payments and regular income. A regular
-payment that is already an unpaid bill is counted once, as the bill. It shows the expected balance, the
+payment that is already an unpaid bill is counted once, as the bill, and so
+is a pending payment of a bill's amount whose description names the bill. It shows the expected balance, the
 lowest point on the way, and what's coming up. If the balance is expected to
 drop below zero, the bell warns. It's an estimate: one-off income and
 spending that nobody entered yet aren't in it.
 
 ## Search and notifications
 
-The search box in the top bar opens the Transactions page with what matches
+The Bills page has its own search (name, notes or category), and when the
+top bar's search also matches bills, the Transactions page says how many and
+links to them. The search box in the top bar opens the Transactions page with what matches
 (the same search as that page's own filter): part of a description, of the
 notes or of a category's name, or the exact amount ("45", "$1,234.50"),
 whether money in or out.
@@ -753,108 +758,40 @@ and disappear once the cause is gone. Only the moment each person pressed
 
 ## Known limitations
 
-- Payment cards aren't built.
-- Bills: there's no partial payment. An arriving payment only pays its bill
-  by itself when the amount is exact and the bank's description contains
-  the bill's name (or the other way round): a bill called "Office rent" paid
-  to "ACME PROPERTIES LLC" is only pointed out, and one paid in two parts or
-  with a fee on top isn't noticed at all. A wrong match is possible when a
-  vendor charges the same amount twice close together for different things;
-  "Undo" on the paid bill puts it right. When a bill was marked as paid by
-  hand and its payment then arrives through an import or a linked bank, the
-  recorded payment is removed in favour of the arrived one, but only under
-  the same conditions (exact amount, the bill's name in the description,
-  close to the due date); otherwise both stay and it's counted twice.
-  Transactions that were already there before a bill was added aren't
-  matched by themselves, only pointed out. Only owners and admins can undo a
-  payment. Unpaid bills are on the dashboard in the forecast only, not in
-  the cash flow chart.
-- Notifications are worked out when the dashboard loads or something is
-  saved, not while a page sits open, and only unusual charges are emailed
-  right away.
-- Vendors (Insights) are transactions with the same description, ignoring
-  case and reference numbers ("STRIPE ST-ABC1" and "STRIPE ST-XYZ2" are both
-  "STRIPE"). A word counts as a reference when it mixes letters and digits,
-  has four or more digits, starts with "#" or is a date, so references made
-  of letters only ("STRIPE PAYOUT ABCD") still count as different vendors,
-  and so do different spellings of one vendor ("AMZN", "Amazon").
-- Regular payments are only spotted with three or more payments in a weekly,
-  2-weekly, monthly or 3-monthly rhythm, or two or more a year apart whose
-  amounts are within 10% of each other: a yearly payment whose price changed
-  more isn't, nor are ones on changing days (the "last Friday of the month"
-  mostly works, "whenever the invoice arrives" doesn't). One that isn't
-  really regular can be hidden ("Not regular"), but its rhythm, amount or
-  next date can't be corrected by hand, and one that was missed can't be
-  added (add it as a bill instead).
-- The forecast only knows unpaid bills, pending payments and regular
-  payments. One-off income and day-to-day spending aren't in it, so it tends
-  to look better than reality. A pending payment that is also an unpaid bill
-  is counted twice, unless it paid that bill by itself when it was entered
-  (exact amount, the bill's name in its description, close to the due date).
-- Budgets are one amount per category for every month: no different amount
-  for one month, no carrying over and no overall budget.
-- Attached files live in the database, which makes it and its backups grow;
-  at some volume they should move to a storage service (the change is
-  contained in `lib/data/attachments.ts` and the `attachment` table). Files
-  aren't scanned for viruses, pictures aren't shrunk, there's no preview
-  inside the window, and files can't be added while creating a transaction
-  or in bulk.
-- The weekly summary goes out at the same moment for every company (Monday
-  08:00 UTC), whatever its timezone, and is sent one company after another
-  in a single run: with many companies it will need a queue, and Resend's
-  rate limit may delay or drop emails. There are no alert emails for
-  anything but unusual charges. The unsubscribe links never expire, and
-  stop working if `BETTER_AUTH_SECRET` changes.
-- Linked banks: untested against Plaid itself (see above). Only US banks,
-  everyday and savings accounts in the company's currency: no credit cards, loans or
-  investments. A bank that asks to log in again has to be disconnected and
-  linked again, which adds its accounts a second time (Plaid's "update
-  mode" isn't built). Syncing is once a day or on demand, not the moment
-  the bank has news (Plaid's webhooks aren't built). A linked bank's
-  transactions aren't matched against ones imported by CSV or entered by
-  hand.
-- The activity log keeps everything forever, and isn't written in the same
-  database step as the change it describes: in the rare case that writing
-  the line fails, the change stands without one. The line for someone
-  leaving a company is written from a Better Auth hook that no automated
-  test covers.
-- The top bar only searches transactions (the activity log has its own
-  search): not bills or vendors.
-- One currency per company. There are no accounts in other currencies, no
-  exchange rates and no converting; a bank account in another currency
-  can't be linked. For currencies without cents, amounts that are typed or
-  imported are rounded to whole numbers; what a linked bank reports is
-  saved as the bank gives it.
-- Plans: tried in Stripe's test mode by hand (subscribing; switching plan,
-  cancelling and failed payments less so), never in live mode. Only the
-  team's size differs between plans, which is all the pricing section of the
-  home page claims. Its prices are the ones in `lib/finance/plans.ts`, which
-  are still typed separately from the prices in Stripe. Prices are in US
-  dollars whatever the company's currency. A Stripe account with "Managed
-  Payments" on by default refuses the payment page until each product has a
-  tax code (or that default is switched off).
-  There's no free trial of a paid plan and no tax handling beyond what
-  Stripe is configured to do. The owner is emailed once when a payment
-  fails, not again when Stripe gives up and the plan ends. After a handover
-  Stripe is given the new owner's email address; if Stripe can't be reached
-  at that moment it keeps the old one until it's changed in "Manage
-  billing". Neither was tried against Stripe itself.
-- Deleting a company is immediate and final: there's no grace period and no
-  export first (the team is told by email afterwards).
-- The contact form's rate limit (five messages an hour) is per IP address,
-  so people behind one shared address share it.
-- The Terms of service and Privacy policy weren't written or reviewed by a
-  lawyer, and leave out what only the business can decide: the governing law
-  and courts, refunds, a liability cap in figures, the company's registered
-  address and a contact for data protection. There is no cookie banner
-  (only login cookies are used) and no record of which version of the terms
-  someone accepted.
-- Your account: deleting asks for the email address, not the password
-  again. A company's activity log keeps the name of someone who deleted
-  their account next to what they did, and the name someone had before they
-  changed it. The download is one JSON file. The email address can't be
-  changed in the app, and neither can the password while logged in (only
-  through "Forgot password").
-- Exports are CSV only, plus the browser's "Save as PDF" for the Insights
-  page: no PDF of the transactions list and no Excel file. The budgets file
-  is this month's only.
+Finely is a portfolio project. It aims to have what a SaaS app for
+businesses needs, and it isn't meant to be run for paying customers as it
+is. What's missing at that level:
+
+- **Payment cards** aren't built.
+- **Currencies:** one per company. There are no accounts in other
+  currencies and nothing is converted.
+- **Bills** can't be paid in parts. A payment that arrives pays its bill by
+  itself only when the amount is exact and the description contains the
+  bill's name; otherwise it's pointed out for a person to confirm.
+- **Budgets** are one amount per category, the same every month: no overall
+  budget and no carrying over.
+- **Vendors and regular payments** are recognized by description. Different
+  spellings of one vendor ("AMZN", "Amazon") count as different vendors and
+  can't be merged by hand, and a regular payment's rhythm or amount can't be
+  corrected (only hidden).
+- **The forecast** knows unpaid bills, pending payments and regular
+  payments, not one-off income or day-to-day spending.
+- **Notifications** are worked out when a page loads, not while it sits
+  open. Only unusual charges are emailed right away, and the weekly summary
+  goes out at the same moment whatever the company's timezone.
+- **Linked banks** were only tried in Plaid's sandbox: US banks, everyday
+  and savings accounts. A bank that asks to log in again has to be linked
+  again, and syncing is once a day or on demand.
+- **Plans** were only tried in Stripe's test mode. They differ in team size
+  only, are priced in US dollars and have no free trial.
+- **Attached files** are kept in the database. PDFs have no preview, and
+  files can't be added while creating a transaction.
+- **Your account:** the email address can't be changed, and someone who
+  signs in with Google can't add a password.
+- **Search** in the top bar covers transactions and bills, not vendors,
+  bank accounts or categories.
+- **Exports** are CSV files, plus the browser's "Save as PDF" on the
+  Insights page.
+- **Deleting a company** is immediate: there's no grace period.
+- **Terms and privacy** describe what the app really does in plain words;
+  they aren't legal documents.

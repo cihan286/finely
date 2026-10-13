@@ -278,6 +278,42 @@ You get this email because you're the company's owner.`,
   };
 }
 
+/** Sent to a company's owner when its paid plan has ended */
+export function planEndedEmail(
+  to: { name: string; email: string },
+  organizationName: string,
+  /** The plan that ended, e.g. "Growth" */
+  planName: string,
+  /** How many people the Free plan allows */
+  freeMembers: number,
+): Email {
+  const url = `${appUrl}/dashboard/settings#billing`;
+  return {
+    to: to.email,
+    subject: oneLine(`${organizationName} is back on Finely's Free plan`),
+    html: layout({
+      preview: `The ${planName} plan has ended.`,
+      heading: `The ${planName} plan has ended`,
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        `<strong>${escapeHtml(organizationName)}</strong>'s ${escapeHtml(planName)} plan on Finely has ended, because it was cancelled or its payment kept failing. The company is on the Free plan now.`,
+        `Nothing was deleted and nobody was removed from the team. The Free plan is for teams of up to ${freeMembers}, so a bigger team stays as it is but can't grow.`,
+      ],
+      button: { label: "Choose a plan", url },
+      footnote: "You get this email because you're the company's owner.",
+    }),
+    text: `Hi ${firstName(to.name)},
+
+${organizationName}'s ${planName} plan on Finely has ended, because it was cancelled or its payment kept failing. The company is on the Free plan now.
+
+Nothing was deleted and nobody was removed from the team. The Free plan is for teams of up to ${freeMembers}, so a bigger team stays as it is but can't grow.
+
+Choose a plan: ${url}
+
+You get this email because you're the company's owner.`,
+  };
+}
+
 /** Sent to someone who just deleted their own account */
 export function accountDeletedEmail(to: { name: string; email: string }): Email {
   const url = `${appUrl}/contact`;

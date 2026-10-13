@@ -113,6 +113,8 @@ interface TransactionsViewProps {
    * other transactions the new rule categorized
    */
   ruleResult: number | null;
+  /** How many bills match the search too (0 without a search) */
+  matchingBills: number;
   /** Which window is open, if any */
   dialog:
     | { mode: "new" }
@@ -172,6 +174,7 @@ export default function TransactionsView({
   categories,
   rules,
   importResult,
+  matchingBills,
   ruleResult,
   dialog,
 }: TransactionsViewProps) {
@@ -230,6 +233,18 @@ export default function TransactionsView({
       {importResult && (
         <Message type="success">
           {importMessage(importResult)}
+        </Message>
+      )}
+      {matchingBills > 0 && (
+        <Message type="info">
+          {matchingBills === 1 ? "1 bill also matches" : `${matchingBills} bills also match`}{" "}
+          “{query.q}”.{" "}
+          <Link
+            href={`/dashboard/bills?q=${encodeURIComponent(query.q)}`}
+            className={styles.messageLink}
+          >
+            See {matchingBills === 1 ? "it" : "them"}
+          </Link>
         </Message>
       )}
       {ruleResult !== null && (

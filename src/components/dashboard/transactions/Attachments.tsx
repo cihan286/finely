@@ -16,7 +16,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
-import { FileText, Image as ImageIcon, Paperclip, Trash2 } from "lucide-react";
+import { FileText, Paperclip, Trash2 } from "lucide-react";
 import Message from "@/components/common/form/Message";
 import Spinner from "@/components/common/spinner/Spinner";
 import {
@@ -122,13 +122,20 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
         <ul className={styles.list}>
           {attachments.map((attachment) => (
             <li key={attachment.id} className={styles.item}>
-              <span className={styles.icon} aria-hidden="true">
-                {attachment.contentType === "application/pdf" ? (
+              {attachment.contentType.startsWith("image/") ? (
+                // The picture itself, small; the name next to it opens it
+                // eslint-disable-next-line @next/next/no-img-element -- a private file from our own route, not something to optimize or cache
+                <img
+                  src={`${FILE_PATH}/${attachment.id}`}
+                  alt=""
+                  loading="lazy"
+                  className={styles.thumbnail}
+                />
+              ) : (
+                <span className={styles.icon} aria-hidden="true">
                   <FileText size={16} />
-                ) : (
-                  <ImageIcon size={16} />
-                )}
-              </span>
+                </span>
+              )}
               {/* Opens in a new tab; the page behind keeps what was typed */}
               <a
                 href={`${FILE_PATH}/${attachment.id}`}

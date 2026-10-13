@@ -25,6 +25,7 @@ import { listAttachments } from "@/lib/data/attachments";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
+import { countBillsMatching } from "@/lib/data/bills";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -88,6 +89,7 @@ export default async function TransactionsPage({
     editing,
     attachments,
     timeZone,
+    matchingBills,
   ] = await Promise.all([
       listTransactions({
         search: query.q,
@@ -106,6 +108,8 @@ export default async function TransactionsPage({
       // The files of the transaction being edited
       editId ? listAttachments(editId) : [],
       getCompanyTimeZone(organization.id),
+      // The top bar's search lands here; bills with that text are a click away
+      query.q ? countBillsMatching(query.q) : 0,
     ]);
 
   return (
@@ -122,6 +126,7 @@ export default async function TransactionsPage({
       categories={categories}
       rules={rules}
       importResult={importResult}
+      matchingBills={matchingBills}
       ruleResult={ruleResult}
       // ?new=1 opens an empty form; ?edit=<id> opens that transaction;
       // ?import=1 opens the import window

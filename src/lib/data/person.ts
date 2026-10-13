@@ -87,6 +87,19 @@ export async function listOwnedCompanies(): Promise<string[]> {
   return rows.map((row) => row.name);
 }
 
+/**
+ * Whether the signed-in person signs in with a password (and so can change
+ * it); false for someone who only uses Google.
+ */
+export async function hasPassword(): Promise<boolean> {
+  const { id } = await requireUser();
+  const matches = await db.$count(
+    account,
+    and(eq(account.userId, id), eq(account.providerId, "credential")),
+  );
+  return matches > 0;
+}
+
 /** A copy of what Finely holds about the signed-in person. */
 export async function exportPersonalData(): Promise<PersonalData> {
   const { id } = await requireUser();

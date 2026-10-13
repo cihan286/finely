@@ -28,11 +28,13 @@ import {
   desc,
   eq,
   gte,
+  ilike,
   inArray,
   isNotNull,
   isNull,
   lt,
   notExists,
+  or,
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
@@ -64,6 +66,7 @@ import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
   DataError,
+  escapeLike,
   getCompanyLocale,
   getFinanceContext,
   isoDay,
@@ -147,15 +150,45 @@ function toBill({ paidAt, ...row }: BillRow, timeZone: string): Bill {
   };
 }
 
+// Bills with the text in their name, notes or category's name (upper/lower
+// case doesn't matter); undefined for an empty search. For queries made
+// with selectBills(), which joins the category.
+function matchingSearch(search: string | undefined) {
+  const text = (search ?? "").trim().slice(0, 100);
+  if (!text) return undefined;
+  const pattern = `%${escapeLike(text)}%`;
+  return or(
+    ilike(bill.name, pattern),
+    ilike(bill.notes, pattern),
+    ilike(category.name, pattern),
+  );
+}
+
+/** How many of the company's bills, paid or not, match a search */
+export async function countBillsMatching(search: string): Promise<number> {
+  const { organizationId } = await getFinanceContext();
+  const matching = matchingSearch(search);
+  if (!matching) return 0;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(bill)
+    .leftJoin(category, eq(bill.categoryId, category.id))
+    .where(and(eq(bill.organizationId, organizationId), matching));
+  return row.count;
+}
+
 /**
  * The company's bills: everything still owed (soonest due first) and the
  * most recently paid ones.
  */
 export async function listBills({
   allPaid = false,
+  search = "",
 }: {
   /** Every paid bill (up to ALL_PAID_BILLS_SHOWN) rather than the latest few */
   allPaid?: boolean;
+  /** Only bills with this in their name, notes or category's name */
+  search?: string;
 } = {}): Promise<{
   unpaid: Bill[];
   paid: Bill[];
@@ -165,7 +198,10 @@ export async function listBills({
   morePaid: boolean;
 }> {
   const { organizationId, timeZone } = await getFinanceContext();
-  const own = eq(bill.organizationId, organizationId);
+  const own = and(
+    eq(bill.organizationId, organizationId),
+    matchingSearch(search),
+  );
   const [unpaid, paid, possiblyPaid] = await Promise.all([
     selectBills()
       .where(and(own, isNull(bill.paidAt)))
