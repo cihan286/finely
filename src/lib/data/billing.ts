@@ -4,7 +4,10 @@
 // In plain words: which plan a company is on and how many people that plan
 // allows on its team; sending the owner to Stripe's pages to subscribe or to
 // manage the subscription; and taking in what Stripe tells us about a
-// subscription (started, changed, payment failed, cancelled).
+// subscription (started, changed, payment failed, cancelled). After a
+// payment we also ask Stripe ourselves how it went, so the plan is right
+// even when Stripe's message is late, and a payment page that is still open
+// is reused rather than a second one opened: nobody pays twice.
 //
 // For developers: server-only. getBilling(), startCheckout() and
 // openBillingPortal() find the company via requireOrganization(); only the
@@ -13,10 +16,13 @@
 // after the signature was checked, the second by Better Auth when someone is
 // invited. While billing isn't configured (no Stripe keys) nothing is
 // limited, so setting Finely up without Stripe works as before.
+// subscription.checkoutSessionId remembers the payment page last opened;
+// settleCheckout() asks Stripe how it ended, whenever the plan is looked at
+// or another page is asked for.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { eq, or, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, or, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { subscription } from "@/db/finance";
 import { member, organization } from "@/db/schema";
@@ -25,8 +31,11 @@ import {
   cancelSubscription,
   createCheckoutSession,
   createPortalSession,
+  expireCheckoutSession,
+  getCheckoutSession,
   isBillingEnabled,
   planForPrice,
+  priceIdFor,
   StripeError,
   type StripeEvent,
   type StripeSubscription,
@@ -84,9 +93,64 @@ async function countMembers(organizationId: string): Promise<number> {
   return row.count;
 }
 
+/**
+ * Finds out how the payment page that was last opened for a company ended,
+ * by asking Stripe: paid (the subscription is saved, as Stripe's own message
+ * would), expired (forgotten), or still open (returned, to send the owner
+ * back to). Null when nothing is open. If Stripe can't be asked, nothing
+ * changes and the page counts as not open: the next look tries again.
+ */
+async function settleCheckout(
+  organizationId: string,
+): Promise<{ id: string; url: string; priceId: string | null } | null> {
+  const row = await selectSubscription(organizationId);
+  if (!row?.checkoutSessionId || !isBillingEnabled) return null;
+  const forget = () =>
+    db
+      .update(subscription)
+      .set({ checkoutSessionId: null })
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.checkoutSessionId, row.checkoutSessionId!),
+        ),
+      );
+
+  let session;
+  try {
+    session = await getCheckoutSession(row.checkoutSessionId);
+  } catch (error) {
+    if (!(error instanceof StripeError)) throw error;
+    // Stripe no longer knows it: nothing to wait for
+    if (error.code === "resource_missing") await forget();
+    return null;
+  }
+  // Never another company's payment
+  if (session.client_reference_id !== organizationId) {
+    await forget();
+    return null;
+  }
+  if (session.status === "open" && session.url) {
+    return {
+      id: session.id,
+      url: session.url,
+      priceId: session.line_items?.data[0]?.price?.id ?? null,
+    };
+  }
+  if (session.status === "complete" && session.subscription) {
+    // From the moment it started, so Stripe's own messages (never older
+    // than that) still count
+    await saveSubscription(session.subscription, session.subscription.created, false);
+  }
+  await forget();
+  return null;
+}
+
 /** The current company's plan and how much of it is used */
 export async function getBilling(): Promise<Billing> {
   const { organization: company } = await requireOrganization();
+  // Just paid, perhaps: don't wait for Stripe's message
+  await settleCheckout(company.id);
   const row = await selectSubscription(company.id);
   const plan = effectivePlan(row);
   return {
@@ -113,7 +177,9 @@ async function requireBillingOwner() {
 
 /**
  * Starts subscribing to a plan (owner only): the address of Stripe's
- * payment page to send the owner to.
+ * payment page to send the owner to. A page that is still open for the same
+ * plan is used again; one for another plan is closed first, so there's only
+ * ever one page that can be paid.
  */
 export async function startCheckout(
   plan: PaidPlan,
@@ -123,14 +189,22 @@ export async function startCheckout(
   if (!["starter", "growth"].includes(plan) || !["monthly", "yearly"].includes(interval)) {
     throw new DataError("Choose a plan.");
   }
-  const row = await selectSubscription(company.id);
-  // Already subscribed: changing plan happens in Stripe's portal, so the
-  // company never ends up with two subscriptions
-  if (effectivePlan(row) !== "free") {
-    throw new DataError("This company already has a plan. Use “Manage billing” to change it.");
-  }
   try {
-    return await createCheckoutSession({
+    // The page opened before, if any: paid in the meantime (the plan is
+    // saved now), or still waiting
+    const open = await settleCheckout(company.id);
+    const row = await selectSubscription(company.id);
+    // Already subscribed: changing plan happens in Stripe's portal, so the
+    // company never ends up with two subscriptions
+    if (effectivePlan(row) !== "free") {
+      throw new DataError("This company already has a plan. Use “Manage billing” to change it.");
+    }
+    if (open) {
+      if (open.priceId === priceIdFor(plan, interval)) return open.url;
+      // Another plan this time: the old page must not be payable any more
+      await expireCheckoutSession(open.id);
+    }
+    const session = await createCheckoutSession({
       organizationId: company.id,
       plan,
       interval,
@@ -139,6 +213,19 @@ export async function startCheckout(
       successUrl: `${SETTINGS_URL}?billing=success#billing`,
       cancelUrl: `${SETTINGS_URL}#billing`,
     });
+    await db
+      .insert(subscription)
+      .values({
+        organizationId: company.id,
+        plan: "free",
+        status: "none",
+        checkoutSessionId: session.id,
+      })
+      .onConflictDoUpdate({
+        target: subscription.organizationId,
+        set: { checkoutSessionId: session.id },
+      });
+    return session.url;
   } catch (error) {
     if (error instanceof StripeError) {
       throw new DataError("We couldn't open the payment page. Please try again.");
@@ -182,7 +269,20 @@ export async function memberLimitFor(organizationId: string): Promise<number> {
  */
 export async function applySubscriptionEvent(event: StripeEvent): Promise<boolean> {
   if (!event.type.startsWith("customer.subscription.")) return false;
-  const sub = event.data.object as StripeSubscription;
+  return saveSubscription(
+    event.data.object as StripeSubscription,
+    event.created,
+    event.type === "customer.subscription.deleted",
+  );
+}
+
+// Saves what Stripe says about a subscription, unless we already know
+// something newer. `at` is when that was true (seconds since 1970).
+async function saveSubscription(
+  sub: StripeSubscription,
+  at: number,
+  deleted: boolean,
+): Promise<boolean> {
   const organizationId = sub.metadata?.organization_id;
   // Not a subscription we started (no company attached to it)
   if (!organizationId || typeof organizationId !== "string") return false;
@@ -196,13 +296,13 @@ export async function applySubscriptionEvent(event: StripeEvent): Promise<boolea
   const item = sub.items?.data?.[0];
   const plan = planForPrice(item?.price?.id);
   const periodEnd = sub.current_period_end ?? item?.current_period_end ?? null;
-  const eventAt = new Date(event.created * 1000);
+  const eventAt = new Date(at * 1000);
   const before = effectivePlan(await selectSubscription(organizationId));
 
   const values = {
     // A price that isn't one of ours can't unlock a plan
     plan: plan ?? "free",
-    status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
+    status: deleted ? "canceled" : sub.status,
     stripeCustomerId: sub.customer,
     stripeSubscriptionId: sub.id,
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
@@ -236,14 +336,26 @@ export async function applySubscriptionEvent(event: StripeEvent): Promise<boolea
 }
 
 /**
- * Ends a company's subscription at Stripe, before the company is deleted,
- * so nobody keeps paying for a company that no longer exists. Throws a
+ * Ends a company's subscription at Stripe (and closes a payment page that
+ * is still open), before the company is deleted, so nobody keeps paying,
+ * or starts paying, for a company that no longer exists. Throws a
  * DataError if Stripe can't be told.
  */
 export async function cancelSubscriptionFor(organizationId: string) {
+  if (!isBillingEnabled) return;
+  // A payment page that is still open must not be paid for a company that
+  // is about to be gone (and if it was paid a moment ago, we know now)
+  try {
+    const open = await settleCheckout(organizationId);
+    if (open) await expireCheckoutSession(open.id);
+  } catch (error) {
+    if (!(error instanceof StripeError)) throw error;
+    throw new DataError(
+      "We couldn't close this company's open payment page. Please try again in a minute.",
+    );
+  }
   const row = await selectSubscription(organizationId);
   if (!row?.stripeSubscriptionId || effectivePlan(row) === "free") return;
-  if (!isBillingEnabled) return;
   try {
     await cancelSubscription(row.stripeSubscriptionId);
   } catch (error) {

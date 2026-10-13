@@ -76,8 +76,9 @@ Requirements: Node.js 20.9 or newer and a [Neon](https://neon.tech) database
      `STRIPE_PRICE_*`: optional, for paid plans. Until all six are set,
      nothing can be bought and no plan limit applies. To get Stripe's
      messages in development, run
-     `stripe listen --forward-to localhost:3000/api/stripe/webhook` (Stripe
-     CLI) and use the webhook secret it prints.
+     `stripe listen --events customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to localhost:3000/api/stripe/webhook`
+     (Stripe CLI; newer versions refuse to listen without `--events`) and
+     use the webhook secret it prints.
    - `PLAID_CLIENT_ID` / `PLAID_SECRET` / `PLAID_ENV` / `BANK_ENCRYPTION_KEY`:
      optional, for linking banks. "Connect a bank" stays hidden until the
      two Plaid keys and the encryption key are set. With `PLAID_ENV=sandbox`
@@ -456,6 +457,15 @@ five minutes, is refused; late and repeated ones change nothing. While a
 failed payment is being retried (`past_due`) the plan stays; once Stripe
 gives up or the subscription is cancelled, the company is on Free again.
 Deleting a company cancels its subscription at Stripe first.
+
+Two things keep a late or lost message from costing anyone money
+(`settleCheckout()` in `lib/data/billing.ts`). The payment page that was last
+opened for a company is remembered (`subscription.checkout_session_id`), and
+whenever Settings is opened or a plan is chosen again, Finely asks Stripe how
+that page ended: once it's paid, the plan is there right away, without
+waiting for the message. And while that page is still open, choosing the
+same plan again leads back to it, and choosing another plan closes it first,
+so there is never more than one page that can be paid.
 
 Setting it up: create two products with a monthly and a yearly recurring
 price each in Stripe, add the webhook endpoint, switch on the customer
