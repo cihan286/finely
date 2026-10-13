@@ -46,6 +46,7 @@ import {
   isUniqueViolation,
   requiredText,
 } from "./common";
+import { settleBillsWith } from "./bills";
 import { alertUnusualCharges } from "./email-notifications";
 
 /** A linked bank, as shown in Settings (never with its key) */
@@ -471,6 +472,13 @@ async function syncConnection(
       summary: `Synced ${connection.institutionName}: ${parts.join(", ")}`,
     });
   }
+
+  // Payments of bills that are still owed mark those bills as paid, and
+  // replace a payment that was recorded for a bill by hand
+  await settleBillsWith(
+    actor,
+    inserts.filter((t) => t.amount < 0).map((t) => t.id),
+  );
 
   // Not for the first sync: that one brings in months of history at once
   if (connection.cursor !== null) {

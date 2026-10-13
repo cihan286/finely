@@ -31,6 +31,7 @@ import {
   PENDING_REMINDER_DAYS,
 } from "@/lib/finance/notifications";
 import type { Notification } from "@/types/finance";
+import { selectPossiblyPaid } from "./bills";
 import { selectBudgetSpending } from "./budgets";
 import { getFinanceContext } from "./common";
 import { getForecast } from "./recurring";
@@ -59,6 +60,7 @@ export async function listNotifications(): Promise<Notification[]> {
     [stalePending],
     [uncategorized],
     [read],
+    possiblyPaid,
   ] = await Promise.all([
       // Every completed expense since the history for unusual charges begins
       db
@@ -146,6 +148,8 @@ export async function listNotifications(): Promise<Notification[]> {
             eq(notificationRead.organizationId, organizationId),
           ),
         ),
+      // Unpaid bills that a payment already there may have paid
+      selectPossiblyPaid(organizationId),
     ]);
 
   const enteredAt = new Map(expenses.map((e) => [e.id, e.createdAt]));
@@ -210,6 +214,14 @@ export async function listNotifications(): Promise<Notification[]> {
       ),
       overdueBills: billFacts("overdue"),
       billsDueSoon: billFacts("dueSoon"),
+      billsMaybePaid: {
+        count: possiblyPaid.length,
+        billId: possiblyPaid.length === 1 ? possiblyPaid[0].billId : null,
+        at:
+          possiblyPaid.length > 0
+            ? new Date(Math.max(...possiblyPaid.map((p) => p.at.getTime())))
+            : null,
+      },
       stalePending: {
         count: stalePending.count,
         // It became late a week after it was due

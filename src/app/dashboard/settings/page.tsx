@@ -208,7 +208,11 @@ export default async function SettingsPage({
         />
       )}
       {/* About the person, not the company: their data and their account */}
-      <PersonSettings email={user.email} ownedCompanies={ownedCompanies} />
+      <PersonSettings
+        name={user.name}
+        email={user.email}
+        ownedCompanies={ownedCompanies}
+      />
     </main>
   );
 }

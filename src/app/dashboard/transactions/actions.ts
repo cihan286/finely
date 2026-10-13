@@ -148,7 +148,9 @@ export async function importStatement(
   } catch (error) {
     return { error: errorMessage(error) };
   }
-  redirect(`${LIST_PATH}?imported=${result.imported}&skipped=${result.skipped}`);
+  redirect(
+    `${LIST_PATH}?imported=${result.imported}&skipped=${result.skipped}${result.billsPaid > 0 ? `&bills=${result.billsPaid}` : ""}${result.billsMerged > 0 ? `&merged=${result.billsMerged}` : ""}`,
+  );
 }
 
 /** What the attachment actions answer: an error, or the transaction's files */

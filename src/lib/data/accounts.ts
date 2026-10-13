@@ -60,7 +60,7 @@ export async function listAccounts(): Promise<Account[]> {
 }
 
 // Checks and tidies what was typed into the account form
-function parseAccountInput(input: AccountInput) {
+function parseAccountInput(input: AccountInput, currency: string) {
   const last4 = optionalText(input.last4, "Last four digits", 4);
   if (last4 !== null && !/^\d{4}$/.test(last4)) {
     throw new DataError("Last four digits must be exactly 4 digits.");
@@ -69,7 +69,7 @@ function parseAccountInput(input: AccountInput) {
     name: requiredText(input.name, "Name"),
     type: oneOf(input.type, ACCOUNT_TYPES, "Account type"),
     last4,
-    openingBalance: money(input.openingBalance ?? 0, "Opening balance"),
+    openingBalance: money(input.openingBalance ?? 0, "Opening balance", currency),
   };
 }
 
@@ -79,7 +79,7 @@ export async function createAccount(input: AccountInput): Promise<string> {
   const { organizationId } = actor;
   const [row] = await db
     .insert(financialAccount)
-    .values({ ...parseAccountInput(input), organizationId })
+    .values({ ...parseAccountInput(input, actor.currency), organizationId })
     .returning({ id: financialAccount.id, name: financialAccount.name });
   await recordAudit(actor, {
     area: "account",
@@ -96,7 +96,7 @@ export async function updateAccount(id: string, input: AccountInput) {
   const { organizationId } = actor;
   const updated = await db
     .update(financialAccount)
-    .set(parseAccountInput(input))
+    .set(parseAccountInput(input, actor.currency))
     .where(
       and(
         eq(financialAccount.id, id),

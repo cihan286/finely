@@ -24,6 +24,7 @@ import {
   getBill,
   listBillPaymentCandidates,
   listBills,
+  PAID_BILLS_SHOWN,
   payBill,
   undoBillPayment,
   updateBill,
@@ -57,7 +58,7 @@ import { readUnsubscribeLink } from "@/lib/email/unsubscribe";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
-import { getForecast, getRecurring } from "./recurring";
+import { getForecast, getRecurring, hideRecurring, showRecurring } from "./recurring";
 import { withinRateLimit } from "@/lib/rate-limit";
 import { getCompanySettings, updateCurrency, updateTimeZone } from "./settings";
 import {
@@ -272,9 +273,19 @@ describe("importing", () => {
       { date: today, name: "Coffee", amount: -4.5, category: "ACME SUPPLIES" },
       { date: today, name: "Refund", amount: 20, category: "globex Supplies" },
     ];
-    expect(await importTransactions(acme.accountId, rows)).toEqual({ imported: 2, skipped: 0 });
+    expect(await importTransactions(acme.accountId, rows)).toEqual({
+      imported: 2,
+      skipped: 0,
+      billsPaid: 0,
+      billsMerged: 0,
+    });
     // The same file again: nothing new
-    expect(await importTransactions(acme.accountId, rows)).toEqual({ imported: 0, skipped: 2 });
+    expect(await importTransactions(acme.accountId, rows)).toEqual({
+      imported: 0,
+      skipped: 2,
+      billsPaid: 0,
+      billsMerged: 0,
+    });
 
     const { transactions } = await listTransactions({ search: "Coffee" });
     // Category names match ignoring case, but never another company's
@@ -810,6 +821,184 @@ describe("bills", () => {
     expect((await exportBills()).bills).toEqual([]);
   });
 
+  it("a payment that arrives marks its bill as paid by itself, in its own company only", async () => {
+    const company = await createTestCompany("arryn");
+    const other = await createTestCompany("frey");
+    actAs(other);
+    const otherAccount = await createAccount({ name: "Other", type: "checking" });
+    const theirs = await createBill({
+      name: "Eyrie Water",
+      amount: 80,
+      dueDate: "2026-03-01",
+      repeat: "monthly",
+      categoryId: null,
+    });
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking", openingBalance: 1000 });
+    const water = await createBill({
+      name: "Eyrie Water",
+      amount: 80,
+      dueDate: "2026-03-01",
+      repeat: "monthly",
+      categoryId: null,
+    });
+    const insurance = await createBill({
+      name: "Vale Insurance",
+      amount: 300,
+      dueDate: "2026-03-10",
+      repeat: "none",
+      categoryId: null,
+    });
+
+    // A statement with three months of the water bill, a payment of the
+    // insurance's amount to someone else, and one of another amount
+    const result = await importTransactions(accountId, [
+      { date: "2026-03-02", name: "EYRIE WATER CO 0302", amount: -80, category: null },
+      { date: "2026-04-01", name: "EYRIE WATER CO 0401", amount: -80, category: null },
+      { date: "2026-05-03", name: "EYRIE WATER CO 0503", amount: -80, category: null },
+      { date: "2026-03-09", name: "MOON DOOR REPAIRS", amount: -300, category: null },
+      { date: "2026-03-10", name: "VALE INSURANCE", amount: -299, category: null },
+    ]);
+    expect(result).toEqual({ imported: 5, skipped: 0, billsPaid: 3, billsMerged: 0 });
+
+    const bills = await listBills();
+    // Each month's water bill was paid by that month's line, and June's is next
+    expect(
+      bills.paid.map((b) => [b.name, b.dueDate, b.paidDay, b.paymentLinked]).sort(),
+    ).toEqual([
+      ["Eyrie Water", "2026-03-01", "2026-03-02", true],
+      ["Eyrie Water", "2026-04-01", "2026-04-01", true],
+      ["Eyrie Water", "2026-05-01", "2026-05-03", true],
+    ]);
+    expect(bills.unpaid.map((b) => [b.name, b.dueDate])).toEqual([
+      ["Vale Insurance", "2026-03-10"],
+      ["Eyrie Water", "2026-06-01"],
+    ]);
+    expect((await getBill(water))?.transactionId).not.toBeNull();
+    // Nothing was added twice, and the balance only moved by the import
+    expect((await listTransactions()).total).toBe(5);
+    expect((await listAccounts())[0].balance).toBe(1000 - 3 * 80 - 300 - 299);
+    // The same amount to another vendor isn't taken for the payment: it's
+    // only pointed out, for a person to decide
+    expect(bills.possiblyPaid).toEqual([insurance]);
+    expect(
+      (await listAuditLog({ area: "bill" })).entries.filter((e) => e.action === "paid").length,
+    ).toBe(3);
+
+    // One typed in by hand counts too, and tells the bell nothing is left
+    expect((await listNotifications()).map((n) => n.id)).toContain("bills-maybe-paid");
+    await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Vale Insurance",
+      amount: -300,
+      date: "2026-03-12",
+      status: "completed",
+    });
+    expect((await getBill(insurance))?.paidDay).toBe("2026-03-12");
+
+    // The other company's bill of the same name is still owed
+    actAs(other);
+    expect((await getBill(theirs))?.paidDay).toBeNull();
+    expect((await listBills()).possiblyPaid).toEqual([]);
+    await importTransactions(otherAccount, [
+      { date: "2026-03-01", name: "EYRIE WATER CO", amount: -80, category: null },
+    ]);
+    expect((await getBill(theirs))?.paidDay).toBe("2026-03-01");
+  });
+
+  it("a payment recorded by hand isn't counted twice when the bank's line arrives", async () => {
+    const company = await createTestCompany("tully");
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking", openingBalance: 1000 });
+    const categoryId = await createCategory({
+      name: "Utilities",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    const id = await createBill({
+      name: "Riverrun Power",
+      amount: 120,
+      dueDate: "2026-03-05",
+      repeat: "monthly",
+      categoryId,
+      notes: "Meter 7",
+    });
+    const recorded = await payBill(id, { accountId, date: "2026-03-05" });
+    await addAttachment(recorded.transactionId, { name: "invoice.pdf", bytes: PDF });
+    expect((await listAccounts())[0].balance).toBe(880);
+
+    // Typing in another payment to the same vendor is taken at its word
+    const second = await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Riverrun Power deposit",
+      amount: -120,
+      date: "2026-03-06",
+      status: "completed",
+    });
+    expect(await getTransaction(recorded.transactionId)).not.toBeNull();
+    await deleteTransaction(second);
+
+    // The bank's statement has the same payment
+    const result = await importTransactions(accountId, [
+      { date: "2026-03-06", name: "RIVERRUN POWER 99812", amount: -120, category: null },
+    ]);
+    expect(result).toEqual({ imported: 1, skipped: 0, billsPaid: 0, billsMerged: 1 });
+
+    // One payment is left, the bank's, with what was added to the recorded one
+    expect(await getTransaction(recorded.transactionId)).toBeNull();
+    const { transactions, total } = await listTransactions();
+    expect(total).toBe(1);
+    expect(transactions[0]).toMatchObject({ name: "RIVERRUN POWER 99812", amount: -120, category: "Utilities" });
+    const kept = await getTransaction(transactions[0].id);
+    expect(kept).toMatchObject({ notes: "Meter 7", attachmentCount: 1 });
+    expect((await listAccounts())[0].balance).toBe(880);
+    expect((await getBill(id))).toMatchObject({
+      paidDay: "2026-03-06",
+      transactionId: transactions[0].id,
+      paymentLinked: true,
+    });
+    // April's bill is still there, once
+    expect((await listBills()).unpaid.map((b) => b.dueDate)).toEqual(["2026-04-05"]);
+  });
+
+  it("lists every paid bill when asked", async () => {
+    const company = await createTestCompany("mormont");
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    for (let i = 1; i <= PAID_BILLS_SHOWN + 2; i++) {
+      const id = await createBill({
+        name: `Bill ${i}`,
+        amount: i,
+        dueDate: "2026-02-01",
+        repeat: "none",
+        categoryId: null,
+      });
+      await payBill(id, { accountId, date: "2026-02-01" });
+    }
+    const latest = await listBills();
+    expect([latest.paid.length, latest.morePaid]).toEqual([PAID_BILLS_SHOWN, true]);
+    const all = await listBills({ allPaid: true });
+    expect([all.paid.length, all.morePaid]).toEqual([PAID_BILLS_SHOWN + 2, false]);
+  });
+
+  it("rounds amounts to what the company's currency can express", async () => {
+    const company = await createTestCompany("yen-co");
+    actAs(company);
+    await updateCurrency("JPY");
+    const accountId = await createAccount({ name: "Checking", type: "checking", openingBalance: 1000.4 });
+    expect((await listAccounts())[0].balance).toBe(1000);
+    const id = await createBill({ name: "Rent", amount: 1500.6, dueDate: today, repeat: "none", categoryId: null });
+    expect((await getBill(id))?.amount).toBe(1501);
+    await importTransactions(accountId, [
+      { date: today, name: "Tea", amount: -249.5, category: null },
+    ]);
+    expect((await listTransactions()).transactions[0].amount).toBe(-249);
+  });
+
   it("checks what was typed", async () => {
     actAs(acme);
     await expect(createBill(billFor(acme, { amount: 0 }))).rejects.toThrow(
@@ -960,6 +1149,33 @@ describe("regular payments and the forecast", () => {
 
     actAs(aviato);
     expect((await getRecurring()).payments.map((p) => p.name)).toEqual(["Notion"]);
+  });
+
+  it("leaves out a payment that was marked as not regular, in that company only", async () => {
+    const company = await seedSubscriber("nucleus", "Dropbox", 30, 1000);
+    const other = await seedSubscriber("endframe2", "Dropbox", 30, 1000);
+
+    actAs(company);
+    const [payment] = (await getRecurring()).payments;
+    expect((await getForecast()).events.map((e) => e.name)).toEqual(["Dropbox"]);
+    await hideRecurring(payment.key, payment.name);
+    await hideRecurring(payment.key, payment.name); // twice changes nothing
+    await expect(hideRecurring("made up", "X")).rejects.toThrow("Payment not found.");
+    expect(await getRecurring()).toMatchObject({
+      payments: [],
+      hidden: [{ key: payment.key, name: "Dropbox" }],
+    });
+    expect((await getForecast()).events).toEqual([]);
+
+    // The other company's own Dropbox is still regular, and can't bring ours back
+    actAs(other);
+    expect((await getRecurring()).payments.map((p) => p.name)).toEqual(["Dropbox"]);
+    await expect(showRecurring(payment.key)).rejects.toThrow("Payment not found.");
+
+    actAs(company);
+    await showRecurring(payment.key);
+    expect((await getRecurring()).payments.map((p) => p.name)).toEqual(["Dropbox"]);
+    expect((await getRecurring()).hidden).toEqual([]);
   });
 
   it("forecasts from the company's own balance, bills and regular payments", async () => {

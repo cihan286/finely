@@ -49,6 +49,15 @@ interface BillsViewProps {
   unpaid: Bill[];
   /** The most recently paid bills */
   paid: Bill[];
+  /**
+   * The unpaid bills (IDs) for which a payment of the same amount is
+   * already among the transactions
+   */
+  possiblyPaid: string[];
+  /** Whether there are more paid bills than the ones listed */
+  morePaid: boolean;
+  /** Whether every paid bill is listed (?history=1) */
+  allPaid: boolean;
   accounts: Account[];
   categories: Category[];
   /**
@@ -85,6 +94,9 @@ export default function BillsView({
   canManage,
   unpaid,
   paid,
+  possiblyPaid,
+  morePaid,
+  allPaid,
   accounts,
   categories,
   paidResult,
@@ -260,6 +272,13 @@ export default function BillsView({
                             {BILL_REPEAT_LABELS[bill.repeat]}
                           </span>
                         )}
+                        {/* "Mark as paid" offers that payment */}
+                        {possiblyPaid.includes(bill.id) && (
+                          <span className={styles.maybePaid}>
+                            A payment of this amount is already in your
+                            transactions
+                          </span>
+                        )}
                       </td>
                       <td className={styles.mediumUp}>{categoryCell(bill)}</td>
                       <td className={styles.amountCell}>
@@ -287,7 +306,19 @@ export default function BillsView({
       {/* Recently paid, each with a link to its payment */}
       {paid.length > 0 && (
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Recently paid</h2>
+          <div className={styles.cardTitleRow}>
+            <h2 className={styles.cardTitle}>{allPaid ? "Paid" : "Recently paid"}</h2>
+            {morePaid && (
+              <Link href={`${LIST_PATH}?history=1`} className={styles.viewLink}>
+                Show all paid bills
+              </Link>
+            )}
+            {allPaid && (
+              <Link href={LIST_PATH} className={styles.viewLink}>
+                Show the latest only
+              </Link>
+            )}
+          </div>
           <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>

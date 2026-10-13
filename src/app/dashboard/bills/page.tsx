@@ -54,7 +54,7 @@ export default async function BillsPage({
   const canManage = canManageFinances(role);
 
   const [
-    { unpaid, paid },
+    { unpaid, paid, possiblyPaid, morePaid },
     accounts,
     categories,
     opened,
@@ -62,7 +62,8 @@ export default async function BillsPage({
     timeZone,
     recurring,
   ] = await Promise.all([
-    listBills(),
+    // ?history=1 lists every paid bill, not just the latest
+    listBills({ allPaid: Boolean(single(params.history)) }),
     listAccounts(),
     listCategories(),
     editId || payId || undoId ? getBill(editId || payId || undoId) : null,
@@ -103,6 +104,9 @@ export default async function BillsPage({
       canManage={canManage}
       unpaid={unpaid}
       paid={paid}
+      possiblyPaid={possiblyPaid}
+      morePaid={morePaid}
+      allPaid={Boolean(single(params.history))}
       accounts={accounts}
       categories={categories}
       paidResult={paidResult}

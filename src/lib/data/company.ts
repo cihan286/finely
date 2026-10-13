@@ -32,6 +32,7 @@ import {
   financialAccount,
   notificationPreference,
   notificationRead,
+  recurringDismissal,
   subscription,
   transaction,
 } from "@/db/finance";
@@ -44,7 +45,7 @@ import {
 } from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
-import { cancelSubscriptionFor } from "./billing";
+import { cancelSubscriptionFor, updateBillingContact } from "./billing";
 import { DataError } from "./common";
 
 // The signed-in person and their company; stops anyone but the owner
@@ -99,8 +100,10 @@ export async function transferOwnership(memberId: string) {
       summary: `Handed the company over to ${target.name} and became an admin`,
     },
   );
-  // sendEmail() never throws
+  // Neither of these throws: the handover stands whatever happens to them
   await afterResponse(async () => {
+    // Receipts and payment notices go to the new owner from now on
+    await updateBillingContact(company.id, target.email);
     await sendEmail(ownershipTransferredEmail(target, company.name, me.name));
   });
 }
@@ -140,6 +143,7 @@ export async function deleteCompany(confirmation: string) {
     db.delete(subscription).where(eq(subscription.organizationId, id)),
     db.delete(companySettings).where(eq(companySettings.organizationId, id)),
     db.delete(notificationRead).where(eq(notificationRead.organizationId, id)),
+    db.delete(recurringDismissal).where(eq(recurringDismissal.organizationId, id)),
     db
       .delete(notificationPreference)
       .where(eq(notificationPreference.organizationId, id)),

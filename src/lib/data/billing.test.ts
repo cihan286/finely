@@ -16,9 +16,17 @@ import {
   openBillingPortal,
   startCheckout,
 } from "./billing";
-import { deleteCompany } from "./company";
+import { deleteCompany, transferOwnership } from "./company";
 
 vi.mock("@/db", async () => ({ db: (await import("./testing")).testDb }));
+// Emails aren't sent in tests: they're collected here to look at
+const sentEmails: { to: string; subject: string }[] = [];
+vi.mock("@/lib/email/send", () => ({
+  sendEmail: async (email: { to: string; subject: string }) => {
+    sentEmails.push(email);
+    return true;
+  },
+}));
 vi.mock("@/lib/session", async () => ({
   requireOrganization: (await import("./testing")).currentSession,
 }));
@@ -29,6 +37,7 @@ const stripe = vi.hoisted(() => ({
   checkouts: [] as Record<string, unknown>[],
   sessions: new Map<string, Record<string, unknown>>(),
   expired: [] as string[],
+  customerEmails: [] as [string, string][],
   portals: [] as string[],
   cancelled: [] as string[],
   failCancel: null as string | null,
@@ -65,6 +74,9 @@ vi.mock("@/lib/billing/stripe", () => {
       const session = stripe.sessions.get(id);
       if (!session) throw new StripeError("unknown", "resource_missing");
       return session;
+    },
+    updateCustomerEmail: async (customerId: string, email: string) => {
+      stripe.customerEmails.push([customerId, email]);
     },
     expireCheckoutSession: async (id: string) => {
       stripe.expired.push(id);
@@ -114,6 +126,8 @@ beforeAll(setUpTestDb);
 beforeEach(() => {
   stripe.checkouts = [];
   stripe.expired = [];
+  stripe.customerEmails = [];
+  sentEmails.length = 0;
   stripe.portals = [];
   stripe.cancelled = [];
   stripe.failCancel = null;
@@ -148,12 +162,22 @@ describe("plans", () => {
     await applySubscriptionEvent(event(company.organizationId, { price: "price_growth" }));
     expect(await memberLimitFor(company.organizationId)).toBe(25);
 
-    // A payment failed: the plan stays while Stripe retries, with a note
-    await applySubscriptionEvent(
-      event(company.organizationId, { price: "price_growth", status: "past_due" }),
-    );
+    // A payment failed: the plan stays while Stripe retries, with a note,
+    // and the owner is told once, however often Stripe repeats it
+    expect(sentEmails).toEqual([]);
+    for (let i = 0; i < 2; i++) {
+      await applySubscriptionEvent(
+        event(company.organizationId, { price: "price_growth", status: "past_due" }),
+      );
+    }
     expect(await getBilling()).toMatchObject({ plan: "growth" });
     expect((await getBilling()).note).toContain("payment failed");
+    expect(sentEmails).toMatchObject([
+      {
+        to: "paying-co@example.com",
+        subject: "The payment for paying-co's Finely plan failed",
+      },
+    ]);
 
     // Cancelled for good: Free again
     await applySubscriptionEvent(
@@ -333,6 +357,29 @@ describe("a payment page that was opened", () => {
     await deleteCompany("leaving-co");
     expect(stripe.expired).toEqual([url.split("/").pop()]);
     expect(stripe.cancelled).toEqual([]);
+  });
+});
+
+describe("handing over a company that pays", () => {
+  it("makes the new owner Stripe's contact", async () => {
+    const company = await createTestCompany("handover-co");
+    await testDb.insert(user).values({ id: "user_heir", name: "Heir", email: "heir@example.com" });
+    const heir = await addTestMember(company, "user_heir", "member");
+    await applySubscriptionEvent(event(company.organizationId));
+    actAs(company);
+    await transferOwnership(heir);
+    expect(stripe.customerEmails).toEqual([
+      [`cus_${company.organizationId}`, "heir@example.com"],
+    ]);
+  });
+
+  it("asks Stripe nothing for a company that never paid", async () => {
+    const company = await createTestCompany("free-handover-co");
+    await testDb.insert(user).values({ id: "user_heir2", name: "Heir", email: "heir2@example.com" });
+    const heir = await addTestMember(company, "user_heir2", "member");
+    actAs(company);
+    await transferOwnership(heir);
+    expect(stripe.customerEmails).toEqual([]);
   });
 });
 

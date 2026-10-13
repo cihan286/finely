@@ -38,7 +38,7 @@ export default async function InsightsPage({
     ? (requested as InsightPeriod)
     : 6;
 
-  const [insights, accounts, { payments }] = await Promise.all([
+  const [insights, accounts, { payments, hidden }] = await Promise.all([
     getInsights(period),
     listAccounts(),
     getRecurring(),
@@ -51,6 +51,7 @@ export default async function InsightsPage({
       canManage={canManageFinances(role)}
       insights={insights}
       recurring={payments}
+      hiddenRecurring={hidden}
     />
   );
 }

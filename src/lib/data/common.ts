@@ -19,6 +19,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { companySettings } from "@/db/finance";
 import { requireOrganization } from "@/lib/session";
+import { currencyDecimals } from "@/lib/format";
 import { canManageFinances } from "@/lib/roles";
 import type { ISODate } from "@/types/finance";
 
@@ -133,8 +134,11 @@ export function oneOf<const T extends readonly string[]>(
 // The largest amount a money column can hold (numeric(14,2))
 const MAX_AMOUNT = 999_999_999_999.99;
 
-/** An amount of money, rounded to whole cents */
-export function money(value: unknown, field: string): number {
+/**
+ * An amount of money, rounded to what the currency can express: whole cents,
+ * or whole units for currencies without cents (yen, won)
+ */
+export function money(value: unknown, field: string, currency = "USD"): number {
   const amount = typeof value === "string" ? Number(value) : value;
   if (typeof amount !== "number" || !Number.isFinite(amount)) {
     throw new DataError(`${field} must be a number.`);
@@ -142,7 +146,8 @@ export function money(value: unknown, field: string): number {
   if (Math.abs(amount) > MAX_AMOUNT) {
     throw new DataError(`${field} is too large.`);
   }
-  return Math.round(amount * 100) / 100;
+  const factor = 10 ** Math.min(currencyDecimals(currency), 2);
+  return Math.round(amount * factor) / factor;
 }
 
 /** A calendar day, e.g. "2026-10-01" */

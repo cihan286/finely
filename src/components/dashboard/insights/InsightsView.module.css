@@ -319,6 +319,45 @@
   font-weight: 500;
 }
 
+/* "Add as bill" and "Not regular", side by side */
+.rowActions {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  white-space: nowrap;
+}
+
+.hideButton {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.825rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.hideButton:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* The payments marked "Not regular" */
+.hiddenList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.25rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.hiddenItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
 .addBill:hover {
   text-decoration: underline;
 }

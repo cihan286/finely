@@ -32,3 +32,27 @@ export function vendorName(description: string): string {
 export function vendorKey(description: string): string {
   return vendorName(description).toLowerCase();
 }
+
+// "FIGMA, INC. INV-1004" -> ["figma", "inc"]: the vendor's words, without
+// references and without the punctuation around them
+function vendorWords(description: string): string[] {
+  return vendorKey(description)
+    .split(/\s+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+    .filter(Boolean);
+}
+
+/**
+ * Whether two descriptions name the same vendor, for telling that a bank's
+ * line is the payment of a bill someone named themselves: the shorter one's
+ * words appear in a row in the longer one ("Figma" and "FIGMA INC DUBLIN",
+ * "Office rent" and "OFFICE RENT OCTOBER"). Too little to go by (under
+ * three letters) is never a match.
+ */
+export function sameVendor(a: string, b: string): boolean {
+  const wordsA = vendorWords(a);
+  const wordsB = vendorWords(b);
+  const [short, long] = wordsA.length <= wordsB.length ? [wordsA, wordsB] : [wordsB, wordsA];
+  if (short.join("").length < 3) return false;
+  return long.some((_, start) => short.every((word, i) => long[start + i] === word));
+}

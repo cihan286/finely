@@ -9,6 +9,7 @@ const nothing: NotificationFacts = {
   nearBudget: [],
   overdueBills: { count: 0, amount: 0, at: null },
   billsDueSoon: { count: 0, amount: 0, at: null },
+  billsMaybePaid: { count: 0, billId: null, at: null },
   stalePending: { count: 0, at: null },
   uncategorized: { count: 0, at: null },
 };
@@ -42,6 +43,7 @@ describe("buildNotifications", () => {
         nearBudget: [],
         overdueBills: { count: 0, amount: 0, at: null },
         billsDueSoon: { count: 0, amount: 0, at: null },
+        billsMaybePaid: { count: 0, billId: null, at: null },
         stalePending: { count: 2, at: at("2026-10-02T09:00:00Z") },
         uncategorized: { count: 1, at: at("2026-09-30T09:00:00Z") },
       },
@@ -141,6 +143,26 @@ describe("buildNotifications", () => {
         read: false,
       },
     ]);
+  });
+
+  test("points at a bill that a payment already there may have paid", () => {
+    const facts = (count: number, billId: string | null) => ({
+      ...nothing,
+      billsMaybePaid: { count, billId, at: at("2026-10-05T09:00:00Z") },
+    });
+    const [one] = buildNotifications(facts(1, "bill_1"), null, "UTC", "2026-10-06");
+    expect(one).toMatchObject({
+      id: "bills-maybe-paid",
+      type: "reminder",
+      title: "Bill possibly paid already",
+      href: "/dashboard/bills?pay=bill_1",
+    });
+    expect(one.description).toBe(
+      "1 unpaid bill has a payment of the same amount in your transactions. Mark it as paid with that payment if that's it.",
+    );
+    const [several] = buildNotifications(facts(3, null), null, "UTC", "2026-10-06");
+    expect(several.href).toBe("/dashboard/bills");
+    expect(several.description).toContain("3 unpaid bills have");
   });
 
   test("warns when the forecast expects the balance to drop below zero", () => {

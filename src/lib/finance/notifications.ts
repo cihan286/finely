@@ -6,7 +6,7 @@
 // charges, an account that has gone below zero, a balance that is expected
 // to run short within 30 days, a category that went over
 // its monthly budget or has nearly used it up, bills that are overdue or
-// due within a week, payments that have been "pending" for more than a
+// due within a week or that a payment already there may have paid, payments that have been "pending" for more than a
 // week, and transactions without a category.
 // Nothing is stored: each one is worked out from the data, and disappears by
 // itself once it's dealt with.
@@ -59,6 +59,12 @@ export interface NotificationFacts {
   overdueBills: { count: number; amount: number; at: Date | null };
   /** Unpaid bills due within a week; `at` is when the latest came that close */
   billsDueSoon: { count: number; amount: number; at: Date | null };
+  /**
+   * Unpaid bills for which a payment of the same amount is already among
+   * the transactions; `billId` is set when it's just one, `at` is when the
+   * latest such payment was entered
+   */
+  billsMaybePaid: { count: number; billId: string | null; at: Date | null };
   /** Payments pending for more than a week; `at` is when the latest became late */
   stalePending: { count: number; at: Date | null };
   /** Transactions without a category; `at` is when the latest was entered */
@@ -160,6 +166,18 @@ export function buildNotifications(
       description: `${plural(count, "bill is", "bills are")} due within a week, ${formatCurrency(amount, { currency: currency })} in total.`,
       href: "/dashboard/bills",
       at: facts.billsDueSoon.at,
+    });
+  }
+
+  if (facts.billsMaybePaid.count > 0 && facts.billsMaybePaid.at) {
+    const { count, billId } = facts.billsMaybePaid;
+    items.push({
+      id: "bills-maybe-paid",
+      type: "reminder",
+      title: count === 1 ? "Bill possibly paid already" : "Bills possibly paid already",
+      description: `${plural(count, "unpaid bill has", "unpaid bills have")} a payment of the same amount in your transactions. Mark ${count === 1 ? "it" : "them"} as paid with that payment if that's ${count === 1 ? "it" : "them"}.`,
+      href: billId ? `/dashboard/bills?pay=${billId}` : "/dashboard/bills",
+      at: facts.billsMaybePaid.at,
     });
   }
 

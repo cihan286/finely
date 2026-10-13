@@ -6,6 +6,9 @@
 // records the payment as a transaction in the chosen account — or, when the
 // payment is already among the transactions (it came with a bank statement),
 // points the bill at that one — and, if the bill repeats, adds the next one.
+// When transactions arrive (an imported statement, a linked bank, one typed
+// in), the ones that clearly are a bill's payment mark that bill as paid by
+// themselves; ones that only might be are pointed out on the Bills page.
 // A payment can be undone, which makes the bill owed again. Everyone on the
 // team can add, edit and pay bills; only owners and admins can delete them
 // or undo a payment.
@@ -25,6 +28,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNotNull,
   isNull,
   lt,
@@ -33,6 +37,7 @@ import {
 } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  attachment,
   bill,
   category,
   financialAccount,
@@ -41,7 +46,11 @@ import {
 } from "@/db/finance";
 import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
 import { describeChanges } from "@/lib/finance/audit";
-import { BILL_REPEAT_LABELS, nextDueDate } from "@/lib/finance/bills";
+import {
+  BILL_REPEAT_LABELS,
+  matchBillPayments,
+  nextDueDate,
+} from "@/lib/finance/bills";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import {
   BILL_REPEATS,
@@ -51,10 +60,11 @@ import {
   type ISODate,
 } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { recordAudit } from "./audit";
+import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
   DataError,
+  getCompanyLocale,
   getFinanceContext,
   isoDay,
   money,
@@ -65,6 +75,8 @@ import {
 
 /** How many paid bills the list shows, most recently paid first */
 export const PAID_BILLS_SHOWN = 20;
+/** How many it shows when asked for all of them */
+export const ALL_PAID_BILLS_SHOWN = 500;
 
 /** The most bills an export file holds */
 const MAX_EXPORT_BILLS = 20_000;
@@ -139,22 +151,276 @@ function toBill({ paidAt, ...row }: BillRow, timeZone: string): Bill {
  * The company's bills: everything still owed (soonest due first) and the
  * most recently paid ones.
  */
-export async function listBills(): Promise<{ unpaid: Bill[]; paid: Bill[] }> {
+export async function listBills({
+  allPaid = false,
+}: {
+  /** Every paid bill (up to ALL_PAID_BILLS_SHOWN) rather than the latest few */
+  allPaid?: boolean;
+} = {}): Promise<{
+  unpaid: Bill[];
+  paid: Bill[];
+  /** The unpaid bills (IDs) that a transaction already there may have paid */
+  possiblyPaid: string[];
+  /** Whether there are more paid bills than `paid` holds */
+  morePaid: boolean;
+}> {
   const { organizationId, timeZone } = await getFinanceContext();
   const own = eq(bill.organizationId, organizationId);
-  const [unpaid, paid] = await Promise.all([
+  const [unpaid, paid, possiblyPaid] = await Promise.all([
     selectBills()
       .where(and(own, isNull(bill.paidAt)))
       .orderBy(asc(bill.dueDate), asc(bill.createdAt)),
     selectBills()
       .where(and(own, isNotNull(bill.paidAt)))
       .orderBy(desc(bill.paidAt), desc(bill.createdAt))
-      .limit(PAID_BILLS_SHOWN),
+      // One more than shown, so the page knows whether there are more
+      .limit(allPaid ? ALL_PAID_BILLS_SHOWN : PAID_BILLS_SHOWN + 1),
+    selectPossiblyPaid(organizationId),
   ]);
   return {
     unpaid: unpaid.map((row) => toBill(row, timeZone)),
-    paid: paid.map((row) => toBill(row, timeZone)),
+    paid: paid
+      .slice(0, allPaid ? ALL_PAID_BILLS_SHOWN : PAID_BILLS_SHOWN)
+      .map((row) => toBill(row, timeZone)),
+    possiblyPaid: possiblyPaid.map((row) => row.billId),
+    morePaid: !allPaid && paid.length > PAID_BILLS_SHOWN,
   };
+}
+
+/**
+ * The unpaid bills of a company that a transaction already there may have
+ * paid: money out of exactly the bill's amount, within PAYMENT_MATCH_DAYS of
+ * its due date, that no bill points at. With when the latest such
+ * transaction was entered (for the notifications). It's what the "Mark as
+ * paid" window offers, give or take the hours between the company's
+ * timezone and UTC at the edges.
+ */
+export async function selectPossiblyPaid(
+  organizationId: string,
+): Promise<{ billId: string; at: Date }[]> {
+  const rows = await db
+    .select({
+      billId: bill.id,
+      at: sql`max(${transaction.createdAt})`.mapWith(transaction.createdAt),
+    })
+    .from(bill)
+    .innerJoin(
+      transaction,
+      and(
+        eq(transaction.organizationId, bill.organizationId),
+        sql`${transaction.amount} = -${bill.amount}`,
+        sql`${transaction.occurredAt} >= ${bill.dueDate}::date - ${PAYMENT_MATCH_DAYS}::int`,
+        sql`${transaction.occurredAt} < ${bill.dueDate}::date + ${PAYMENT_MATCH_DAYS + 1}::int`,
+        sql`not exists (select 1 from ${bill} as paid_bill where paid_bill.transaction_id = ${transaction.id})`,
+      ),
+    )
+    .where(and(eq(bill.organizationId, organizationId), isNull(bill.paidAt)))
+    .groupBy(bill.id);
+  return rows as { billId: string; at: Date }[];
+}
+
+/** How many rounds of matching one batch of new transactions gets */
+const MAX_SETTLE_ROUNDS = 12;
+
+/**
+ * Marks as paid the unpaid bills whose payment is among these transactions
+ * (ones that just arrived: an import, a bank sync, one typed in), and adds
+ * the next bill of each that repeats. The transactions stay as they are.
+ * Only clear cases: see matchBillPayments().
+ *
+ * A bill that someone already marked as paid by hand gets the same check:
+ * if its payment now arrives as well, the transaction "Mark as paid"
+ * recorded is a duplicate. It's removed (its notes, category and files move
+ * to the one that arrived) and the bill points at the arrived one. Not for
+ * a transaction typed in by hand (`merge: false`): a person adding a second
+ * payment to the same vendor may well mean a second payment.
+ *
+ * Returns how many bills were paid and how many duplicates were removed.
+ * Never throws: a bill that couldn't be matched must not undo an import. No
+ * login here; the caller has checked the company.
+ */
+export async function settleBillsWith(
+  actor: AuditActor,
+  transactionIds: string[],
+  { merge = true }: { merge?: boolean } = {},
+): Promise<{ paid: number; merged: number }> {
+  const nothing = { paid: 0, merged: 0 };
+  try {
+    const { organizationId } = actor;
+    if (transactionIds.length === 0) return nothing;
+    // Without bills there's nothing to do, however large the import
+    const anyBills = await db.$count(bill, eq(bill.organizationId, organizationId));
+    if (anyBills === 0) return nothing;
+
+    const { timeZone, currency } = await getCompanyLocale(organizationId);
+    const arrived = [];
+    for (let i = 0; i < transactionIds.length; i += 5000) {
+      arrived.push(
+        ...(await db
+          .select({
+            id: transaction.id,
+            name: transaction.name,
+            amount: transaction.amount,
+            occurredAt: transaction.occurredAt,
+          })
+          .from(transaction)
+          .where(
+            and(
+              eq(transaction.organizationId, organizationId),
+              inArray(transaction.id, transactionIds.slice(i, i + 5000)),
+              lt(transaction.amount, 0),
+              notExists(
+                db
+                  .select({ id: bill.id })
+                  .from(bill)
+                  .where(eq(bill.transactionId, transaction.id)),
+              ),
+            ),
+          )),
+      );
+    }
+    let payments = arrived.map((t) => ({ ...t, day: localDay(t.occurredAt, timeZone) }));
+
+    let settled = 0;
+    // A statement of several months can hold several payments of one
+    // repeating bill: each round pays the bill that's owed now, which adds
+    // the next one for the following round
+    for (let round = 0; round < MAX_SETTLE_ROUNDS && payments.length > 0; round++) {
+      const owed = await db
+        .select()
+        .from(bill)
+        .where(and(eq(bill.organizationId, organizationId), isNull(bill.paidAt)));
+      const matches = matchBillPayments(
+        owed.map((b) => ({ ...b, repeat: b.repeat as BillRepeat })),
+        payments,
+      );
+      if (matches.length === 0) break;
+
+      for (const match of matches) {
+        const row = owed.find((b) => b.id === match.billId)!;
+        const payment = payments.find((p) => p.id === match.paymentId)!;
+        const next = nextDueDate(row.dueDate, row.repeat as BillRepeat);
+        const markPaid = db
+          .update(bill)
+          .set({ paidAt: payment.occurredAt, transactionId: payment.id, paymentLinked: true })
+          .where(
+            and(
+              eq(bill.id, row.id),
+              eq(bill.organizationId, organizationId),
+              isNull(bill.paidAt),
+            ),
+          );
+        if (next) {
+          await db.batch([
+            markPaid,
+            db.insert(bill).values({
+              organizationId,
+              name: row.name,
+              amount: row.amount,
+              dueDate: next,
+              repeat: row.repeat,
+              categoryId: row.categoryId,
+              notes: row.notes,
+              createdById: actor.userId,
+            }),
+          ]);
+        } else {
+          await markPaid;
+        }
+        settled++;
+        await recordAudit(actor, {
+          area: "bill",
+          action: "paid",
+          entityId: row.id,
+          summary: `The bill “${row.name}” (${formatCurrency(row.amount, { currency })}) was marked as paid: its payment of ${formatDate(payment.day)} (“${payment.name}”) arrived in the transactions`,
+        });
+      }
+      const used = new Set(matches.map((m) => m.paymentId));
+      payments = payments.filter((p) => !used.has(p.id));
+    }
+
+    // Bills marked as paid by hand, whose recorded payment is still there
+    let merged = 0;
+    const recorded =
+      merge && payments.length > 0
+        ? await db
+            .select()
+            .from(bill)
+            .where(
+              and(
+                eq(bill.organizationId, organizationId),
+                isNotNull(bill.paidAt),
+                isNotNull(bill.transactionId),
+                eq(bill.paymentLinked, false),
+              ),
+            )
+        : [];
+    for (const match of matchBillPayments(
+      recorded.map((b) => ({ ...b, repeat: b.repeat as BillRepeat })),
+      payments,
+    )) {
+      const row = recorded.find((b) => b.id === match.billId)!;
+      const payment = payments.find((p) => p.id === match.paymentId)!;
+      const duplicateId = row.transactionId!;
+      const [duplicate] = await db
+        .select({ notes: transaction.notes, categoryId: transaction.categoryId })
+        .from(transaction)
+        .where(
+          and(
+            eq(transaction.id, duplicateId),
+            eq(transaction.organizationId, organizationId),
+          ),
+        );
+      if (!duplicate) continue;
+      await db.batch([
+        // What people added to the recorded payment isn't lost
+        db
+          .update(attachment)
+          .set({ transactionId: payment.id })
+          .where(
+            and(
+              eq(attachment.transactionId, duplicateId),
+              eq(attachment.organizationId, organizationId),
+            ),
+          ),
+        db
+          .update(transaction)
+          .set({
+            notes: sql`coalesce(${transaction.notes}, ${duplicate.notes})`,
+            categoryId: sql`coalesce(${transaction.categoryId}, ${duplicate.categoryId})`,
+          })
+          .where(
+            and(
+              eq(transaction.id, payment.id),
+              eq(transaction.organizationId, organizationId),
+            ),
+          ),
+        db
+          .update(bill)
+          .set({ paidAt: payment.occurredAt, transactionId: payment.id, paymentLinked: true })
+          .where(and(eq(bill.id, row.id), eq(bill.organizationId, organizationId))),
+        db
+          .delete(transaction)
+          .where(
+            and(
+              eq(transaction.id, duplicateId),
+              eq(transaction.organizationId, organizationId),
+            ),
+          ),
+      ]);
+      merged++;
+      await recordAudit(actor, {
+        area: "bill",
+        action: "payment-merged",
+        entityId: row.id,
+        summary: `The payment of the bill “${row.name}” (${formatCurrency(row.amount, { currency })}) arrived in the transactions (“${payment.name}”, ${formatDate(payment.day)}), so the one recorded when the bill was marked as paid was removed`,
+      });
+    }
+    return { paid: settled, merged };
+  } catch (error) {
+    console.error("[bills] Could not match new transactions to bills:", error);
+    return nothing;
+  }
 }
 
 /** Every bill for the export file: what's still owed first, then the paid ones */
@@ -257,7 +523,11 @@ export async function listBillPaymentCandidates(
 
 // Checks what was typed into the bill form, including that the chosen
 // category belongs to this company
-async function parseBillInput(input: BillInput, organizationId: string) {
+async function parseBillInput(
+  input: BillInput,
+  organizationId: string,
+  currency: string,
+) {
   const categoryId = optionalText(input.categoryId, "Category", 120);
   if (categoryId) {
     const matches = await db.$count(
@@ -266,7 +536,7 @@ async function parseBillInput(input: BillInput, organizationId: string) {
     );
     if (matches === 0) throw new DataError("Category not found.");
   }
-  const amount = money(input.amount, "Amount");
+  const amount = money(input.amount, "Amount", currency);
   if (amount <= 0) throw new DataError("Amount must be more than zero.");
   return {
     name: requiredText(input.name, "Name"),
@@ -282,7 +552,7 @@ async function parseBillInput(input: BillInput, organizationId: string) {
 export async function createBill(input: BillInput): Promise<string> {
   const actor = await getFinanceContext();
   const { organizationId, userId } = actor;
-  const values = await parseBillInput(input, organizationId);
+  const values = await parseBillInput(input, organizationId, actor.currency);
   const [row] = await db
     .insert(bill)
     .values({ ...values, organizationId, createdById: userId })
@@ -300,7 +570,7 @@ export async function createBill(input: BillInput): Promise<string> {
 export async function updateBill(id: string, input: BillInput) {
   const actor = await getFinanceContext();
   const { organizationId } = actor;
-  const values = await parseBillInput(input, organizationId);
+  const values = await parseBillInput(input, organizationId, actor.currency);
   const own = and(eq(bill.id, id), eq(bill.organizationId, organizationId));
   // What it was, to say what changed
   const [before] = await selectBills().where(own);

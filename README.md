@@ -128,8 +128,8 @@ src/
 │   ├── globals.css         Design tokens and base styles
 │   ├── (auth)/             /login, /signup, password reset, /onboarding
 │   │                       (company setup) and /accept-invitation/[id]
-│   ├── (site)/             /about, /contact, /terms, /privacy and /unsubscribe,
-│   │                       with the shared header and footer
+│   ├── (site)/             /about, /contact, /terms, /privacy, /unsubscribe and
+│   │                       /your-account, with the shared header and footer
 │   ├── api/auth/           Better Auth's API endpoints
 │   ├── api/cron/           The scheduled jobs Vercel runs: the weekly summary
 │   │                       and the daily bank sync
@@ -427,7 +427,9 @@ notifications and the activity log is shown in it. Nothing is converted:
 changing the currency of a company that already has transactions relabels
 them (100.00 USD becomes 100.00 EUR), so it's meant to be chosen once, at the
 start. For currencies without cents (yen, won) the amount fields take whole
-numbers (`amountInputProps()` in `lib/format.ts`).
+numbers (`amountInputProps()` in `lib/format.ts`), and what is typed or
+imported is rounded to whole numbers when it's saved (`money()` in
+`lib/data/common.ts`).
 
 For developers: amounts stay plain numbers. `formatCurrency(amount, {
 currency })` and `formatCompactCurrency(amount, currency)` format them; the
@@ -457,7 +459,9 @@ with `STRIPE_WEBHOOK_SECRET`. A message that isn't signed, or is older than
 five minutes, is refused; late and repeated ones change nothing. While a
 failed payment is being retried (`past_due`) the plan stays; once Stripe
 gives up or the subscription is cancelled, the company is on Free again.
-Deleting a company cancels its subscription at Stripe first.
+When a payment first fails, the company's owner gets an email saying so.
+Deleting a company cancels its subscription at Stripe first, and handing one
+over makes the new owner's address the one Stripe sends receipts to.
 
 Two things keep a late or lost message from costing anyone money
 (`settleCheckout()` in `lib/data/billing.ts`). The payment page that was last
@@ -604,8 +608,30 @@ the paid bill's due date (not after the payment day). A day the next month
 doesn't have becomes its last day (Jan 31 → Feb 28), and the bill after that
 continues from there (Mar 28).
 
-Paid bills can't be edited; the last 20 are listed with a link to their
-payment. Deleting a paid bill leaves its payment in the transactions, and
+A payment that arrives by itself pays its bill too. When transactions come
+in — an imported statement, a linked bank's sync, or one typed in — each
+unpaid bill is checked against the new money-out lines
+(`matchBillPayments()` in `lib/finance/bills.ts`), and marked as paid with
+that line when three things agree: the amount is exactly the bill's, the
+description names the same vendor (the bill's name appears in it word for
+word, or the other way round: "Figma" and "FIGMA INC. INV-1004"), and the
+day is close to the due date (up to 10 days early and 17 late for a monthly
+bill, 45 late for one that doesn't repeat, a few days for weekly ones). The
+transaction itself isn't changed, the import says how many bills it paid,
+and the activity log has a line for each. A statement covering several
+months pays each month's bill in turn. When only the amount and the date
+fit, nothing is decided: the bill gets a note on the Bills page ("A payment
+of this amount is already in your transactions") and the bell says so, for
+a person to check with "Mark as paid".
+
+The same check covers a bill someone already marked as paid by hand. If
+its payment then arrives with an import or a bank sync, the transaction
+that "Mark as paid" recorded would be a second copy: it's removed, its
+notes, category and files move to the arrived one, and the bill points at
+that. A transaction typed in by hand never removes anything.
+
+Paid bills can't be edited; the last 20 are listed (**Show all paid bills**
+lists up to 500) with a link to their payment. Deleting a paid bill leaves its payment in the transactions, and
 deleting the payment leaves the bill paid. Owners and admins can **Undo** a
 payment: the bill is owed again, the transaction that "Mark as paid" recorded
 is deleted (one that was already there stays), and the next bill of a
@@ -646,9 +672,12 @@ menu, the top bar and the buttons.
 
 ## Your own account
 
-At the bottom of Settings, everyone has two things for themselves
-(`lib/data/person.ts`):
+At the bottom of Settings, everyone has a few things for themselves
+(`lib/data/person.ts`). Someone who has no company, and so no Settings,
+finds the same at `/your-account` (linked from the company setup page).
 
+- **Your name** can be corrected; teammates see the new one everywhere
+  except in what the activity logs already recorded.
 - **Download my data** saves a JSON file with what Finely holds about the
   person: profile, how they sign in, where they're logged in, their
   companies with their email choices, the invitations they sent, and what
@@ -690,7 +719,10 @@ separately.
 
 The Insights page lists them under **Regular payments** with the usual
 amount ("~" when it varies), what it adds up to per month and when the next
-one is expected. **Add as bill** opens the Bills page with the form filled
+one is expected. **Not regular** on a line hides a payment that only looks
+regular (three unrelated purchases from one shop): it's left out of the
+list, the forecast and the Bills page's suggestions until someone presses
+**Show again** under the list. **Add as bill** opens the Bills page with the form filled
 in; the Bills page also says how many regular payments aren't bills yet.
 
 The dashboard's **Forecast** starts from today's balances and adds what's
@@ -713,7 +745,7 @@ The bell reports what deserves a look in the company's books: a charge at
 least 50% above what that vendor usually charges, an account below zero, a
 balance expected to drop below zero within 30 days,
 a category over its monthly budget or at 80% of it, bills that are overdue or due within a
-week, payments pending for more than a week, and transactions without a category.
+week or that a payment already there may have paid, payments pending for more than a week, and transactions without a category.
 Clicking one opens the place to deal with it. Notifications aren't stored:
 they're worked out from the data each time (`lib/finance/notifications.ts`)
 and disappear once the cause is gone. Only the moment each person pressed
@@ -722,14 +754,21 @@ and disappear once the cause is gone. Only the moment each person pressed
 ## Known limitations
 
 - Payment cards aren't built.
-- Bills: there's no partial payment. A payment that's already among the
-  transactions is only offered in the "Mark as paid" window, and only when
-  its amount is exactly the bill's and it's within 45 days of the due date:
-  nothing is matched by itself, so a bill marked as paid by hand before its
-  payment arrives through an import or a linked bank is still recorded
-  twice. Only owners and admins can undo a payment, and only for the last 20
-  paid bills (the ones listed). Unpaid bills are on the dashboard in the
-  forecast only, not in the cash flow chart.
+- Bills: there's no partial payment. An arriving payment only pays its bill
+  by itself when the amount is exact and the bank's description contains
+  the bill's name (or the other way round): a bill called "Office rent" paid
+  to "ACME PROPERTIES LLC" is only pointed out, and one paid in two parts or
+  with a fee on top isn't noticed at all. A wrong match is possible when a
+  vendor charges the same amount twice close together for different things;
+  "Undo" on the paid bill puts it right. When a bill was marked as paid by
+  hand and its payment then arrives through an import or a linked bank, the
+  recorded payment is removed in favour of the arrived one, but only under
+  the same conditions (exact amount, the bill's name in the description,
+  close to the due date); otherwise both stay and it's counted twice.
+  Transactions that were already there before a bill was added aren't
+  matched by themselves, only pointed out. Only owners and admins can undo a
+  payment. Unpaid bills are on the dashboard in the forecast only, not in
+  the cash flow chart.
 - Notifications are worked out when the dashboard loads or something is
   saved, not while a page sits open, and only unusual charges are emailed
   right away.
@@ -743,12 +782,15 @@ and disappear once the cause is gone. Only the moment each person pressed
   2-weekly, monthly or 3-monthly rhythm, or two or more a year apart whose
   amounts are within 10% of each other: a yearly payment whose price changed
   more isn't, nor are ones on changing days (the "last Friday of the month"
-  mostly works, "whenever the invoice arrives" doesn't). They can't be
-  dismissed or corrected by hand.
+  mostly works, "whenever the invoice arrives" doesn't). One that isn't
+  really regular can be hidden ("Not regular"), but its rhythm, amount or
+  next date can't be corrected by hand, and one that was missed can't be
+  added (add it as a bill instead).
 - The forecast only knows unpaid bills, pending payments and regular
   payments. One-off income and day-to-day spending aren't in it, so it tends
   to look better than reality. A pending payment that is also an unpaid bill
-  is counted twice.
+  is counted twice, unless it paid that bill by itself when it was entered
+  (exact amount, the bill's name in its description, close to the due date).
 - Budgets are one amount per category for every month: no different amount
   for one month, no carrying over and no overall budget.
 - Attached files live in the database, which makes it and its backups grow;
@@ -770,7 +812,7 @@ and disappear once the cause is gone. Only the moment each person pressed
   mode" isn't built). Syncing is once a day or on demand, not the moment
   the bank has news (Plaid's webhooks aren't built). A linked bank's
   transactions aren't matched against ones imported by CSV or entered by
-  hand, and against bills only when someone marks the bill as paid.
+  hand.
 - The activity log keeps everything forever, and isn't written in the same
   database step as the change it describes: in the rare case that writing
   the line fails, the change stands without one. The line for someone
@@ -780,9 +822,9 @@ and disappear once the cause is gone. Only the moment each person pressed
   search): not bills or vendors.
 - One currency per company. There are no accounts in other currencies, no
   exchange rates and no converting; a bank account in another currency
-  can't be linked. For currencies without cents the forms take whole
-  numbers, but nothing on the server refuses a fraction (an imported
-  statement can bring one in).
+  can't be linked. For currencies without cents, amounts that are typed or
+  imported are rounded to whole numbers; what a linked bank reports is
+  saved as the bank gives it.
 - Plans: tried in Stripe's test mode by hand (subscribing; switching plan,
   cancelling and failed payments less so), never in live mode. Only the
   team's size differs between plans, which is all the pricing section of the
@@ -791,11 +833,12 @@ and disappear once the cause is gone. Only the moment each person pressed
   dollars whatever the company's currency. A Stripe account with "Managed
   Payments" on by default refuses the payment page until each product has a
   tax code (or that default is switched off).
-  There's no free trial of a paid plan, no tax handling beyond what Stripe
-  is configured to do, and no email from Finely about a failed payment
-  (Stripe sends its own). After handing a company over, Stripe still has the
-  former owner's email as the customer's until it's changed in "Manage
-  billing".
+  There's no free trial of a paid plan and no tax handling beyond what
+  Stripe is configured to do. The owner is emailed once when a payment
+  fails, not again when Stripe gives up and the plan ends. After a handover
+  Stripe is given the new owner's email address; if Stripe can't be reached
+  at that moment it keeps the old one until it's changed in "Manage
+  billing". Neither was tried against Stripe itself.
 - Deleting a company is immediate and final: there's no grace period and no
   export first (the team is told by email afterwards).
 - The contact form's rate limit (five messages an hour) is per IP address,
@@ -806,13 +849,12 @@ and disappear once the cause is gone. Only the moment each person pressed
   address and a contact for data protection. There is no cookie banner
   (only login cookies are used) and no record of which version of the terms
   someone accepted.
-- Your account: someone who has no company (they left their last one, or
-  never set one up) can't reach Settings, so they can't download their data
-  or delete their account themselves. Deleting asks for the email address,
-  not the password again. A company's activity log keeps the name of
-  someone who deleted their account next to what they did. The download is
-  one JSON file; there's no way to correct a name or email address in the
-  app.
+- Your account: deleting asks for the email address, not the password
+  again. A company's activity log keeps the name of someone who deleted
+  their account next to what they did, and the name someone had before they
+  changed it. The download is one JSON file. The email address can't be
+  changed in the app, and neither can the password while logged in (only
+  through "Forgot password").
 - Exports are CSV only, plus the browser's "Save as PDF" for the Insights
   page: no PDF of the transactions list and no Excel file. The budgets file
   is this month's only.
