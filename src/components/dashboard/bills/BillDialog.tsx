@@ -23,6 +23,7 @@ import Field from "@/components/common/form/Field";
 import { Input, Select, Textarea } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { submitBill } from "@/app/dashboard/bills/actions";
+import { amountInputProps } from "@/lib/format";
 import { initialActionState } from "@/lib/action-state";
 import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
 import {
@@ -137,10 +138,7 @@ function BillForm({
           <Input
             name="amount"
             type="number"
-            inputMode="decimal"
-            min="0.01"
-            step="0.01"
-            placeholder="0.00"
+            {...amountInputProps(currency)}
             defaultValue={bill?.amount ?? prefill?.amount ?? ""}
             required
           />

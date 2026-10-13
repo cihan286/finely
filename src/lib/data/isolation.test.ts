@@ -20,13 +20,16 @@ import { createAccount, deleteAccount, listAccounts, updateAccount } from "./acc
 import {
   createBill,
   deleteBill,
+  exportBills,
   getBill,
+  listBillPaymentCandidates,
   listBills,
   payBill,
+  undoBillPayment,
   updateBill,
   type BillInput,
 } from "./bills";
-import { listAuditLog } from "./audit";
+import { exportAuditLog, listAuditLog } from "./audit";
 import { getBudgets } from "./budgets";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories";
 import {
@@ -47,8 +50,10 @@ import { deleteCompany, transferOwnership } from "./company";
 import {
   getEmailPreferences,
   sendWeeklyDigests,
+  unsubscribe,
   updateEmailPreferences,
 } from "./email-notifications";
+import { readUnsubscribeLink } from "@/lib/email/unsubscribe";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
@@ -69,13 +74,20 @@ import {
 
 vi.mock("@/db", async () => ({ db: (await import("./testing")).testDb }));
 // Emails aren't sent in tests: they're collected here to look at
-const sentEmails: { to: string; subject: string; text: string }[] = [];
+const sentEmails: {
+  to: string;
+  subject: string;
+  text: string;
+  headers?: Record<string, string>;
+}[] = [];
 vi.mock("@/lib/email/send", () => ({
-  sendEmail: async (email: { to: string; subject: string; text: string }) => {
+  sendEmail: async (email: (typeof sentEmails)[number]) => {
     sentEmails.push(email);
     return true;
   },
 }));
+// The secret the unsubscribe links in the emails are signed with
+vi.stubEnv("BETTER_AUTH_SECRET", "test-secret");
 vi.mock("@/lib/session", async () => ({
   requireOrganization: (await import("./testing")).currentSession,
 }));
@@ -662,6 +674,142 @@ describe("bills", () => {
     expect((await listTransactions()).total).toBe(1);
   });
 
+  it("undoing a payment makes the bill owed again and takes back what paying added", async () => {
+    const company = await createTestCompany("lannister");
+    actAs(company);
+    const accountId = await createAccount({
+      name: "Checking",
+      type: "checking",
+      openingBalance: 5000,
+    });
+    const id = await createBill({
+      name: "Gold",
+      amount: 700,
+      dueDate: "2026-01-31",
+      repeat: "monthly",
+      categoryId: null,
+    });
+    const { transactionId } = await payBill(id, { accountId, date: "2026-01-30" });
+
+    // Members can pay, but not undo: it deletes a transaction
+    actAs(company, "member");
+    await expect(undoBillPayment(id)).rejects.toThrow("Only owners and admins can do this.");
+    // Nor can another company
+    actAs(await createTestCompany("baratheon"));
+    await expect(undoBillPayment(id)).rejects.toThrow("Bill not found.");
+
+    actAs(company);
+    expect(await undoBillPayment(id)).toEqual({ deletedPayment: true });
+    const { unpaid, paid } = await listBills();
+    expect(paid).toEqual([]);
+    // The bill itself, and no longer the one for February
+    expect(unpaid.map((b) => [b.id, b.dueDate, b.paidDay, b.transactionId])).toEqual([
+      [id, "2026-01-31", null, null],
+    ]);
+    expect(await getTransaction(transactionId)).toBeNull();
+    expect((await listAccounts())[0].balance).toBe(5000);
+    await expect(undoBillPayment(id)).rejects.toThrow("This bill isn't paid.");
+
+    // A next bill someone changed since is theirs to keep
+    await payBill(id, { accountId, date: "2026-01-30" });
+    const [february] = (await listBills()).unpaid;
+    await updateBill(february.id, {
+      name: "Gold",
+      amount: 750,
+      dueDate: february.dueDate,
+      repeat: "monthly",
+      categoryId: null,
+    });
+    await undoBillPayment(id);
+    expect((await listBills()).unpaid.map((b) => b.amount).sort()).toEqual([700, 750]);
+  });
+
+  it("a payment that's already in the transactions can be the bill's payment", async () => {
+    const company = await createTestCompany("martell");
+    const other = await createTestCompany("greyjoy");
+    actAs(other);
+    const otherAccount = await createAccount({ name: "Other", type: "checking", openingBalance: 0 });
+    const foreign = await createTransaction({
+      accountId: otherAccount,
+      categoryId: null,
+      name: "SUNSPEAR POWER",
+      amount: -300,
+      date: "2026-03-02",
+      status: "completed",
+    });
+
+    actAs(company);
+    const accountId = await createAccount({
+      name: "Checking",
+      type: "checking",
+      openingBalance: 1000,
+    });
+    const add = (name: string, amount: number, date: string) =>
+      createTransaction({ accountId, categoryId: null, name, amount, date, status: "completed" });
+    const far = await add("SUNSPEAR POWER", -300, "2026-02-10");
+    const near = await add("SUNSPEAR POWER 0302", -300, "2026-03-02");
+    await add("Refund", 300, "2026-03-01"); // money in
+    await add("Something else", -299.99, "2026-03-01"); // another amount
+    await add("Long ago", -300, "2025-11-01"); // too far from the due date
+    const id = await createBill({
+      name: "Electricity",
+      amount: 300,
+      dueDate: "2026-03-01",
+      repeat: "monthly",
+      categoryId: null,
+    });
+
+    // The company's own, of the bill's amount, around the due date; the
+    // closest first
+    expect((await listBillPaymentCandidates(id)).map((c) => [c.id, c.day, c.account])).toEqual([
+      [near, "2026-03-02", "Checking"],
+      [far, "2026-02-10", "Checking"],
+    ]);
+    await expect(payBill(id, { transactionId: foreign })).rejects.toThrow(
+      "That transaction can't be this bill's payment.",
+    );
+
+    const result = await payBill(id, { transactionId: near });
+    expect(result).toEqual({ transactionId: near, nextDueDate: "2026-04-01" });
+    // Nothing was added to the transactions, and the balance didn't move
+    expect((await listTransactions()).total).toBe(5);
+    expect((await listBills()).paid.map((b) => [b.paidDay, b.transactionId, b.paymentLinked])).toEqual([
+      ["2026-03-02", near, true],
+    ]);
+
+    // One transaction pays one bill
+    const second = await createBill({
+      name: "Electricity again",
+      amount: 300,
+      dueDate: "2026-03-01",
+      repeat: "none",
+      categoryId: null,
+    });
+    expect((await listBillPaymentCandidates(second)).map((c) => c.id)).toEqual([far]);
+    await expect(payBill(second, { transactionId: near })).rejects.toThrow(
+      "That transaction can't be this bill's payment.",
+    );
+    // A paid bill has none
+    expect(await listBillPaymentCandidates(id)).toEqual([]);
+
+    // Undoing leaves a transaction alone that paying didn't record
+    expect(await undoBillPayment(id)).toEqual({ deletedPayment: false });
+    expect(await getTransaction(near)).not.toBeNull();
+    expect((await listBills()).unpaid.map((b) => b.name).sort()).toEqual([
+      "Electricity",
+      "Electricity again",
+    ]);
+
+    // The export file has every bill, the company's own only
+    await payBill(second, { accountId, date: "2026-03-03" });
+    expect((await exportBills()).bills.map((b) => [b.name, b.paidDay])).toEqual([
+      ["Electricity", null],
+      ["Electricity again", "2026-03-03"],
+    ]);
+    actAs(other);
+    expect((await exportBills()).bills).toEqual([]);
+  });
+
   it("checks what was typed", async () => {
     actAs(acme);
     await expect(createBill(billFor(acme, { amount: 0 }))).rejects.toThrow(
@@ -880,6 +1028,10 @@ describe("handing over and deleting a company", () => {
       [company.userId]: "admin",
       user_jim: "owner",
     });
+    // The new owner is told, and nobody else
+    expect(
+      sentEmails.filter((e) => e.subject.includes("dunder")).map((e) => [e.to, e.subject]),
+    ).toEqual([["jim@example.com", "You now own dunder on Finely"]]);
   });
 
   it("deletes only the owner's own company, after its name was typed", async () => {
@@ -920,7 +1072,15 @@ describe("handing over and deleting a company", () => {
     );
     await expect(deleteCompany("")).rejects.toThrow("Type the company's name exactly to confirm.");
 
+    // Someone else on the team, to be told about it
+    await testDb.insert(user).values({ id: "user_art", name: "Art", email: "art@example.com" });
+    await addTestMember(doomed, "user_art", "member");
+
     await deleteCompany(" vandelay ");
+    // The rest of the team is told, not the owner who did it
+    expect(
+      sentEmails.filter((e) => e.subject.includes("vandelay")).map((e) => [e.to, e.subject]),
+    ).toEqual([["art@example.com", "vandelay was deleted on Finely"]]);
     const organizations = await testDb
       .select({ id: organization.id })
       .from(organization)
@@ -1246,6 +1406,29 @@ describe("email notifications", () => {
     expect(mine[0].text).toContain("Money out: $80.00");
     expect(mine[0].text).toContain("In the bank now: $10,120.00");
     expect(mine[0].text).toContain("1 bill overdue, $300.00 in total.");
+
+    // Its unsubscribe link stops the summary for that person in that
+    // company, and nothing else
+    const link = mine[0].text.match(/Unsubscribe: (\S+)/)![1];
+    expect(mine[0].headers).toEqual({
+      "List-Unsubscribe": `<${link.replace("/unsubscribe?", "/api/email/unsubscribe?")}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+    const target = readUnsubscribeLink(Object.fromEntries(new URL(link).searchParams))!;
+    expect(target).toEqual({
+      userId: team.userId,
+      organizationId: team.organizationId,
+      kind: "weeklyDigest",
+    });
+    expect(await unsubscribe(target)).toBe("tyrell");
+    actAs(team);
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: false, unusualCharges: true });
+    // The teammate's own choice is untouched
+    actAs(team.mate, "member");
+    expect(await getEmailPreferences()).toEqual({ weeklyDigest: false, unusualCharges: true });
+    // Someone who isn't on the team (any more) changes nothing
+    expect(await unsubscribe({ ...target, userId: acme.userId })).toBeNull();
+    actAs(team);
     // Nothing of any other company in it
     expect(mine[0].text).not.toContain("globex");
 
@@ -1314,6 +1497,21 @@ describe("activity log", () => {
     expect(entries.every((e) => e.actor === `Name of ${company.userId}`)).toBe(true);
 
     expect((await listAuditLog({ area: "transaction" })).total).toBe(3);
+    // Searching: part of what happened, whatever the case, taken literally
+    expect((await listAuditLog({ search: "  potions " })).total).toBe(2);
+    expect((await listAuditLog({ search: "POTIONS", area: "category" })).total).toBe(1);
+    expect((await listAuditLog({ search: company.userId })).total).toBe(5);
+    expect((await listAuditLog({ search: "%" })).total).toBe(0);
+    // The file has what the filters show, with the area's name
+    const file = await exportAuditLog({ area: "category" });
+    expect(file.rows).toEqual([
+      {
+        when: expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/),
+        actor: `Name of ${company.userId}`,
+        area: "Categories & budgets",
+        summary: "Added the category “Potions”",
+      },
+    ]);
     expect((await listAuditLog({ limit: 2, offset: 2 })).entries.map((e) => e.action)).toEqual([
       "created",
       "created",
@@ -1328,6 +1526,7 @@ describe("activity log", () => {
   it("can only be read by owners and admins", async () => {
     actAs(globex, "member");
     await expect(listAuditLog()).rejects.toThrow("Only owners and admins can do this.");
+    await expect(exportAuditLog()).rejects.toThrow("Only owners and admins can do this.");
     actAs(globex, "admin");
     expect((await listAuditLog()).total).toBeGreaterThan(0);
   });

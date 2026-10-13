@@ -4,14 +4,16 @@
 // In plain words: remembers which emails each person wants about a company,
 // emails the team right away when a charge that was just saved is unusually
 // high, and once a week emails each company's team a summary of the week.
-// Only people who verified their email address get these emails.
+// Only people who verified their email address get these emails. Each
+// email ends with a link that stops that kind of email without logging in.
 //
 // For developers: server-only. The preference functions find the person and
 // company via getFinanceContext(). The alert and the summary don't: they run
 // after a response or from the weekly job, where there's no login, so they
 // take the company's ID from their caller (never from the browser) and
 // always filter by it. Neither ever throws into a request: a failed email
-// must not undo a saved transaction.
+// must not undo a saved transaction. unsubscribe() has no login either: its
+// caller has checked the link's signature (lib/email/unsubscribe.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
@@ -29,6 +31,7 @@ import { member, organization, user } from "@/db/schema";
 import { localDay, startOfDay, todayIn } from "@/lib/dates";
 import { sendEmail } from "@/lib/email/send";
 import { unusualChargeEmail, weeklyDigestEmail } from "@/lib/email/templates";
+import { unsubscribeLinks, type UnsubscribeTarget } from "@/lib/email/unsubscribe";
 import { summarizeBills } from "@/lib/finance/bills";
 import {
   DEFAULT_EMAIL_PREFERENCES,
@@ -87,14 +90,39 @@ export async function updateEmailPreferences(preferences: EmailPreferences) {
     });
 }
 
+/**
+ * Stops one kind of email for one person and company, for the unsubscribe
+ * link in the emails (already checked: see readUnsubscribeLink()). Nobody
+ * is logged in here. Their other choice stays as it was. Returns the
+ * company's name, or null if the person is no longer on its team.
+ */
+export async function unsubscribe(target: UnsubscribeTarget): Promise<string | null> {
+  const { userId, organizationId, kind } = target;
+  const [membership] = await db
+    .select({ company: organization.name })
+    .from(member)
+    .innerJoin(organization, eq(member.organizationId, organization.id))
+    .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)));
+  if (!membership) return null;
+  await db
+    .insert(notificationPreference)
+    .values({ userId, organizationId, ...DEFAULT_EMAIL_PREFERENCES, [kind]: false })
+    .onConflictDoUpdate({
+      target: [notificationPreference.userId, notificationPreference.organizationId],
+      set: { [kind]: false, updatedAt: new Date() },
+    });
+  return membership.company;
+}
+
 // The people in a company who want one kind of email and can get it (a
 // verified address). People who never chose get the default.
 async function selectRecipients(
   organizationId: string,
   kind: keyof EmailPreferences,
-): Promise<{ name: string; email: string }[]> {
+): Promise<{ userId: string; name: string; email: string }[]> {
   const rows = await db
     .select({
+      userId: user.id,
       name: user.name,
       email: user.email,
       wanted: notificationPreference[kind],
@@ -111,7 +139,7 @@ async function selectRecipients(
     .where(and(eq(member.organizationId, organizationId), eq(user.emailVerified, true)));
   return rows
     .filter((row) => row.wanted ?? DEFAULT_EMAIL_PREFERENCES[kind])
-    .map(({ name, email }) => ({ name, email }));
+    .map(({ userId, name, email }) => ({ userId, name, email }));
 }
 
 // A company's completed expenses since the history for unusual charges
@@ -179,7 +207,16 @@ export async function alertUnusualCharges(
 
     let sent = 0;
     for (const recipient of recipients) {
-      if (await sendEmail(unusualChargeEmail(recipient, company.name, charges, currency))) {
+      const links = unsubscribeLinks({
+        userId: recipient.userId,
+        organizationId,
+        kind: "unusualCharges",
+      });
+      if (
+        await sendEmail(
+          unusualChargeEmail(recipient, company.name, charges, currency, links),
+        )
+      ) {
         sent++;
       }
     }
@@ -338,7 +375,12 @@ export async function sendWeeklyDigests(
 
       result.companies++;
       for (const recipient of recipients) {
-        if (await sendEmail(weeklyDigestEmail(recipient, digest))) result.emails++;
+        const links = unsubscribeLinks({
+          userId: recipient.userId,
+          organizationId: company.id,
+          kind: "weeklyDigest",
+        });
+        if (await sendEmail(weeklyDigestEmail(recipient, digest, links))) result.emails++;
       }
     } catch (error) {
       console.error(`[digest] Could not send the weekly summary of ${company.id}:`, error);

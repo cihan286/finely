@@ -21,6 +21,8 @@ export interface Email {
   text: string;
   /** Where replies go, when that isn't us (e.g. a contact form's sender) */
   replyTo?: string;
+  /** Extra email headers, e.g. the ones behind an email app's "Unsubscribe" */
+  headers?: Record<string, string>;
 }
 
 const apiKey = process.env.RESEND_API_KEY;

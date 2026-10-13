@@ -3,7 +3,10 @@
 //
 // In plain words: the pop-up for paying a bill — which account the money
 // left and on which day. Confirming records the payment as a transaction in
-// that account and, for a bill that repeats, adds the next one.
+// that account and, for a bill that repeats, adds the next one. If a
+// transaction of the bill's amount is already there around its due date (it
+// came with a bank statement, say), the window offers it as the payment
+// instead, so the payment isn't recorded twice.
 //
 // For developers: a client component ("use client"). It opens when the
 // address has ?pay=<id> and closes by returning to `closeHref`. Sent with
@@ -13,7 +16,12 @@
 
 "use client";
 
-import { startTransition, useActionState, type SubmitEvent } from "react";
+import {
+  startTransition,
+  useActionState,
+  useState,
+  type SubmitEvent,
+} from "react";
 import Button from "@/components/common/button/Button";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
@@ -23,13 +31,18 @@ import { submitBillPayment } from "@/app/dashboard/bills/actions";
 import { initialActionState } from "@/lib/action-state";
 import { nextDueDate } from "@/lib/finance/bills";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { Account, Bill } from "@/types/finance";
+import type { Account, Bill, BillPaymentCandidate } from "@/types/finance";
 // The windows of the dashboard share how their fields are arranged
 import forms from "../transactions/forms.module.css";
 import styles from "./BillDialog.module.css";
 
 interface PayBillDialogProps {
   bill: Bill;
+  /**
+   * Transactions that look like this bill's payment, the likeliest first;
+   * empty if there are none
+   */
+  candidates: BillPaymentCandidate[];
   accounts: Account[];
   /** The company's currency, e.g. "USD" */
   currency: string;
@@ -67,6 +80,7 @@ interface PayBillFormProps extends PayBillDialogProps {
 // The form inside the window (separate so its Cancel button can close it)
 function PayBillForm({
   bill,
+  candidates,
   accounts,
   currency,
   canManage,
@@ -77,6 +91,9 @@ function PayBillForm({
 }: PayBillFormProps) {
   const close = useCloseDialog();
   const next = nextDueDate(bill.dueDate, bill.repeat);
+  // The transaction that is the payment; "" = record a new one. When one
+  // looks like it, that's the likelier truth.
+  const [existingId, setExistingId] = useState(candidates[0]?.id ?? "");
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -96,7 +113,32 @@ function PayBillForm({
         <span className={styles.summaryNote}>Due {formatDate(bill.dueDate)}</span>
       </div>
 
-      {accounts.length === 0 ? (
+      {candidates.length > 0 && (
+        <Field
+          label="Payment"
+          hint="A transaction of this amount is already there. Choosing it keeps the payment from being counted twice."
+        >
+          <Select
+            name="transactionId"
+            value={existingId}
+            onChange={(e) => setExistingId(e.target.value)}
+          >
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                Already there: {c.name} · {formatDate(c.day)} · {c.account}
+              </option>
+            ))}
+            <option value="">Record a new payment</option>
+          </Select>
+        </Field>
+      )}
+
+      {existingId ? (
+        <p className={styles.note}>
+          Nothing is added to the transactions.
+          {next && ` The next bill will be due ${formatDate(next)}.`}
+        </p>
+      ) : accounts.length === 0 ? (
         // The payment needs an account to leave from
         <Message type="info">
           {canManage
@@ -138,7 +180,7 @@ function PayBillForm({
             action={close}
             disabled={pending}
           />
-          {accounts.length === 0 ? (
+          {!existingId && accounts.length === 0 ? (
             canManage && (
               <Button
                 href="/dashboard/settings#accounts"

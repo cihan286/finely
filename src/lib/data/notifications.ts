@@ -3,7 +3,7 @@
 //
 // In plain words: collects what the bell in the top bar reports on — recent
 // expenses (to spot unusually high charges), accounts below zero,
-// categories over their monthly budget, unpaid
+// categories over their monthly budget or close to it, unpaid
 // bills that are overdue or due within a week, payments pending for more
 // than a week and transactions without a category — and
 // hands it to lib/finance/notifications.ts. Also saves the moment someone
@@ -24,6 +24,7 @@ import {
 } from "@/db/finance";
 import { addDays, localDay, startOfDay, todayIn } from "@/lib/dates";
 import { billStatus, DUE_SOON_DAYS, summarizeBills } from "@/lib/finance/bills";
+import { budgetStatus } from "@/lib/finance/budgets";
 import { findUnusualCharges, insightRange } from "@/lib/finance/insights";
 import {
   buildNotifications,
@@ -201,6 +202,11 @@ export async function listNotifications(): Promise<Notification[]> {
       overBudget: budgets.flatMap((b) =>
         // Over budget means something was spent, so there's a latest payment
         b.spent > b.budget && b.changedAt ? [{ ...b, at: b.changedAt }] : [],
+      ),
+      nearBudget: budgets.flatMap((b) =>
+        budgetStatus(b.spent, b.budget) === "near" && b.changedAt
+          ? [{ ...b, at: b.changedAt }]
+          : [],
       ),
       overdueBills: billFacts("overdue"),
       billsDueSoon: billFacts("dueSoon"),

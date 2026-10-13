@@ -2,10 +2,11 @@
 // Email templates
 //
 // In plain words: the wording and look of every email Finely sends — password
-// reset, "verify your email address", team invitations, the weekly summary
-// and the alert for an unusually high charge — plus the plain email we get
-// ourselves when someone fills in the contact form. Each email
-// has a designed version and a plain-text version.
+// reset, "verify your email address", team invitations, the weekly summary,
+// the alert for an unusually high charge, and the notes about a company
+// being handed over or deleted — plus the plain email we get ourselves when
+// someone fills in the contact form. Each email has a designed version and
+// a plain-text version.
 //
 // For developers: emails can't use our CSS files, so styles are written inline,
 // and buttons are built from tables so they also work in Outlook. Anything a
@@ -177,6 +178,72 @@ This invitation expires in 48 hours. If you weren't expecting it, you can ignore
   };
 }
 
+// ---------------------------------------------------------------- handover and deletion
+
+/** Sent to the person a company was just handed over to */
+export function ownershipTransferredEmail(
+  to: { name: string; email: string },
+  organizationName: string,
+  formerOwnerName: string,
+): Email {
+  const url = `${appUrl}/dashboard/settings`;
+  return {
+    to: to.email,
+    subject: oneLine(`You now own ${organizationName} on Finely`),
+    html: layout({
+      preview: `${formerOwnerName} handed ${organizationName} over to you.`,
+      heading: `You now own ${organizationName}`,
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        `<strong>${escapeHtml(formerOwnerName)}</strong> handed <strong>${escapeHtml(organizationName)}</strong> over to you on Finely. They are now an admin.`,
+        "As the owner you manage the plan and billing, and only you can hand the company over or delete it.",
+      ],
+      button: { label: "Open settings", url },
+      footnote: "If you weren't expecting this, talk to the person who handed it over.",
+    }),
+    text: `Hi ${firstName(to.name)},
+
+${formerOwnerName} handed ${organizationName} over to you on Finely. They are now an admin.
+
+As the owner you manage the plan and billing, and only you can hand the company over or delete it.
+
+${url}
+
+If you weren't expecting this, talk to the person who handed it over.`,
+  };
+}
+
+/** Sent to everyone else on the team when the owner deleted the company */
+export function companyDeletedEmail(
+  to: { name: string; email: string },
+  organizationName: string,
+  ownerName: string,
+): Email {
+  const url = `${appUrl}/dashboard`;
+  return {
+    to: to.email,
+    subject: oneLine(`${organizationName} was deleted on Finely`),
+    html: layout({
+      preview: `${ownerName} deleted ${organizationName}.`,
+      heading: `${organizationName} was deleted`,
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        `<strong>${escapeHtml(ownerName)}</strong>, the owner of <strong>${escapeHtml(organizationName)}</strong>, deleted the company on Finely. Its accounts, transactions, bills and files are gone, and it no longer appears when you log in.`,
+        "Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.",
+      ],
+      button: { label: "Open Finely", url },
+      footnote: "Deleting a company can't be undone.",
+    }),
+    text: `Hi ${firstName(to.name)},
+
+${ownerName}, the owner of ${organizationName}, deleted the company on Finely. Its accounts, transactions, bills and files are gone, and it no longer appears when you log in.
+
+Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.
+
+${url}`,
+  };
+}
+
 // ---------------------------------------------------------------- unusual charge
 
 // Where people choose which emails they get
@@ -187,6 +254,33 @@ interface Recipient {
   email: string;
 }
 
+/** The addresses that stop this kind of email (see lib/email/unsubscribe.ts) */
+interface UnsubscribeLinks {
+  pageUrl: string;
+  postUrl: string;
+}
+
+// How an email that can be stopped ends: the small print as HTML and as
+// text, and the headers that give email apps their own "Unsubscribe" button
+function stoppable(why: string, links: UnsubscribeLinks | null | undefined) {
+  if (!links) {
+    const footnote = `${why} To stop these emails, open Settings → Email notifications in Finely.`;
+    return {
+      footnote: escapeHtml(footnote),
+      text: `${footnote}\n${SETTINGS_URL}`,
+      headers: undefined,
+    };
+  }
+  return {
+    footnote: `${escapeHtml(why)} <a href="${escapeHtml(links.pageUrl)}" style="color:${MUTED};">Unsubscribe</a>, or choose your emails in Settings → Email notifications.`,
+    text: `${why}\nUnsubscribe: ${links.pageUrl}\nChoose your emails: ${SETTINGS_URL}`,
+    headers: {
+      "List-Unsubscribe": `<${links.postUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  };
+}
+
 /** Sent right away when charges far above a vendor's usual were just added */
 export function unusualChargeEmail(
   to: Recipient,
@@ -194,6 +288,8 @@ export function unusualChargeEmail(
   charges: UnusualCharge[],
   /** The company's currency, e.g. "USD" */
   currency: string,
+  /** The addresses that stop these alerts for this person, if there are any */
+  unsubscribe?: UnsubscribeLinks | null,
 ): Email {
   const one = charges.length === 1;
   const line = (c: UnusualCharge) =>
@@ -201,9 +297,13 @@ export function unusualChargeEmail(
   const heading = one
     ? `Unusually high charge from ${charges[0].name}`
     : `${charges.length} unusually high charges`;
-  const footnote = `You get this email because you're on ${organizationName}'s team in Finely. To stop these alerts, open Settings → Email notifications in Finely.`;
+  const ending = stoppable(
+    `You get this email because you're on ${organizationName}'s team in Finely.`,
+    unsubscribe,
+  );
   return {
     to: to.email,
+    headers: ending.headers,
     subject: oneLine(`${heading} at ${organizationName}`),
     html: layout({
       preview: line(charges[0]),
@@ -222,7 +322,7 @@ export function unusualChargeEmail(
           ? `${appUrl}/dashboard/transactions?edit=${charges[0].id}`
           : `${appUrl}/dashboard/insights`,
       },
-      footnote: escapeHtml(footnote),
+      footnote: ending.footnote,
     }),
     text: `Hi ${firstName(to.name)},
 
@@ -232,15 +332,19 @@ ${charges.map((c) => `- ${line(c)}`).join("\n")}
 
 Review in Finely: ${appUrl}/dashboard/insights
 
-${footnote}
-${SETTINGS_URL}`,
+${ending.text}`,
   };
 }
 
 // ---------------------------------------------------------------- weekly summary
 
 /** The Monday email: one company's last seven days */
-export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
+export function weeklyDigestEmail(
+  to: Recipient,
+  digest: Digest,
+  /** The addresses that stop the summary for this person, if there are any */
+  unsubscribe?: UnsubscribeLinks | null,
+): Email {
   const org = digest.organizationName;
   const net = digest.moneyIn - digest.moneyOut;
   const bills = (count: number) => `${count} ${count === 1 ? "bill" : "bills"}`;
@@ -268,7 +372,10 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
   }
 
   const period = `${formatDate(digest.from)} – ${formatDate(digest.to)}`;
-  const footnote = `You get this email every week because you're on ${org}'s team in Finely. To stop it, open Settings → Email notifications in Finely.`;
+  const ending = stoppable(
+    `You get this email every week because you're on ${org}'s team in Finely.`,
+    unsubscribe,
+  );
   const cell = "padding:4px 0;font-size:15px;";
 
   const paragraphs = [
@@ -295,13 +402,14 @@ export function weeklyDigestEmail(to: Recipient, digest: Digest): Email {
 
   return {
     to: to.email,
+    headers: ending.headers,
     subject: oneLine(`${org}'s week: ${formatCurrency(net, { signed: true, currency: digest.currency })} net`),
     html: layout({
       preview: `Money in ${formatCurrency(digest.moneyIn, { currency: digest.currency })}, money out ${formatCurrency(digest.moneyOut, { currency: digest.currency })}.`,
       heading: "Your week in Finely",
       paragraphs,
       button: { label: "Open the dashboard", url: `${appUrl}/dashboard` },
-      footnote: escapeHtml(footnote),
+      footnote: ending.footnote,
     }),
     text: `Hi ${firstName(to.name)}, here's ${org}'s week (${period}).
 
@@ -313,8 +421,7 @@ ${
 }${attention.length > 0 ? `\nNeeds a look:\n${attention.map((a) => `- ${a.text}`).join("\n")}\n` : ""}
 Open the dashboard: ${appUrl}/dashboard
 
-${footnote}
-${SETTINGS_URL}`,
+${ending.text}`,
   };
 }
 

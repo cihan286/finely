@@ -31,7 +31,7 @@ import Message from "@/components/common/form/Message";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import { submitCategory } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
-import { formatCurrency } from "@/lib/format";
+import { amountInputProps, formatCurrency } from "@/lib/format";
 import type { Category, CategoryIconKey } from "@/types/finance";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
@@ -296,9 +296,7 @@ function CategoryFields({
           <Input
             name="budget"
             type="number"
-            inputMode="decimal"
-            min="0.01"
-            step="0.01"
+            {...amountInputProps(currency)}
             placeholder="No budget"
             defaultValue={category?.budget ?? ""}
           />

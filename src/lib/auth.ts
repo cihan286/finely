@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware, isAPIError } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
@@ -145,6 +146,23 @@ export const auth = betterAuth({
     },
   },
 
+  hooks: {
+    // Leaving a company by yourself has no hook of its own in Better Auth
+    // (being removed by someone else does), so it's written to the
+    // company's activity log from here
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/organization/leave") return;
+      // Refused (e.g. the owner tried to leave): nothing happened
+      if (isAPIError(ctx.context.returned)) return;
+      const organizationId = ctx.body?.organizationId;
+      const person = await signedInUser();
+      if (typeof organizationId !== "string" || !person) return;
+      await recordTeamChange(organizationId, person, "left", {
+        summary: "Left the company",
+      });
+    }),
+  },
+
   plugins: [
     // Business accounts ("organizations"): each company has members with a
     // role — owner, admin or member — and can invite people by email.
@@ -214,7 +232,7 @@ export const auth = betterAuth({
         // New companies start with a ready-made set of categories, and the
         // timezone of the browser they were created in (sent as metadata
         // by CreateOrganizationForm)
-        afterCreateOrganization: async ({ organization }) => {
+        afterCreateOrganization: async ({ organization, user }) => {
           let metadata = organization.metadata;
           if (typeof metadata === "string") {
             try {
@@ -235,6 +253,9 @@ export const auth = betterAuth({
             createDefaultCategories(organization.id),
             createCompanySettings(organization.id, metadata?.timezone),
           ]);
+          await recordTeamChange(organization.id, user, "company-created", {
+            summary: `Created the company “${organization.name}”`,
+          });
         },
       },
     }),

@@ -2,12 +2,14 @@
 // Cash-flow forecast: the calculations
 //
 // In plain words: starting from what's in the bank today, this adds what is
-// expected over the next 30 days — unpaid bills, and the regular payments
-// and regular income spotted in the history — to estimate where the balance
-// will be, and the lowest it will get on the way.
+// expected over the next 30 days — unpaid bills, payments that are still
+// pending, and the regular payments and regular income spotted in the
+// history — to estimate where the balance will be, and the lowest it will
+// get on the way.
 //
 // For developers: pure functions, unit-tested in forecast.test.ts. An
-// overdue bill and a late regular payment are expected today. A regular
+// overdue bill, a late regular payment and a pending payment from the past
+// are expected today (pending payments aren't in the balance yet). A regular
 // payment that is already tracked as an unpaid bill is counted once, as the
 // bill. Bills and regular payments that come back within the 30 days are
 // counted each time. It's an estimate: one-off income and spending aren't
@@ -27,11 +29,21 @@ export interface ForecastEvent {
   name: string;
   /** Positive = money in, negative = money out */
   amount: number;
-  /** A bill someone entered, or a regular payment spotted in the history */
-  source: "bill" | "recurring";
+  /**
+   * A bill someone entered, a payment that is still pending, or a regular
+   * payment spotted in the history
+   */
+  source: "bill" | "pending" | "recurring";
   /** Whether the amount is an estimate (a regular payment whose amount varies) */
   estimated: boolean;
 }
+
+/** How each kind of expected payment is called on screen */
+export const FORECAST_SOURCE_LABELS: Record<ForecastEvent["source"], string> = {
+  bill: "Bill",
+  pending: "Pending payment",
+  recurring: "Regular payment",
+};
 
 export interface Forecast {
   today: ISODate;
@@ -57,6 +69,7 @@ export function buildForecast({
   today,
   balance,
   bills,
+  pending = [],
   recurring,
 }: {
   today: ISODate;
@@ -64,6 +77,8 @@ export function buildForecast({
   balance: number;
   /** Unpaid bills */
   bills: { name: string; amount: number; dueDate: ISODate; repeat: BillRepeat }[];
+  /** Payments that haven't gone through yet (positive = money in) */
+  pending?: { name: string; amount: number; day: ISODate }[];
   recurring: RecurringPayment[];
 }): Forecast {
   const until = addDays(today, FORECAST_DAYS);
@@ -91,6 +106,18 @@ export function buildForecast({
         estimated: false,
       }),
     );
+  }
+
+  for (const payment of pending) {
+    if (payment.day > until) continue;
+    events.push({
+      // One dated in the past can go through any moment
+      day: payment.day < today ? today : payment.day,
+      name: payment.name,
+      amount: payment.amount,
+      source: "pending",
+      estimated: false,
+    });
   }
 
   const billed = new Set(bills.map((bill) => billKey(bill.name)));

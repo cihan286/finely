@@ -33,7 +33,11 @@ import {
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { DashboardSummary } from "@/lib/data/dashboard";
 import { monthName, monthStart, type BudgetProgress } from "@/lib/finance/budgets";
-import { FORECAST_DAYS, type Forecast } from "@/lib/finance/forecast";
+import {
+  FORECAST_DAYS,
+  FORECAST_SOURCE_LABELS,
+  type Forecast,
+} from "@/lib/finance/forecast";
 import {
   formatCurrency,
   formatDate,
@@ -274,14 +278,24 @@ export default function DashboardHome({
                 <h2 className={styles.cardTitle}>
                   Budgets ({monthName(summary.today)})
                 </h2>
-                {canManage && (
-                  <Link
-                    href="/dashboard/settings#categories"
+                <div className={styles.cardLinks}>
+                  {/* A plain link: it answers with a file, not a page */}
+                  <a
+                    href="/dashboard/budgets/export"
+                    download
                     className={styles.viewAllBtn}
                   >
-                    Manage
-                  </Link>
-                )}
+                    Export CSV
+                  </a>
+                  {canManage && (
+                    <Link
+                      href="/dashboard/settings#categories"
+                      className={styles.viewAllBtn}
+                    >
+                      Manage
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className={styles.budgetGrid}>
                 {budgets.map((budget) => {
@@ -388,7 +402,7 @@ export default function DashboardHome({
                       {formatCurrency(forecast.moneyOut, { currency: currency })}
                     </span>
                     <span className={styles.forecastNote}>
-                      Unpaid bills and regular payments only
+                      Unpaid bills, pending and regular payments only
                     </span>
                   </div>
                 </div>
@@ -399,7 +413,7 @@ export default function DashboardHome({
                         <span className={styles.txName}>{event.name}</span>
                         <span className={styles.txDate}>
                           {formatRelativeDate(event.day, forecast.today)} ·{" "}
-                          {event.source === "bill" ? "Bill" : "Regular payment"}
+                          {FORECAST_SOURCE_LABELS[event.source]}
                         </span>
                       </div>
                       <span

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  amountInputProps,
   currencySymbol,
   formatCompactCurrency,
   formatCurrency,
@@ -17,6 +18,22 @@ describe("formatCurrency", () => {
     expect(formatCurrency(2400, { signed: true })).toBe("+$2,400.00");
     expect(formatCurrency(-15.5, { signed: true })).toBe("-$15.50");
   });
+});
+
+test("amountInputProps: whole numbers for currencies without cents", () => {
+  expect(amountInputProps("USD")).toEqual({
+    step: "0.01",
+    min: "0.01",
+    placeholder: "0.00",
+    inputMode: "decimal",
+  });
+  expect(amountInputProps("JPY")).toEqual({
+    step: "1",
+    min: "1",
+    placeholder: "0",
+    inputMode: "numeric",
+  });
+  expect(amountInputProps("KRW").step).toBe("1");
 });
 
 test("formatCompactCurrency", () => {

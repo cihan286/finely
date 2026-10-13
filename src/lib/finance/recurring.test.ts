@@ -37,6 +37,60 @@ describe("detectRecurring", () => {
     ]);
   });
 
+  test("spots a yearly payment from two payments of about the same amount", () => {
+    const result = detectRecurring(
+      [
+        line("ACME INSURANCE POL-2024", -1200, "2024-11-02"),
+        line("ACME INSURANCE POL-2025", -1260, "2025-11-03"),
+      ],
+      today,
+    );
+    expect(result).toMatchObject([
+      {
+        name: "ACME INSURANCE",
+        cadence: "yearly",
+        amount: 1230,
+        monthlyAmount: 102.5,
+        count: 2,
+        nextDay: "2026-11-03",
+      },
+    ]);
+  });
+
+  test("two purchases a year apart for different amounts aren't a yearly payment", () => {
+    expect(
+      detectRecurring(
+        [line("APPLE STORE", -1999, "2024-11-02"), line("APPLE STORE", -129, "2025-11-03")],
+        today,
+      ),
+    ).toEqual([]);
+  });
+
+  test("a yearly payment that didn't come back is dropped", () => {
+    expect(
+      detectRecurring(
+        [line("DOMAIN CO", -20, "2024-08-01"), line("DOMAIN CO", -20, "2025-08-01")],
+        today,
+      ),
+    ).toEqual([]);
+  });
+
+  test("a monthly rhythm isn't hidden by how it was paid two years ago", () => {
+    const result = detectRecurring(
+      [
+        line("FIGMA", -45, "2024-09-01"),
+        line("FIGMA", -45, "2024-09-20"),
+        line("FIGMA", -45, "2024-11-11"),
+        line("FIGMA", -45, "2026-07-03"),
+        line("FIGMA", -45, "2026-08-03"),
+        line("FIGMA", -45, "2026-09-04"),
+        line("FIGMA", -45, "2026-10-03"),
+      ],
+      today,
+    );
+    expect(result).toMatchObject([{ cadence: "monthly", count: 4 }]);
+  });
+
   test("payroll every two weeks: several payments on one day count as one", () => {
     const paydays = ["2026-08-21", "2026-09-04", "2026-09-18", "2026-10-02"];
     const result = detectRecurring(

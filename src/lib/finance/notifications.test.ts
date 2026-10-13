@@ -6,6 +6,7 @@ const nothing: NotificationFacts = {
   overdrawnAccounts: [],
   cashShortfall: null,
   overBudget: [],
+  nearBudget: [],
   overdueBills: { count: 0, amount: 0, at: null },
   billsDueSoon: { count: 0, amount: 0, at: null },
   stalePending: { count: 0, at: null },
@@ -38,6 +39,7 @@ describe("buildNotifications", () => {
         ],
         cashShortfall: null,
         overBudget: [],
+        nearBudget: [],
         overdueBills: { count: 0, amount: 0, at: null },
         billsDueSoon: { count: 0, amount: 0, at: null },
         stalePending: { count: 2, at: at("2026-10-02T09:00:00Z") },
@@ -102,6 +104,38 @@ describe("buildNotifications", () => {
         type: "alert",
         title: "Over budget",
         description: "Marketing is $120.50 over its $500.00 budget for October.",
+        href: "/dashboard/transactions?category=cat_1&from=2026-10-01",
+        day: "2026-10-05",
+        read: false,
+      },
+    ]);
+  });
+
+  test("a category that has nearly used up its budget gets a reminder", () => {
+    const result = buildNotifications(
+      {
+        ...nothing,
+        nearBudget: [
+          {
+            categoryId: "cat_1",
+            name: "Marketing",
+            budget: 500,
+            spent: 429.5,
+            at: at("2026-10-05T09:00:00Z"),
+          },
+        ],
+      },
+      null,
+      "UTC",
+      "2026-10-06",
+    );
+    expect(result).toEqual([
+      {
+        id: "budget-near-cat_1-2026-10",
+        type: "reminder",
+        title: "Budget nearly used up",
+        description:
+          "Marketing has used 85% of its $500.00 budget for October: $70.50 left.",
         href: "/dashboard/transactions?category=cat_1&from=2026-10-01",
         day: "2026-10-05",
         read: false,

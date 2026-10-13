@@ -1,18 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Bills page content
 //
-// In plain words: everything on the Bills page — the title and "Add bill"
-// button, three totals (overdue, due in the next 7 days, owed in total), the
+// In plain words: everything on the Bills page — the title with the "Export
+// CSV" and "Add bill" buttons, three totals (overdue, due in the next 7 days, owed in total), the
 // table of bills still to pay with a "Mark as paid" button on each, and the
-// table of recently paid ones, each linking to its payment.
+// table of recently paid ones, each linking to its payment and (for owners
+// and admins) with "Undo".
 //
 // For developers: a Server Component. Clicking a bill or a button changes
-// the address (?edit=<id>, ?pay=<id>, ?new=1), and the page hands back which
-// window to show (`dialog`).
+// the address (?edit=<id>, ?pay=<id>, ?undo=<id>, ?new=1), and the page
+// hands back which window to show (`dialog`).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { Plus, Repeat } from "lucide-react";
+import { Download, Plus, Repeat } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { daysBetween } from "@/lib/dates";
@@ -22,9 +23,16 @@ import {
   summarizeBills,
 } from "@/lib/finance/bills";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { Account, Bill, Category, ISODate } from "@/types/finance";
+import type {
+  Account,
+  Bill,
+  BillPaymentCandidate,
+  Category,
+  ISODate,
+} from "@/types/finance";
 import BillDialog, { type BillPrefill } from "./BillDialog";
 import PayBillDialog from "./PayBillDialog";
+import UndoPaymentDialog from "./UndoPaymentDialog";
 import styles from "./BillsView.module.css";
 
 const LIST_PATH = "/dashboard/bills";
@@ -35,7 +43,7 @@ interface BillsViewProps {
   currency: string;
   /** Today in the company's timezone */
   today: ISODate;
-  /** Whether to show Delete (owners and admins) */
+  /** Whether to show Delete and Undo (owners and admins) */
   canManage: boolean;
   /** Bills still owed, soonest due first */
   unpaid: Bill[];
@@ -43,15 +51,21 @@ interface BillsViewProps {
   paid: Bill[];
   accounts: Account[];
   categories: Category[];
-  /** Set right after a payment, for the message */
-  paidResult: { nextDueDate: ISODate | null } | null;
+  /**
+   * Set right after a payment, for the message; `linked` when the payment
+   * was already among the transactions
+   */
+  paidResult: { nextDueDate: ISODate | null; linked: boolean } | null;
+  /** Whether a payment was just undone, for the message */
+  undone: boolean;
   /** How many regular payments were spotted that aren't bills yet */
   suggestions: number;
   /** The window to show, if any */
   dialog:
     | { mode: "new"; prefill: BillPrefill }
     | { mode: "edit"; bill: Bill }
-    | { mode: "pay"; bill: Bill }
+    | { mode: "pay"; bill: Bill; candidates: BillPaymentCandidate[] }
+    | { mode: "undo"; bill: Bill }
     | null;
 }
 
@@ -74,6 +88,7 @@ export default function BillsView({
   accounts,
   categories,
   paidResult,
+  undone,
   suggestions,
   dialog,
 }: BillsViewProps) {
@@ -105,19 +120,39 @@ export default function BillsView({
             What {organizationName} has to pay, and when.
           </p>
         </div>
-        <Button
-          href={`${LIST_PATH}?new=1`}
-          variant="primary"
-          size="sm"
-          text="Add bill"
-          icon={<Plus size={16} />}
-        />
+        <div className={styles.headerActions}>
+          {/* Every bill, paid ones included */}
+          {unpaid.length + paid.length > 0 && (
+            <Button
+              href={`${LIST_PATH}/export`}
+              download
+              variant="outline"
+              size="sm"
+              text="Export CSV"
+              icon={<Download size={16} />}
+            />
+          )}
+          <Button
+            href={`${LIST_PATH}?new=1`}
+            variant="primary"
+            size="sm"
+            text="Add bill"
+            icon={<Plus size={16} />}
+          />
+        </div>
       </div>
+
+      {undone && (
+        <Message type="success">
+          The payment was undone: the bill is back among what&apos;s still owed.
+        </Message>
+      )}
 
       {paidResult && (
         <Message type="success">
-          The bill was marked as paid and the payment was added to your
-          transactions.
+          {paidResult.linked
+            ? "The bill was marked as paid with the payment that was already in your transactions."
+            : "The bill was marked as paid and the payment was added to your transactions."}
           {paidResult.nextDueDate &&
             ` The next one is due ${formatDate(paidResult.nextDueDate)}.`}
         </Message>
@@ -284,16 +319,27 @@ export default function BillsView({
                       {formatCurrency(bill.amount, { currency: currency })}
                     </td>
                     <td className={styles.actionCell}>
-                      {/* Gone if the transaction was deleted since */}
-                      {bill.transactionId && (
-                        <Link
-                          href={`/dashboard/transactions?edit=${bill.transactionId}`}
-                          className={styles.viewLink}
-                          aria-label={`View the payment of ${bill.name}`}
-                        >
-                          View payment
-                        </Link>
-                      )}
+                      <span className={styles.rowLinks}>
+                        {/* Gone if the transaction was deleted since */}
+                        {bill.transactionId && (
+                          <Link
+                            href={`/dashboard/transactions?edit=${bill.transactionId}`}
+                            className={styles.viewLink}
+                            aria-label={`View the payment of ${bill.name}`}
+                          >
+                            View payment
+                          </Link>
+                        )}
+                        {canManage && (
+                          <Link
+                            href={`${LIST_PATH}?undo=${bill.id}`}
+                            className={styles.viewLink}
+                            aria-label={`Undo the payment of ${bill.name}`}
+                          >
+                            Undo
+                          </Link>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -303,7 +349,7 @@ export default function BillsView({
         </section>
       )}
 
-      {dialog && dialog.mode !== "pay" && (
+      {dialog && (dialog.mode === "new" || dialog.mode === "edit") && (
         <BillDialog
           // A fresh form for each bill opened
           key={dialog.mode === "edit" ? dialog.bill.id : "new"}
@@ -320,11 +366,20 @@ export default function BillsView({
         <PayBillDialog
           key={dialog.bill.id}
           bill={dialog.bill}
+          candidates={dialog.candidates}
           accounts={accounts}
           currency={currency}
           canManage={canManage}
           closeHref={LIST_PATH}
           today={today}
+        />
+      )}
+      {dialog?.mode === "undo" && (
+        <UndoPaymentDialog
+          key={dialog.bill.id}
+          bill={dialog.bill}
+          currency={currency}
+          closeHref={LIST_PATH}
         />
       )}
     </main>
