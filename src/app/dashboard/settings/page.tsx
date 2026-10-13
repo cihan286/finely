@@ -25,6 +25,7 @@ import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import EmailSettings from "@/components/dashboard/settings/EmailSettings";
 import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
+import PersonSettings from "@/components/dashboard/settings/PersonSettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import Link from "next/link";
 import Message from "@/components/common/form/Message";
@@ -35,6 +36,7 @@ import { getBilling } from "@/lib/data/billing";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getEmailPreferences } from "@/lib/data/email-notifications";
+import { listOwnedCompanies } from "@/lib/data/person";
 import { getCompanySettings } from "@/lib/data/settings";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localDay } from "@/lib/dates";
@@ -58,16 +60,25 @@ export default async function SettingsPage({
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
   const { handedOver, billing: billingResult } = await searchParams;
-  const [accounts, categories, rules, settings, emailPreferences, banks, billing] =
-    await Promise.all([
-      listAccounts(),
-      listCategories(),
-      listCategoryRules(),
-      getCompanySettings(),
-      getEmailPreferences(),
-      listBankConnections(),
-      getBilling(),
-    ]);
+  const [
+    accounts,
+    categories,
+    rules,
+    settings,
+    emailPreferences,
+    banks,
+    billing,
+    ownedCompanies,
+  ] = await Promise.all([
+    listAccounts(),
+    listCategories(),
+    listCategoryRules(),
+    getCompanySettings(),
+    getEmailPreferences(),
+    listBankConnections(),
+    getBilling(),
+    listOwnedCompanies(),
+  ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
     "UTC",
@@ -196,6 +207,8 @@ export default async function SettingsPage({
           members={members.filter((m) => !m.isYou)}
         />
       )}
+      {/* About the person, not the company: their data and their account */}
+      <PersonSettings email={user.email} ownedCompanies={ownedCompanies} />
     </main>
   );
 }

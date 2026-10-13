@@ -4,7 +4,7 @@
 // In plain words: the wording and look of every email Finely sends — password
 // reset, "verify your email address", team invitations, the weekly summary,
 // the alert for an unusually high charge, and the notes about a company
-// being handed over or deleted — plus the plain email we get ourselves when
+// being handed over or deleted and about an account being deleted — plus the plain email we get ourselves when
 // someone fills in the contact form. Each email has a designed version and
 // a plain-text version.
 //
@@ -241,6 +241,33 @@ ${ownerName}, the owner of ${organizationName}, deleted the company on Finely. I
 Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.
 
 ${url}`,
+  };
+}
+
+/** Sent to someone who just deleted their own account */
+export function accountDeletedEmail(to: { name: string; email: string }): Email {
+  const url = `${appUrl}/contact`;
+  return {
+    to: to.email,
+    subject: "Your Finely account was deleted",
+    html: layout({
+      preview: "Your account and your logins are gone.",
+      heading: "Your account was deleted",
+      paragraphs: [
+        `Hi ${escapeHtml(firstName(to.name))},`,
+        "As you asked, your Finely account was deleted, along with your logins, your email choices and your place in every company you were in. This is the last email you get from us.",
+        "What you entered for a company stays with that company.",
+      ],
+      button: { label: "Contact us", url },
+      footnote: "If this wasn't you, write to us right away.",
+    }),
+    text: `Hi ${firstName(to.name)},
+
+As you asked, your Finely account was deleted, along with your logins, your email choices and your place in every company you were in. This is the last email you get from us.
+
+What you entered for a company stays with that company.
+
+If this wasn't you, write to us right away: ${url}`,
   };
 }
 

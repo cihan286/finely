@@ -4,8 +4,9 @@
 // In plain words: changes the company's timezone, adds or removes one of its
 // bank accounts, adds, changes or deletes a category or a category rule,
 // links, syncs or unlinks a bank, hands the company over to another member
-// or deletes it, or saves which emails the person wants, then reloads the page so it's up to date. If something's wrong, we send
-// back a message to show instead.
+// or deletes it, saves which emails the person wants, or deletes the
+// person's own account, then reloads the page so it's up to date. If
+// something's wrong, we send back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
 // POST request, so all checks happen in lib/data/, never only in the form.
@@ -14,6 +15,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
@@ -39,6 +41,7 @@ import { openBillingPortal, startCheckout } from "@/lib/data/billing";
 import { errorMessage } from "@/lib/data/common";
 import { deleteCompany, transferOwnership } from "@/lib/data/company";
 import { updateEmailPreferences } from "@/lib/data/email-notifications";
+import { deleteOwnAccount } from "@/lib/data/person";
 import { updateCurrency, updateTimeZone } from "@/lib/data/settings";
 import type { BillingInterval, PaidPlan } from "@/lib/finance/plans";
 import type {
@@ -205,6 +208,29 @@ export async function submitCompanyDeletion(
   }
   // Outside the try: redirect() works by throwing
   redirect("/onboarding");
+}
+
+/**
+ * Deletes the signed-in person's own account (after typing their email
+ * address), then shows the login page with a goodbye.
+ */
+export async function submitAccountDeletion(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await deleteOwnAccount(formField(formData, "confirmation"));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  // The logins are gone from the database; forget their cookies too, so the
+  // browser doesn't keep presenting a login that no longer exists
+  const jar = await cookies();
+  for (const { name } of jar.getAll()) {
+    if (name.includes("better-auth")) jar.delete(name);
+  }
+  // Outside the try: redirect() works by throwing
+  redirect("/login?deleted=1");
 }
 
 /** Saves which emails the signed-in person gets about this company. */

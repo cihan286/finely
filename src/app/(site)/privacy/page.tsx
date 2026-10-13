@@ -188,11 +188,16 @@ export default function PrivacyPage() {
       <section className={styles.section}>
         <h2 className={styles.heading}>Your choices</h2>
         <p className={styles.text}>
-          You can ask us for a copy of your personal data, to correct it, or
-          to delete your account. Depending on where you live, the law may
-          give you further rights, such as objecting to how we use your data
-          or complaining to your data protection authority. To use any of
-          these, <Link href="/contact" className={styles.inlineLink}>write to us</Link>.
+          In Settings, under &quot;Your data&quot;, you can download a copy of
+          what we hold about you, and delete your account yourself. Deleting
+          it removes your profile, your logins and your place in every
+          company right away; what you entered for a company stays with that
+          company, and its record of changes keeps your name next to what you
+          did. If you own a company, hand it over or delete it first.
+          Depending on where you live, the law may give you further rights,
+          such as having your data corrected, objecting to how we use it or
+          complaining to your data protection authority. For those, or if you
+          can&apos;t log in, <Link href="/contact" className={styles.inlineLink}>write to us</Link>.
           If the data belongs to a company you work for, we may point you to
           that company&apos;s owner.
         </p>
