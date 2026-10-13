@@ -3,8 +3,8 @@
 //
 // In plain words: the company's categories (Payroll, Sales, …), grouped into
 // money in and money out. Owners and admins can add categories and change
-// each one's name, type, color and icon, or delete it — its transactions
-// then become "Uncategorized". Members can see the list but not change it.
+// each one's name, type, color, icon and (for money out) monthly budget, or
+// delete it — its transactions then become "Uncategorized". Members can see the list but not change it.
 //
 // For developers: a client component ("use client") for the forms. All forms
 // go to the submitCategory server action (intent add / update / delete),
@@ -31,6 +31,7 @@ import Message from "@/components/common/form/Message";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import { submitCategory } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
+import { formatCurrency } from "@/lib/format";
 import type { Category, CategoryIconKey } from "@/types/finance";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
@@ -96,7 +97,9 @@ export default function CategorySettings({
             <h2 className={shared.cardTitle}>Add a category</h2>
             <p className={shared.cardHint}>
               Categories show where money comes from and goes to on the
-              dashboard and in imports.
+              dashboard and in imports. Give a &ldquo;Money out&rdquo; category
+              a monthly budget to follow it on the dashboard and be told when
+              it&apos;s exceeded.
             </p>
           </div>
           <form ref={addFormRef} className={styles.form} onSubmit={submit}>
@@ -202,6 +205,11 @@ function CategoryRow({
         <Icon size={16} />
       </div>
       <span className={`${shared.name} ${styles.name}`}>{category.name}</span>
+      {category.budget !== null && (
+        <span className={styles.budget}>
+          {formatCurrency(category.budget)} a month
+        </span>
+      )}
       {canManage && (
         <div className={styles.rowButtons}>
           <button
@@ -226,8 +234,10 @@ function CategoryRow({
   );
 }
 
-// Name, type, icon and color: shared by the add and edit forms
+// Name, type, icon, color and budget: shared by the add and edit forms
 function CategoryFields({ category }: { category?: Category }) {
+  // Only money going out can have a budget
+  const [kind, setKind] = useState<string>(category?.kind ?? "expense");
   return (
     <>
       <Field label="Name" className={styles.nameField}>
@@ -242,7 +252,8 @@ function CategoryFields({ category }: { category?: Category }) {
       <Field label="Type">
         <Select
           name="kind"
-          defaultValue={category?.kind ?? "expense"}
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
         >
           <option value="expense">Money out</option>
           <option value="income">Money in</option>
@@ -268,6 +279,19 @@ function CategoryFields({ category }: { category?: Category }) {
           className={styles.color}
         />
       </Field>
+      {kind === "expense" && (
+        <Field label="Monthly budget (USD)" optional className={styles.budgetField}>
+          <Input
+            name="budget"
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            step="0.01"
+            placeholder="No budget"
+            defaultValue={category?.budget ?? ""}
+          />
+        </Field>
+      )}
     </>
   );
 }

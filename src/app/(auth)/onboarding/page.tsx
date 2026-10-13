@@ -4,14 +4,17 @@
 // In plain words: the step right after signing up. Finely is for businesses,
 // so everyone works inside a company. New users name their company here and
 // become its owner. People who already belong to a company skip straight to
-// the dashboard.
+// the dashboard — unless they came to add another company of their own
+// ("New company" in the top bar's company list).
 //
 // For developers: the dashboard sends anyone without an active company here
-// (see requireOrganization() in lib/session.ts).
+// (see requireOrganization() in lib/session.ts). /onboarding?new=1 shows the
+// form to someone who already has a company.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import ActivateOrganization from "@/components/auth/ActivateOrganization";
 import CreateOrganizationForm from "@/components/auth/CreateOrganizationForm";
@@ -23,11 +26,39 @@ export const metadata: Metadata = {
   title: "Set up your company",
 };
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string | string[] }>;
+}) {
   const user = await requireUser();
+  const current = await getActiveOrganization();
+
+  // Adding another company next to the one they're working in
+  if (current && (await searchParams).new) {
+    return (
+      <>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Add a company</h1>
+          <p className={styles.subtitle}>
+            You&apos;ll be its owner. It starts empty, with its own team,
+            accounts and transactions.
+          </p>
+        </div>
+
+        <CreateOrganizationForm />
+
+        <p className={styles.footer}>
+          <Link href="/dashboard" className={styles.link}>
+            Back to {current.name}
+          </Link>
+        </p>
+      </>
+    );
+  }
 
   // Already working in a company: nothing to set up
-  if (await getActiveOrganization()) redirect("/dashboard");
+  if (current) redirect("/dashboard");
 
   // Belongs to a company, but this login isn't connected to it yet
   const organizations = await auth.api.listOrganizations({

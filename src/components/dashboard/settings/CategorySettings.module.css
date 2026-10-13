@@ -21,6 +21,18 @@
   flex: 1 1 180px;
 }
 
+.budgetField {
+  flex: 0 1 190px;
+}
+
+/* "$500.00 a month", next to a category's name in the list */
+.budget {
+  flex-shrink: 0;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* The color picker: a small square instead of a full-width box */
 input.color {
   width: 48px;

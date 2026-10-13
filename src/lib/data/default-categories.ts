@@ -15,7 +15,7 @@ import { db } from "@/db";
 import { category } from "@/db/finance";
 import type { Category } from "@/types/finance";
 
-export const DEFAULT_CATEGORIES: Omit<Category, "id">[] = [
+export const DEFAULT_CATEGORIES: Omit<Category, "id" | "budget">[] = [
   { name: "Sales", kind: "income", color: "#22c55e", iconKey: "income" },
   { name: "Payroll", kind: "expense", color: "#8b5cf6", iconKey: "users" },
   {

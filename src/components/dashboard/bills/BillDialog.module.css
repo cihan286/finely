@@ -1,0 +1,67 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bill window styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. What's special to the bill windows: the Delete button
+   of the add/edit window, and the box naming the bill in the "Mark as paid"
+   window. The fields' arrangement comes from transactions/forms.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Delete, on the left of the buttons row */
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* The bill being paid: name and due date on the left, amount on the right */
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-muted);
+}
+
+.summaryName {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.summaryAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryNote {
+  grid-column: 1 / -1;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
+
+.note {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

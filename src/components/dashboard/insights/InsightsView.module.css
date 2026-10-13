@@ -277,6 +277,43 @@
   padding-right: 0;
 }
 
+/* Regular payments: a wide table that scrolls sideways on small screens */
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.tableScroll .table td {
+  white-space: nowrap;
+}
+
+/* The category (or "Money in") under a regular payment's name */
+.recurringNote {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-subtle);
+}
+
+.addBill {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.addBill:hover {
+  text-decoration: underline;
+}
+
+/* Visually hidden, but read by screen readers */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .number {
   text-align: right !important;
   white-space: nowrap;

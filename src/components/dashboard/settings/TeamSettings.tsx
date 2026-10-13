@@ -3,8 +3,10 @@
 //
 // In plain words: the list of people in your company and their roles, the
 // invitations that haven't been accepted yet, and — for owners and admins — a
-// form to invite someone by email, plus buttons to remove people or cancel
-// invitations. Members can see the team but not change it.
+// form to invite someone by email, a dropdown to make someone an admin or a
+// member, plus buttons to remove people or cancel invitations. Members can
+// see the team but not change it. Everyone except the owner can leave the
+// company with the button next to their own name.
 //
 // For developers: a client component ("use client") for the forms and buttons.
 // The page passes in the current data; after each change we call
@@ -42,6 +44,8 @@ export interface InvitationRow {
 }
 
 interface TeamSettingsProps {
+  /** The company this team belongs to */
+  organization: { id: string; name: string };
   /** Your own role, which decides what you may change */
   role: string;
   members: MemberRow[];
@@ -51,6 +55,7 @@ interface TeamSettingsProps {
 }
 
 export default function TeamSettings({
+  organization,
   role,
   members,
   invitations,
@@ -102,6 +107,33 @@ export default function TeamSettings({
       () => authClient.organization.removeMember({ memberIdOrEmail: member.id }),
       `${member.name} was removed from the team.`,
     );
+  };
+
+  const handleRoleChange = (member: MemberRow, newRole: string) => {
+    const next = newRole === "admin" ? "admin" : "member";
+    run(
+      `role-${member.id}`,
+      () => authClient.organization.updateMemberRole({ memberId: member.id, role: next }),
+      `${member.name} is now ${next === "admin" ? "an admin" : "a member"}.`,
+    );
+  };
+
+  const handleLeave = async () => {
+    if (!window.confirm(`Leave ${organization.name}? You'll lose access right away.`)) return;
+    setBusy("leave");
+    setMessage(null);
+    const { error } = await authClient.organization.leave({
+      organizationId: organization.id,
+    });
+    if (error) {
+      setBusy(null);
+      setMessage({ type: "error", text: error.message ?? "Something went wrong. Please try again." });
+      return;
+    }
+    // This login now has no company: /onboarding opens another one the
+    // person belongs to, or offers to set one up
+    router.push("/onboarding");
+    router.refresh();
   };
 
   const handleCancel = (invitation: InvitationRow) => {
@@ -168,7 +200,7 @@ export default function TeamSettings({
         </section>
       ) : (
         <Message type="info">
-          Only owners and admins can invite or remove people.
+          Only owners and admins can invite or remove people and change roles.
         </Message>
       )}
 
@@ -192,7 +224,39 @@ export default function TeamSettings({
                 </span>
                 <span className={styles.email}>{member.email}</span>
               </div>
-              <span className={styles.badge}>{roleLabel(member.role)}</span>
+              {/* Owners and admins can change the role of anyone but the
+                  owner and themselves */}
+              {canManage && !member.isYou && member.role !== "owner" ? (
+                <Select
+                  aria-label={`Role of ${member.name}`}
+                  className={styles.rowRole}
+                  value={member.role}
+                  onChange={(e) => handleRoleChange(member, e.target.value)}
+                  disabled={busy !== null}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </Select>
+              ) : (
+                <span className={styles.badge}>{roleLabel(member.role)}</span>
+              )}
+              {/* A company always needs its owner, so the owner can't leave */}
+              {member.isYou && member.role !== "owner" && (
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  onClick={handleLeave}
+                  disabled={busy !== null}
+                >
+                  {busy === "leave" ? (
+                    <>
+                      <Spinner size={12} /> Leaving
+                    </>
+                  ) : (
+                    "Leave"
+                  )}
+                </button>
+              )}
               {/* Owners can't be removed, and you can't remove yourself here */}
               {canManage && !member.isYou && member.role !== "owner" && (
                 <button

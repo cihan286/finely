@@ -2,8 +2,9 @@
    Company settings styles
 
    In plain words: this file (CSS) controls how things look — colors, sizes,
-   spacing and layout. Only what's special to this section: the timezone
-   dropdown with its Save button, and the "use this device's timezone" hint.
+   spacing and layout. Only what's special to this section: the name box and
+   the timezone dropdown with their Save buttons (".timezone" is the wide
+   box in both), and the "use this device's timezone" hint.
    The card and messages come from TeamSettings.module.css.
    ───────────────────────────────────────────────────────────────────────────── */
 

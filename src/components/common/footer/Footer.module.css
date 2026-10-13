@@ -41,34 +41,12 @@
   font-size: 0.95rem;
 }
 
-.socialLinks {
-  display: flex;
-  gap: 1.25rem;
-  margin-top: 0.5rem;
-}
-
-.socialLinks a {
-  opacity: 0.6;
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.socialLinks a:hover {
-  opacity: 1;
-  color: var(--primary);
-  transform: translateY(-2px);
-}
-
 .linksGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 5rem;
   flex: 1;
-  max-width: 800px;
+  max-width: 620px;
 }
 
 .linkColumn {

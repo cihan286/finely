@@ -9,7 +9,9 @@
 
 import type { Metadata } from "next";
 import DashboardHome from "@/components/dashboard/home/DashboardHome";
+import { getBudgets } from "@/lib/data/budgets";
 import { getDashboardSummary } from "@/lib/data/dashboard";
+import { getForecast } from "@/lib/data/recurring";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 
@@ -22,13 +24,19 @@ export default async function DashboardPage() {
   // Protects the page: visitors who aren't logged in are sent to /login, and
   // people without a company to /onboarding
   const { user, organization, role } = await requireOrganization();
-  const summary = await getDashboardSummary();
+  const [summary, { budgets }, forecast] = await Promise.all([
+    getDashboardSummary(),
+    getBudgets(),
+    getForecast(),
+  ]);
   return (
     <DashboardHome
       firstName={user.name.split(" ")[0]}
       organizationName={organization.name}
       canManage={canManageFinances(role)}
       summary={summary}
+      budgets={budgets}
+      forecast={forecast}
     />
   );
 }

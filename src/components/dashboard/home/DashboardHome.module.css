@@ -241,6 +241,126 @@
   transition: width 0.5s ease-out;
 }
 
+/* Budgets: one box per category, as many side by side as fit */
+
+.budgetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem 2rem;
+}
+
+.budgetItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  color: inherit;
+}
+
+.budgetItem:hover .expenseName {
+  color: var(--primary);
+}
+
+/* "$20.00 left" / "$120.50 over" */
+.budgetNote {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget_ok {
+  color: var(--text-muted);
+}
+
+.budget_near {
+  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+}
+
+.budget_over {
+  color: var(--danger);
+}
+
+/* Status colors here, not the category's: the bar says how the budget is doing */
+.budgetFill_ok {
+  background-color: var(--primary);
+}
+
+.budgetFill_near {
+  background-color: var(--warning);
+}
+
+.budgetFill_over {
+  background-color: var(--danger);
+}
+
+.budgetAmounts {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Forecast: three figures on the left, what's expected on the right */
+
+.forecast {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 3rem;
+}
+
+.forecastFigures {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.forecastFigure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.forecastLabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.forecastValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.forecastValue.negative {
+  color: var(--danger);
+}
+
+.forecastNote {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+.forecastEvent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Screens narrower than 900px: the expected payments go below the figures */
+@media (max-width: 900px) {
+  .forecast {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* "Set monthly budgets", under the spending list */
+.budgetHint {
+  margin-top: 1.25rem;
+  align-self: flex-start;
+}
+
 .transactionList {
   display: flex;
   flex-direction: column;

@@ -218,6 +218,8 @@ export default function TransactionsView({
                 type="search"
                 placeholder="Search transactions"
                 aria-label="Search transactions"
+                // Show a search made from the top bar while this page is open
+                key={query.q}
                 defaultValue={query.q}
                 maxLength={100}
                 className={styles.filter}

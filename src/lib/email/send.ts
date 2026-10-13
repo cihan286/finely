@@ -19,6 +19,8 @@ export interface Email {
   html: string;
   /** Plain-text version for email apps that don't show HTML */
   text: string;
+  /** Where replies go, when that isn't us (e.g. a contact form's sender) */
+  replyTo?: string;
 }
 
 const apiKey = process.env.RESEND_API_KEY;
@@ -32,20 +34,25 @@ const from =
   process.env.EMAIL_FROM?.trim().replace(/^(["'])(.*)\1$/, "$2") ||
   "Finely <onboarding@resend.dev>";
 
-/** Sends an email now and waits for the result. Never throws. */
-export async function sendEmail(email: Email): Promise<void> {
+/**
+ * Sends an email now and waits for the result. Never throws; answers whether
+ * it was handed over (or printed, without Resend).
+ */
+export async function sendEmail(email: Email): Promise<boolean> {
   if (!resend) {
     console.info(
       `\n[email not sent: RESEND_API_KEY missing] to ${email.to}\nSubject: ${email.subject}\n\n${email.text}\n`,
     );
-    return;
+    return true;
   }
   try {
     const { error } = await resend.emails.send({ from, ...email });
-    if (error) console.error(`[email] Resend refused "${email.subject}" to ${email.to}: ${error.message}`);
+    if (!error) return true;
+    console.error(`[email] Resend refused "${email.subject}" to ${email.to}: ${error.message}`);
   } catch (err) {
     console.error(`[email] Could not reach Resend for "${email.subject}" to ${email.to}:`, err);
   }
+  return false;
 }
 
 /** Sends an email after the current response has been sent. */

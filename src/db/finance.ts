@@ -6,8 +6,11 @@
 // `financial_account` is a bank account (or cash box) the company keeps
 // money in, `category` is a label such as "Payroll" or "Marketing",
 // `category_rule` says which descriptions get which category automatically,
-// and `transaction` is one payment in or out of an account. Every row belongs to
-// exactly one company, so companies never see each other's data.
+// `transaction` is one payment in or out of an account, `bill` is a payment
+// the company still has to make (or has made), and `notification_read`
+// remembers when each person last read the company's
+// notifications. Every row belongs to exactly one company, so companies never
+// see each other's data.
 //
 // For developers: kept apart from schema.ts because that file is regenerated
 // by the Better Auth CLI. Every table here has an organization_id, and every
@@ -19,11 +22,13 @@
 
 import { relations, sql } from "drizzle-orm";
 import {
+  date,
   pgTable,
   text,
   timestamp,
   numeric,
   index,
+  primaryKey,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./schema";
@@ -33,7 +38,7 @@ const money = (name: string) =>
   numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 // Random IDs with a short prefix, e.g. "acc_3f1c…", so IDs say what they are
-const prefixedId = (prefix: string) => () =>
+export const prefixedId = (prefix: string) => () =>
   `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
 
 // Columns every table has: when the row was created and last changed
@@ -91,6 +96,9 @@ export const category = pgTable(
     color: text("color").notNull(),
     // Which icon to show (see CategoryIconKey in types/finance.ts)
     iconKey: text("icon_key").notNull(),
+    // The most to spend in this category per calendar month; empty = no
+    // budget. Only for "expense" categories.
+    monthlyBudget: money("monthly_budget"),
     ...timestamps,
   },
   (table) => [
@@ -172,6 +180,66 @@ export const transaction = pgTable(
     index("transaction_accountId_idx").on(table.accountId),
     index("transaction_categoryId_idx").on(table.categoryId),
   ],
+);
+
+// A payment the company owes: who to, how much and by when. Marking it paid
+// creates the transaction and, for a repeating bill, the next bill (see
+// lib/data/bills.ts). Each row is one payment, so a monthly bill is a chain
+// of rows.
+export const bill = pgTable(
+  "bill",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("bill")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Who is paid or what for, e.g. "Office rent". Becomes the description
+    // of the transaction.
+    name: text("name").notNull(),
+    // A positive number; the transaction gets it as money out
+    amount: money("amount").notNull(),
+    // A calendar day ("2026-11-01"), in the company's timezone
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    // "none" | "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly"
+    repeat: text("repeat").default("none").notNull(),
+    // Deleting a category leaves its bills uncategorized
+    categoryId: text("category_id").references(() => category.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    // When it was paid; empty while it's still owed
+    paidAt: timestamp("paid_at"),
+    // The payment itself (empty if that transaction was deleted since)
+    transactionId: text("transaction_id").references(() => transaction.id, {
+      onDelete: "set null",
+    }),
+    // Who entered it (empty if that person's account was deleted)
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    // The list shows one company's bills by due date
+    index("bill_organization_dueDate_idx").on(table.organizationId, table.dueDate),
+  ],
+);
+
+// When a person last pressed "Mark all as read" in a company. Notifications
+// aren't stored: they're worked out from the company's data (see
+// lib/finance/notifications.ts), and the newer ones than this count as unread.
+export const notificationRead = pgTable(
+  "notification_read",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.organizationId] })],
 );
 
 // How the tables connect to each other

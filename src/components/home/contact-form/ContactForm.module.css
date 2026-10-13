@@ -1,0 +1,36 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Contact form styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only arranges the fields: name and email side by side,
+   the rest below. The boxes themselves are styled in Form.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* The box only bots fill in: off screen rather than display: none, which
+   some bots check for */
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Screens narrower than 640px (phones): one field per row */
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

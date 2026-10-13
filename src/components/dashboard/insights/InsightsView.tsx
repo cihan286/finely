@@ -16,10 +16,26 @@ import Link from "next/link";
 import { AlertTriangle, Landmark } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
+import type { RecurringPaymentDetails } from "@/lib/data/recurring";
+import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
 import { INSIGHT_PERIODS, type Insights } from "@/lib/finance/insights";
-import { formatCurrency, formatRelativeDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatRelativeDate } from "@/lib/format";
 import MonthlyChart from "./MonthlyChart";
 import styles from "./InsightsView.module.css";
+
+// The Bills page with its "Add bill" window open and filled in from a
+// regular payment
+function billHref(payment: RecurringPaymentDetails): string {
+  const params = new URLSearchParams({
+    new: "1",
+    name: payment.name,
+    amount: String(payment.amount),
+    due: payment.nextDay,
+    repeat: payment.cadence,
+  });
+  if (payment.categoryId) params.set("category", payment.categoryId);
+  return `/dashboard/bills?${params}`;
+}
 
 // 0.4166 -> "41.7%"
 const percent = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -29,6 +45,8 @@ interface InsightsViewProps {
   hasAccounts: boolean;
   canManage: boolean;
   insights: Insights;
+  /** Payments that come back regularly, the largest per month first */
+  recurring: RecurringPaymentDetails[];
 }
 
 export default function InsightsView({
@@ -36,7 +54,12 @@ export default function InsightsView({
   hasAccounts,
   canManage,
   insights,
+  recurring,
 }: InsightsViewProps) {
+  // What the regular payments (money out) add up to per month
+  const recurringPerMonth = recurring
+    .filter((r) => r.direction === "out")
+    .reduce((sum, r) => sum + r.monthlyAmount, 0);
   const { period, monthly, totals, categories, vendors, unusualCharges, today } =
     insights;
   const hasActivity = monthly.some((m) => m.income > 0 || m.expenses > 0);
@@ -243,6 +266,86 @@ export default function InsightsView({
               )}
             </section>
           </div>
+
+          {/* Subscriptions, payroll and other payments that keep coming back */}
+          <section className={styles.card} id="recurring">
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Regular payments</h2>
+              <p className={styles.muted}>
+                {recurring.length === 0
+                  ? "Spotted in the last 13 months, whatever period is chosen above."
+                  : `About ${formatCurrency(recurringPerMonth)} going out per month. Spotted in the last 13 months.`}
+              </p>
+            </div>
+            {recurring.length === 0 ? (
+              <p className={styles.muted}>
+                Nothing regular yet. A payment shows up here once the same
+                vendor was paid at least three times in a steady rhythm: every
+                week, every 2 weeks, every month or every 3 months.
+              </p>
+            ) : (
+              <div className={styles.tableScroll}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Payment</th>
+                      <th scope="col">How often</th>
+                      <th scope="col" className={styles.number}>Usually</th>
+                      <th scope="col" className={styles.number}>Per month</th>
+                      <th scope="col">Next expected</th>
+                      <th scope="col">
+                        <span className={styles.srOnly}>Bill</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recurring.map((r) => (
+                      <tr key={r.key}>
+                        <td className={styles.vendorName}>
+                          <Link
+                            href={`/dashboard/transactions?q=${encodeURIComponent(r.name)}`}
+                          >
+                            {r.name}
+                          </Link>
+                          <span className={styles.recurringNote}>
+                            {r.direction === "in" ? "Money in" : (r.category ?? "Uncategorized")}
+                          </span>
+                        </td>
+                        <td>{BILL_REPEAT_LABELS[r.cadence]}</td>
+                        <td
+                          className={`${styles.number} ${r.direction === "in" ? styles.positive : ""}`}
+                        >
+                          {/* "~" when the amount changes from time to time */}
+                          {r.variable && "~"}
+                          {formatCurrency(r.direction === "in" ? r.amount : -r.amount, {
+                            signed: true,
+                          })}
+                        </td>
+                        <td className={`${styles.number} ${styles.muted}`}>
+                          {formatCurrency(r.monthlyAmount)}
+                        </td>
+                        <td>{formatDate(r.nextDay)}</td>
+                        <td className={styles.number}>
+                          {r.direction === "out" &&
+                            (r.billed ? (
+                              <span className={styles.muted}>Tracked as a bill</span>
+                            ) : (
+                              <Link
+                                href={billHref(r)}
+                                className={styles.addBill}
+                                aria-label={`Add ${r.name} as a bill`}
+                              >
+                                Add as bill
+                              </Link>
+                            ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
           {/* Recent charges that are much higher than usual */}
           <section className={styles.card}>

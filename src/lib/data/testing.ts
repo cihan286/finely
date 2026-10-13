@@ -35,6 +35,8 @@ export const testDb = Object.assign(database, {
 
 /** Creates every table, exactly as `npm run db:migrate` would */
 export async function setUpTestDb() {
+  // Like the real database (Neon): "now" is UTC, whatever this machine uses
+  await database.execute("set time zone 'UTC'");
   await migrate(database, { migrationsFolder: "drizzle" });
 }
 

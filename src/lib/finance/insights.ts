@@ -14,6 +14,7 @@
 
 import { addDays } from "@/lib/dates";
 import { topCategories, type CategorySpending } from "@/lib/finance/dashboard-summary";
+import { vendorKey, vendorName } from "@/lib/finance/vendors";
 import type { ExpenseCategory, ISODate } from "@/types/finance";
 
 /** The periods to choose from, in months */
@@ -28,7 +29,10 @@ export interface MonthlyTotals {
   expenses: number;
 }
 
-/** Spending with one vendor (transactions with the same description) */
+/**
+ * Spending with one vendor: transactions with the same description, apart
+ * from reference numbers (see lib/finance/vendors.ts)
+ */
 export interface VendorSpending {
   name: string;
   count: number;
@@ -156,7 +160,8 @@ export function buildInsights({
   const spent = round2(points.reduce((sum, m) => sum + m.expenses, 0));
   const net = round2(income - spent);
 
-  const vendorTotal = vendors.reduce((sum, v) => sum + v.amount, 0);
+  const merged = mergeVendors(vendors);
+  const vendorTotal = merged.reduce((sum, v) => sum + v.amount, 0);
   return {
     today,
     period,
@@ -169,7 +174,7 @@ export function buildInsights({
     },
     // Up to seven categories; the rest together
     categories: topCategories(categorySpending, 6),
-    vendors: [...vendors]
+    vendors: merged
       .sort((a, b) => b.amount - a.amount)
       .slice(0, TOP_VENDORS)
       .map((v) => ({
@@ -182,15 +187,35 @@ export function buildInsights({
 }
 
 /**
- * Recent charges well above what the same vendor (same description,
- * ignoring case) usually charges. Biggest jumps first.
+ * Adds up descriptions that belong to one vendor ("STRIPE ST-ABC1" and
+ * "STRIPE ST-XYZ2" become "STRIPE").
+ */
+export function mergeVendors(vendors: VendorSpending[]): VendorSpending[] {
+  const byKey = new Map<string, VendorSpending>();
+  for (const v of vendors) {
+    const key = vendorKey(v.name);
+    const sum = byKey.get(key);
+    if (sum) {
+      sum.count += v.count;
+      sum.amount += v.amount;
+    } else {
+      byKey.set(key, { ...v, name: vendorName(v.name) });
+    }
+  }
+  return [...byKey.values()];
+}
+
+/**
+ * Recent charges well above what the same vendor (same description, apart
+ * from reference numbers and ignoring case) usually charges. Biggest jumps
+ * first.
  */
 export function findUnusualCharges(
   expenses: ExpenseLine[],
   today: ISODate,
 ): UnusualCharge[] {
   const { recentStart, historyStart } = insightRange(today, 3);
-  const vendor = (name: string) => name.trim().toLowerCase();
+  const vendor = vendorKey;
 
   // Each vendor's earlier charges
   const history = new Map<string, number[]>();

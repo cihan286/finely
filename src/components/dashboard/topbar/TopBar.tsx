@@ -2,24 +2,30 @@
 // Dashboard top bar
 //
 // In plain words: the bar across the top of every dashboard page — a search
-// box, the company you're working in (and a way to switch), the
-// notifications bell (with a count of unread messages and a panel that opens
-// on click), and the logged-in user's initials, name and email.
+// box that looks through the company's transactions, the company you're
+// working in (and a way to switch), the notifications bell (with a count of
+// unread messages and a panel that opens on click), and the logged-in user's
+// initials, name and email.
 //
 // For developers: a client component ("use client") because the notifications
-// panel opens, closes and marks messages as read. The user comes from the
-// dashboard layout, which reads it from the session. Search isn't wired up yet.
+// panel opens, closes and marks messages as read. The user and the
+// notifications come from the dashboard layout. Searching opens the
+// Transactions page with ?q=…; "Mark all as read" shows the change right
+// away and saves it with a server action.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Form from "next/form";
+import Link from "next/link";
 import { Bell, Search } from "lucide-react";
+import { markAllNotificationsRead } from "@/app/dashboard/actions";
 import CompanySwitcher from "@/components/dashboard/company-switcher/CompanySwitcher";
 import styles from "./TopBar.module.css";
-import { notifications as initialNotifications } from "./mockNotifications";
-import { getInitials } from "@/lib/format";
+import { formatRelativeDate, getInitials } from "@/lib/format";
 import { useDismiss } from "@/lib/use-dismiss";
+import type { ISODate, Notification } from "@/types/finance";
 
 interface Company {
   id: string;
@@ -32,14 +38,28 @@ interface TopBarProps {
   organization: Company;
   /** Every company the user belongs to */
   organizations: Company[];
+  /** What the bell reports, newest first */
+  notifications: Notification[];
+  /** Today in the company's timezone, for "Today" / "Yesterday" */
+  today: ISODate;
 }
 
-export default function TopBar({ user, organization, organizations }: TopBarProps) {
-  // The notifications (sample data for now), whether the panel is open, and a
-  // reference to the bell area so we can tell clicks inside it from outside
-  const [items, setItems] = useState(initialNotifications);
+export default function TopBar({
+  user,
+  organization,
+  organizations,
+  notifications,
+  today,
+}: TopBarProps) {
+  // Whether the panel is open, the notifications marked as read here since
+  // the page loaded, and a reference to the bell area so we can tell clicks
+  // inside it from outside
   const [open, setOpen] = useState(false);
+  const [readHere, setReadHere] = useState<string[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const items = notifications.map((n) =>
+    readHere.includes(n.id) ? { ...n, read: true } : n,
+  );
 
   // The number shown on the red badge
   const unreadCount = items.filter((n) => !n.read).length;
@@ -47,22 +67,31 @@ export default function TopBar({ user, organization, organizations }: TopBarProp
   // Close the panel on outside click or Escape
   useDismiss(wrapRef, open, useCallback(() => setOpen(false), []));
 
-  // "Mark all as read": clears the unread highlight and the badge
-  const markAllRead = () =>
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  // "Mark all as read": clears the unread highlight and the badge, and saves
+  // it for next time
+  const markAllRead = () => {
+    setReadHere(notifications.map((n) => n.id));
+    void markAllNotificationsRead();
+  };
 
   return (
     <header className={styles.topBar}>
-      {/* Search box (not connected to search yet) */}
-      <div className={styles.searchWrap}>
-        <Search size={16} className={styles.searchIcon} />
+      {/* Search box: Enter opens the matching transactions */}
+      <Form
+        action="/dashboard/transactions"
+        role="search"
+        className={styles.searchWrap}
+      >
+        <Search size={16} className={styles.searchIcon} aria-hidden="true" />
         <input
+          name="q"
           type="search"
           className={styles.searchInput}
           placeholder="Search transactions…"
-          aria-label="Search"
+          aria-label="Search transactions"
+          maxLength={100}
         />
-      </div>
+      </Form>
 
       <div className={styles.actions}>
         {/* The company you're working in, and a way to switch */}
@@ -96,21 +125,39 @@ export default function TopBar({ user, organization, organizations }: TopBarProp
                   </button>
                 )}
               </div>
-              <ul className={styles.notifList}>
-                {items.map((n) => (
-                  <li
-                    key={n.id}
-                    className={`${styles.notifItem} ${n.read ? "" : styles.unread}`}
-                  >
-                    <span className={styles.notifDot} aria-hidden="true" />
-                    <div className={styles.notifBody}>
-                      <span className={styles.notifTitle}>{n.title}</span>
-                      <span className={styles.notifDesc}>{n.description}</span>
-                      <span className={styles.notifTime}>{n.time}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {items.length === 0 ? (
+                <p className={styles.empty}>
+                  Nothing needs your attention right now.
+                </p>
+              ) : (
+                <ul className={styles.notifList}>
+                  {items.map((n) => (
+                    <li key={n.id}>
+                      {/* Opens the place where it can be dealt with */}
+                      <Link
+                        href={n.href}
+                        className={[
+                          styles.notifItem,
+                          !n.read && styles.unread,
+                          n.type === "alert" && styles.alert,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className={styles.notifDot} aria-hidden="true" />
+                        <span className={styles.notifBody}>
+                          <span className={styles.notifTitle}>{n.title}</span>
+                          <span className={styles.notifDesc}>{n.description}</span>
+                          <span className={styles.notifTime}>
+                            {formatRelativeDate(n.day, today)}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>
