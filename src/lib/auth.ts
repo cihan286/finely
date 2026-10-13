@@ -94,6 +94,11 @@ export const auth = betterAuth({
     additionalFields: {
       lastOrganizationId: { type: "string", required: false, input: false },
     },
+    // People can change their email address in Settings. It only changes
+    // once they opened the link we send to the new address (the same
+    // "verify your email" message as after signing up), so nobody can take
+    // an address that isn't theirs.
+    changeEmail: { enabled: true },
   },
 
   databaseHooks: {

@@ -32,7 +32,12 @@ import {
 } from "lucide-react";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { DashboardSummary } from "@/lib/data/dashboard";
-import { monthName, monthStart, type BudgetProgress } from "@/lib/finance/budgets";
+import {
+  ALL_SPENDING,
+  monthName,
+  monthStart,
+  type BudgetProgress,
+} from "@/lib/finance/budgets";
 import {
   FORECAST_DAYS,
   FORECAST_SOURCE_LABELS,
@@ -303,7 +308,8 @@ export default function DashboardHome({
                   return (
                     <Link
                       key={budget.categoryId}
-                      href={`/dashboard/transactions?category=${budget.categoryId}&from=${monthStart(summary.today)}`}
+                      // The overall budget is about every category
+                      href={`/dashboard/transactions?${budget.categoryId === ALL_SPENDING ? "" : `category=${budget.categoryId}&`}from=${monthStart(summary.today)}`}
                       className={styles.budgetItem}
                     >
                       <div className={styles.expenseHeader}>

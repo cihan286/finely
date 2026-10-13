@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  ALL_SPENDING,
   budgetStatus,
   buildBudgets,
   monthName,
@@ -54,4 +55,15 @@ describe("buildBudgets", () => {
   test("no budgets: nothing", () => {
     expect(buildBudgets([])).toEqual([]);
   });
+});
+
+test("buildBudgets: the overall budget comes first, however little of it is used", () => {
+  const budgets = buildBudgets([
+    { categoryId: "cat_1", name: "Marketing", color: "#000", iconKey: "megaphone", budget: 100, spent: 150 },
+    { categoryId: ALL_SPENDING, name: "All spending", color: "#000", iconKey: "receipt", budget: 1000, spent: 150 },
+  ]);
+  expect(budgets.map((b) => [b.name, b.status])).toEqual([
+    ["All spending", "ok"],
+    ["Marketing", "over"],
+  ]);
 });

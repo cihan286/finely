@@ -17,9 +17,10 @@
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Form from "next/form";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { markAllNotificationsRead } from "@/app/dashboard/actions";
 import CompanySwitcher from "@/components/dashboard/company-switcher/CompanySwitcher";
@@ -27,6 +28,9 @@ import styles from "./TopBar.module.css";
 import { formatRelativeDate, getInitials } from "@/lib/format";
 import { useDismiss } from "@/lib/use-dismiss";
 import type { ISODate, Notification } from "@/types/finance";
+
+// How often the bell asks the server what's new while a page sits open
+const NOTIFICATION_REFRESH_MS = 2 * 60 * 1000;
 
 interface Company {
   id: string;
@@ -65,6 +69,22 @@ export default function TopBar({
   // The number shown on the red badge
   const unreadCount = items.filter((n) => !n.read).length;
 
+  // Ask the server again every couple of minutes, and when the tab comes
+  // back into view, so the bell is up to date on a page that sits open.
+  // Not while the tab is hidden, and not while the panel is being read.
+  const router = useRouter();
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !open) router.refresh();
+    };
+    const timer = window.setInterval(refresh, NOTIFICATION_REFRESH_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [router, open]);
+
   // Close the panel on outside click or Escape
   useDismiss(wrapRef, open, useCallback(() => setOpen(false), []));
 
@@ -88,7 +108,7 @@ export default function TopBar({
           name="q"
           type="search"
           className={styles.searchInput}
-          placeholder="Search by description, notes, category or amount…"
+          placeholder="Search by description, notes, category, account or amount…"
           aria-label="Search transactions"
           maxLength={100}
         />

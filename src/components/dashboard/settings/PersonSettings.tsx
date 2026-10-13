@@ -2,16 +2,18 @@
 // "Your account" settings
 //
 // In plain words: the last section of Settings, about you rather than the
-// company. You can correct your name and change your password. "Download my
+// company. You can correct your name, and change your email address and
+// your password. "Download my
 // data" saves a file with what Finely holds about you.
 // "Delete my account" removes you from Finely for good, after you typed your
 // email address to confirm. Someone who still owns a company is told to hand
 // it over or delete it first.
 //
-// For developers: a client component ("use client"). The name and the
-// password are saved by Better Auth (authClient.updateUser and
-// .changePassword, which asks for the current password and logs every other
-// device out). The deletion form is sent to the
+// For developers: a client component ("use client"). The name, the email
+// address and the password are saved by Better Auth (authClient.updateUser;
+// .changeEmail, which emails a link to the new address and only changes it
+// once that link is opened; .changePassword, which asks for the current
+// password and logs every other device out). The deletion form is sent to the
 // submitAccountDeletion server action, which checks everything again
 // (lib/data/person.ts) and then goes to the login page. The download is a
 // plain link to a route that answers with a file. Also shown on
@@ -83,6 +85,36 @@ export default function PersonSettings({
   };
 
   const [changing, setChanging] = useState(false);
+  const [moving, setMoving] = useState(false);
+
+  const handleEmail = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const newEmail = String(new FormData(form).get("newEmail")).trim().toLowerCase();
+    if (!newEmail || newEmail === email.toLowerCase()) return;
+    setMoving(true);
+    setRenamed(null);
+    const { error } = await authClient.changeEmail({
+      newEmail,
+      // Where the link in the email leads once the address has changed
+      callbackURL: "/dashboard/settings#you",
+    });
+    setMoving(false);
+    if (error) {
+      setRenamed({
+        type: "error",
+        text: error.message ?? "Could not change your email address. Please try again.",
+      });
+      return;
+    }
+    form.reset();
+    // The same answer whether or not the address is free, so this can't be
+    // used to find out who has a Finely account
+    setRenamed({
+      type: "success",
+      text: `We sent a link to ${newEmail}. Your address changes once you open it; until then you keep logging in with ${email}.`,
+    });
+  };
 
   const handlePassword = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -166,6 +198,36 @@ export default function PersonSettings({
             loading={renaming}
             text={renaming ? "Saving" : "Save"}
             disabled={renaming}
+          />
+        </form>
+      </section>
+
+      <section className={shared.card}>
+        <div className={shared.cardHeader}>
+          <h2 className={shared.cardTitle}>Your email address</h2>
+          <p className={shared.cardHint}>
+            You log in with {email}, and Finely&apos;s emails go there. To
+            change it, we send a link to the new address first.
+          </p>
+        </div>
+        <form className={styles.form} onSubmit={handleEmail}>
+          <Input
+            name="newEmail"
+            type="email"
+            aria-label="New email address"
+            placeholder="New email address"
+            autoComplete="email"
+            maxLength={254}
+            className={styles.grow}
+            required
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            loading={moving}
+            text={moving ? "Sending" : "Send link"}
+            disabled={moving}
           />
         </form>
       </section>

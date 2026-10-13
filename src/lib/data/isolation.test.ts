@@ -61,7 +61,12 @@ import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
 import { getForecast, getRecurring, hideRecurring, showRecurring } from "./recurring";
 import { withinRateLimit } from "@/lib/rate-limit";
-import { getCompanySettings, updateCurrency, updateTimeZone } from "./settings";
+import {
+  getCompanySettings,
+  updateCurrency,
+  updateOverallBudget,
+  updateTimeZone,
+} from "./settings";
 import {
   createTransaction,
   deleteTransaction,
@@ -1023,6 +1028,73 @@ describe("bills", () => {
     expect([latest.paid.length, latest.morePaid]).toEqual([PAID_BILLS_SHOWN, true]);
     const all = await listBills({ allPaid: true });
     expect([all.paid.length, all.morePaid]).toEqual([PAID_BILLS_SHOWN + 2, false]);
+  });
+
+  it("an overall budget counts everything spent this month, in its own company", async () => {
+    const company = await createTestCompany("budget-co");
+    const other = await createTestCompany("no-budget-co");
+    actAs(company);
+    const accountId = await createAccount({ name: "Checking", type: "checking" });
+    const categoryId = await createCategory({
+      name: "Travel",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "plane",
+      budget: 1000,
+    });
+    const spend = (name: string, amount: number, category: string | null) =>
+      createTransaction({ accountId, categoryId: category, name, amount: -amount, date: today, status: "completed" });
+    await spend("Flight", 300, categoryId);
+    await spend("Something without a category", 550, null);
+
+    // No overall budget yet: only the category's
+    expect((await getBudgets()).budgets.map((b) => b.name)).toEqual(["Travel"]);
+
+    actAs(company, "member");
+    await expect(updateOverallBudget(1000)).rejects.toThrow("Only owners and admins can do this.");
+    actAs(company);
+    await expect(updateOverallBudget(0)).rejects.toThrow("Monthly budget must be more than zero.");
+    await updateOverallBudget(1000);
+    expect((await getCompanySettings()).monthlyBudget).toBe(1000);
+
+    // First in the list, with what every category spent together
+    expect((await getBudgets()).budgets.map((b) => [b.name, b.spent, b.status])).toEqual([
+      ["All spending", 850, "near"],
+      ["Travel", 300, "ok"],
+    ]);
+    expect((await listNotifications()).map((n) => n.id)).toContain(
+      `budget-near-all-${today.slice(0, 7)}`,
+    );
+    await spend("Hotel", 200, categoryId);
+    const over = (await listNotifications()).find((n) => n.id === `budget-all-${today.slice(0, 7)}`);
+    expect(over).toMatchObject({
+      title: "Over budget",
+      description: expect.stringContaining("All spending is $50.00 over its $1,000.00 budget"),
+      href: `/dashboard/transactions?from=${today.slice(0, 7)}-01`,
+    });
+
+    // The other company has none
+    actAs(other);
+    expect((await getBudgets()).budgets).toEqual([]);
+    expect((await getCompanySettings()).monthlyBudget).toBeNull();
+
+    actAs(company);
+    await updateOverallBudget(null);
+    expect((await getBudgets()).budgets.map((b) => b.name)).toEqual(["Travel"]);
+  });
+
+  it("finds transactions by their account's name", async () => {
+    const company = await createTestCompany("two-accounts-co");
+    actAs(company);
+    const everyday = await createAccount({ name: "Everyday", type: "checking" });
+    const rainy = await createAccount({ name: "Rainy day fund", type: "savings" });
+    const add = (accountId: string, name: string) =>
+      createTransaction({ accountId, categoryId: null, name, amount: -5, date: today, status: "completed" });
+    await add(everyday, "Coffee");
+    await add(rainy, "Umbrella");
+    expect((await listTransactions({ search: "rainy" })).transactions.map((t) => t.name)).toEqual([
+      "Umbrella",
+    ]);
   });
 
   it("rounds amounts to what the company's currency can express", async () => {

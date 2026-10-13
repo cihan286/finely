@@ -67,6 +67,9 @@ export const companySettings = pgTable("company_settings", {
   // The currency all of the company's amounts are in (ISO code, e.g.
   // "EUR"). Amounts are never converted: changing it relabels them.
   currency: text("currency").default("USD").notNull(),
+  // The most the company wants to spend per calendar month in total, across
+  // all categories; empty without one (see lib/data/budgets.ts)
+  monthlyBudget: money("monthly_budget"),
   // When the weekly email was last sent to this company's team, so a run
   // that is repeated doesn't send it twice
   lastDigestAt: timestamp("last_digest_at"),

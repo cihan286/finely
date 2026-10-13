@@ -548,8 +548,9 @@ When editing a transaction, **Add file** attaches a receipt or invoice: a
 PDF, JPEG, PNG or WebP of at most 4 MB, up to 10 per transaction. Files are
 saved as soon as they're chosen, and a paperclip in the list marks
 transactions that have some. Everyone on the team can add and open files; the
-person who added one, and owners and admins, can delete it. A new transaction
-has to be saved once before it can have files.
+person who added one, and owners and admins, can delete it. One file can be
+chosen while adding a transaction; more are added by opening it afterwards.
+Pictures are shown small in the list.
 
 What kind a file is comes from its content, not its name, so a web page
 called `receipt.pdf` is refused. Files are kept in the database, in the
@@ -652,6 +653,10 @@ every month and unused money doesn't carry over. The bell says so once per
 month when a category has used 80% of its budget, and again when it goes
 over.
 
+A company can also have one **overall monthly budget** (Settings → Overall
+monthly budget) for everything it spends, whatever the category. It's the
+first line of the Budgets card, "All spending", and gets the same warnings.
+
 ## Exports
 
 **Export CSV** on the Transactions page downloads every transaction the
@@ -679,6 +684,8 @@ finds the same at `/your-account` (linked from the company setup page).
 
 - **Your name** can be corrected; teammates see the new one everywhere
   except in what the activity logs already recorded.
+- **Your email address** can be changed: Finely sends a link to the new
+  address, and the address only changes once that link is opened.
 - **Your password** can be changed by typing the current one (for people
   who sign in with a password); every other device is logged out.
 - **Download my data** saves a JSON file with what Finely holds about the
@@ -743,7 +750,7 @@ The Bills page has its own search (name, notes or category), and when the
 top bar's search also matches bills, the Transactions page says how many and
 links to them. The search box in the top bar opens the Transactions page with what matches
 (the same search as that page's own filter): part of a description, of the
-notes or of a category's name, or the exact amount ("45", "$1,234.50"),
+notes, of a category's name or of a bank account's name, or the exact amount ("45", "$1,234.50"),
 whether money in or out.
 
 The bell reports what deserves a look in the company's books: a charge at
@@ -754,7 +761,9 @@ week or that a payment already there may have paid, payments pending for more th
 Clicking one opens the place to deal with it. Notifications aren't stored:
 they're worked out from the data each time (`lib/finance/notifications.ts`)
 and disappear once the cause is gone. Only the moment each person pressed
-**Mark all as read** is saved, per company; anything newer is unread.
+**Mark all as read** is saved, per company; anything newer is unread. While
+a page sits open, the bell asks again every two minutes and whenever the tab
+comes back into view.
 
 ## Known limitations
 
@@ -768,28 +777,24 @@ is. What's missing at that level:
 - **Bills** can't be paid in parts. A payment that arrives pays its bill by
   itself only when the amount is exact and the description contains the
   bill's name; otherwise it's pointed out for a person to confirm.
-- **Budgets** are one amount per category, the same every month: no overall
-  budget and no carrying over.
+- **Budgets** are the same every month: unused money doesn't carry over and
+  one month can't have a different amount.
 - **Vendors and regular payments** are recognized by description. Different
   spellings of one vendor ("AMZN", "Amazon") count as different vendors and
   can't be merged by hand, and a regular payment's rhythm or amount can't be
   corrected (only hidden).
 - **The forecast** knows unpaid bills, pending payments and regular
   payments, not one-off income or day-to-day spending.
-- **Notifications** are worked out when a page loads, not while it sits
-  open. Only unusual charges are emailed right away, and the weekly summary
-  goes out at the same moment whatever the company's timezone.
+- **Notifications:** only unusual charges are emailed right away, and the
+  weekly summary goes out at the same moment whatever the company's
+  timezone.
 - **Linked banks** were only tried in Plaid's sandbox: US banks, everyday
   and savings accounts. A bank that asks to log in again has to be linked
   again, and syncing is once a day or on demand.
 - **Plans** were only tried in Stripe's test mode. They differ in team size
   only, are priced in US dollars and have no free trial.
-- **Attached files** are kept in the database. PDFs have no preview, and
-  files can't be added while creating a transaction.
-- **Your account:** the email address can't be changed, and someone who
-  signs in with Google can't add a password.
-- **Search** in the top bar covers transactions and bills, not vendors,
-  bank accounts or categories.
+- **Attached files** are kept in the database, and PDFs have no preview.
+- **Your account:** someone who signs in with Google can't add a password.
 - **Exports** are CSV files, plus the browser's "Save as PDF" on the
   Insights page.
 - **Deleting a company** is immediate: there's no grace period.

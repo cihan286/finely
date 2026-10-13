@@ -32,6 +32,7 @@ import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
 import { CURRENCIES, type CurrencyCode } from "@/lib/finance/currencies";
+import { amountInputProps, formatCurrency } from "@/lib/format";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
 import styles from "./CompanySettings.module.css";
@@ -44,6 +45,8 @@ interface CompanySettingsProps {
   timeZone: string;
   /** The currency the company's amounts are in, e.g. "USD" */
   currency: string;
+  /** The most to spend per month in total; null without an overall budget */
+  monthlyBudget: number | null;
   /** Every timezone to choose from, e.g. "Europe/Istanbul" */
   timeZones: string[];
 }
@@ -62,6 +65,7 @@ export default function CompanySettings({
   organization,
   timeZone,
   currency,
+  monthlyBudget,
   timeZones,
 }: CompanySettingsProps) {
   const router = useRouter();
@@ -92,6 +96,12 @@ export default function CompanySettings({
     ) {
       return;
     }
+    startTransition(() => dispatch(formData));
+  };
+
+  const handleBudget = (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     startTransition(() => dispatch(formData));
   };
 
@@ -251,6 +261,47 @@ export default function CompanySettings({
           <p className={styles.current}>
             {currency}
             {currency in CURRENCIES && ` – ${CURRENCIES[currency as CurrencyCode]}`}
+          </p>
+        )}
+      </section>
+
+      <section className={shared.card} id="budget">
+        <div className={shared.cardHeader}>
+          <h2 className={shared.cardTitle}>Overall monthly budget</h2>
+          <p className={shared.cardHint}>
+            The most the company wants to spend in a month, across all
+            categories. The dashboard shows how much of it is used, and the
+            bell warns at 80% and when it&apos;s exceeded. Each category can
+            have its own budget too (below).
+          </p>
+        </div>
+        {canManage ? (
+          <form className={styles.form} onSubmit={handleBudget}>
+            <Input
+              name="overallBudget"
+              type="number"
+              aria-label={`Overall monthly budget (${currency})`}
+              {...amountInputProps(currency)}
+              placeholder="No overall budget"
+              // Show the saved amount after it changes
+              key={monthlyBudget ?? "none"}
+              defaultValue={monthlyBudget ?? ""}
+              className={styles.timezone}
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={pending}
+              text={pending ? "Saving" : "Save"}
+              disabled={pending}
+            />
+          </form>
+        ) : (
+          <p className={styles.current}>
+            {monthlyBudget === null
+              ? "None"
+              : `${formatCurrency(monthlyBudget, { currency })} a month`}
           </p>
         )}
       </section>

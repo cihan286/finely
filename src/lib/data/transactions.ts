@@ -166,8 +166,8 @@ function matching(
   if (search) {
     const pattern = `%${escapeLike(search)}%`;
     const amount = amountFromSearch(search);
-    // In the description, the notes or the category's name; a number also
-    // finds that exact amount, in or out
+    // In the description, the notes, the category's name or the account's
+    // name; a number also finds that exact amount, in or out
     conditions.push(
       or(
         ilike(transaction.name, pattern),
@@ -179,6 +179,18 @@ function matching(
             .from(category)
             .where(
               and(eq(category.organizationId, organizationId), ilike(category.name, pattern)),
+            ),
+        ),
+        inArray(
+          transaction.accountId,
+          db
+            .select({ id: financialAccount.id })
+            .from(financialAccount)
+            .where(
+              and(
+                eq(financialAccount.organizationId, organizationId),
+                ilike(financialAccount.name, pattern),
+              ),
             ),
         ),
         amount === null ? undefined : sql`abs(${transaction.amount}) = ${amount}`,
