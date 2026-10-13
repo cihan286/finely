@@ -19,7 +19,9 @@ and become its **owner**. Owners and **admins** can invite teammates by email
 from **Settings**, make them an admin or a member, remove them, and rename
 the company; **members** can use Finely but can't change the team. Everyone
 except the owner can leave a company (the **Leave** button next to their own
-name). Someone who signs up through an invitation link joins that company
+name). The owner can **hand the company over** to another member (and
+becomes an admin, who can then leave) or **delete it** for everyone, with
+all its data, after typing its name (both at the bottom of Settings). Someone who signs up through an invitation link joins that company
 instead of creating their own.
 
 Someone can belong to several companies (their own, plus ones they were
@@ -133,7 +135,8 @@ src/
 │   └── finance.ts          Bank accounts, categories, category rules, transactions,
 │                           bills and when notifications were last read
 ├── lib/
-│   ├── data/               Reading and saving company data (always use these)
+│   ├── data/               Reading and saving company data (always use these);
+│   │                       company.ts hands a company over or deletes it
 │   ├── finance/            Calculations, with no database or screen (tested)
 │   │   ├── dashboard-summary.ts  The dashboard's numbers
 │   │   ├── insights.ts           The Insights page's numbers
@@ -257,7 +260,9 @@ its own.
 
 **Company data.** Every table that holds business data (transactions, bills,
 cards…) needs an `organization_id` column, and every query must filter by the
-active company. Never take the company ID from the browser. Read and save
+active company. **Add each new table to `deleteCompany()` in
+`src/lib/data/company.ts`**, in an order its foreign keys allow, and to its
+test. Never take the company ID from the browser. Read and save
 company data through the functions in `src/lib/data/` (`listTransactions()`,
 `createAccount()`, …): each one looks up the active company and checks the
 person's role itself, and checks what was typed. They throw a `DataError`
@@ -453,8 +458,9 @@ and disappear once the cause is gone. Only the moment each person pressed
   for one month, no carrying over, no overall budget, and no warning before
   a budget is exceeded (only the amber bar on the dashboard).
 - The top bar only searches transaction descriptions.
-- A company's owner can't hand it over to someone else, leave it or delete
-  it.
+- Deleting a company is immediate and final: there's no grace period, no
+  export first, and the team isn't emailed. The new owner isn't emailed
+  after a handover either.
 - The contact form has a trap for bots but no rate limit.
 - There are no Terms of service or Privacy policy pages yet; they need real
   legal text before launch.

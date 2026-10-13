@@ -4,13 +4,15 @@
 // In plain words: where you manage your company — its name and timezone, its team
 // (who's in it, their roles, and invitations), its bank accounts, its
 // categories and its category rules. Owners and admins can change all of
-// these; members can see them.
+// these; members can see them. The owner also gets a last section to hand
+// the company over to someone else or delete it.
 //
 // For developers: loads the active company with requireOrganization() and
 // its settings and accounts from lib/data/, and hands plain values to the
 // CompanySettings, TeamSettings, AccountSettings, CategorySettings and
 // CategoryRuleSettings components. /dashboard/settings#accounts,
-// #categories and #rules jump to those sections.
+// #categories and #rules jump to those sections; ?handedOver=1 shows the
+// message after the owner handed the company over.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
@@ -18,7 +20,9 @@ import AccountSettings from "@/components/dashboard/settings/AccountSettings";
 import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
+import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
+import Message from "@/components/common/form/Message";
 import { listAccounts } from "@/lib/data/accounts";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
@@ -32,9 +36,14 @@ export const metadata: Metadata = {
   title: "Settings",
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ handedOver?: string | string[] }>;
+}) {
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
+  const { handedOver } = await searchParams;
   const [accounts, categories, rules, settings] = await Promise.all([
     listAccounts(),
     listCategories(),
@@ -80,6 +89,14 @@ export default async function SettingsPage() {
           categories.
         </p>
       </div>
+      {handedOver && role !== "owner" && (
+        <Message type="success">
+          {organization.members.find((m) => m.role === "owner")?.user.name ??
+            "Someone else"}{" "}
+          now owns {organization.name}. You&apos;re an admin, and can leave the
+          company from the team list if you want.
+        </Message>
+      )}
       <CompanySettings
         canManage={canManageFinances(role)}
         organization={{ id: organization.id, name: organization.name }}
@@ -103,6 +120,12 @@ export default async function SettingsPage() {
         rules={rules}
         categories={categories}
       />
+      {role === "owner" && (
+        <OwnerSettings
+          organizationName={organization.name}
+          members={members.filter((m) => !m.isYou)}
+        />
+      )}
     </main>
   );
 }

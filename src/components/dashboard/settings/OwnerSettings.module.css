@@ -1,0 +1,66 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Owner settings styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to this section: the forms' rows,
+   the red outline of the "Delete this company" card and its red button. The
+   card and messages come from TeamSettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* A box (or dropdown) with its button next to it */
+.form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.form .grow {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Deleting can't be undone: the card and its button say so in red */
+.danger {
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.deleteButton {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: var(--danger);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.deleteButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.deleteButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Screens narrower than 640px (phones): the button below the box */
+@media (max-width: 640px) {
+  .form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form .grow {
+    flex: none;
+    width: 100%;
+  }
+}

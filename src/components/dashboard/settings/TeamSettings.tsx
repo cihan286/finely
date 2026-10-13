@@ -240,7 +240,8 @@ export default function TeamSettings({
               ) : (
                 <span className={styles.badge}>{roleLabel(member.role)}</span>
               )}
-              {/* A company always needs its owner, so the owner can't leave */}
+              {/* A company always needs its owner, so the owner can't leave
+                  (they can hand it over first, at the bottom of the page) */}
               {member.isYou && member.role !== "owner" && (
                 <button
                   type="button"
