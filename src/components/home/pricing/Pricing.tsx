@@ -1,10 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Pricing section of the home page
 //
-// In plain words: shows the three plans (Starter, Growth, Enterprise) with
-// their prices and what's included. A switch at the top toggles between
-// monthly and yearly prices; yearly is cheaper, and the "Save X%" badge is
-// calculated from the actual prices so it's always correct.
+// In plain words: shows the three paid plans (Starter, Growth, Enterprise)
+// with their prices and what's included, and says that small teams use
+// Finely for free. A switch at the top toggles between monthly and yearly
+// prices; yearly is cheaper, and the "Save X%" badge is calculated from the
+// actual prices so it's always correct.
+//
+// Every plan includes all of Finely: the plans only differ in how many
+// people can be on the team (that's the one limit the app enforces). So the
+// cards must not promise anything a plan doesn't really add: no storage
+// sizes, support levels or extras that don't exist.
 //
 // For developers: a client component ("use client") because of the billing
 // toggle. The prices and team sizes come from lib/finance/plans.ts, the
@@ -41,14 +47,14 @@ type BillingCycle = "monthly" | "yearly";
 const plans: Plan[] = [
   {
     name: "Starter",
-    description: "For small teams getting started",
+    description: "For small teams",
     monthlyPrice: PLANS.starter.monthlyPrice,
     yearlyPrice: PLANS.starter.yearlyPrice,
     features: [
       `Up to ${PLANS.starter.members} team members`,
-      "Basic analytics dashboard",
-      "Email support",
-      "10GB storage",
+      "Statement import and linked US banks",
+      "Bills, budgets and a 30-day forecast",
+      "Insights, exports and an activity log",
     ],
     cta: "Get started",
     ctaHref: "/signup",
@@ -57,15 +63,12 @@ const plans: Plan[] = [
   },
   {
     name: "Growth",
-    description: "For growing businesses that need more",
+    description: "For growing teams",
     monthlyPrice: PLANS.growth.monthlyPrice,
     yearlyPrice: PLANS.growth.yearlyPrice,
     features: [
       `Up to ${PLANS.growth.members} team members`,
-      "Advanced analytics & reports",
-      "Priority support",
-      "100GB storage",
-      "Custom integrations",
+      "Everything in Starter",
     ],
     cta: "Get started",
     ctaHref: "/signup",
@@ -74,16 +77,13 @@ const plans: Plan[] = [
   },
   {
     name: "Enterprise",
-    description: "For large organizations with custom needs",
+    description: `For teams of more than ${PLANS.growth.members}`,
     monthlyPrice: null,
     yearlyPrice: null,
     features: [
       "Unlimited team members",
-      "Enterprise-grade analytics",
-      "Dedicated account manager",
-      "Unlimited storage",
-      "Custom integrations",
-      "SLA & uptime guarantee",
+      "Everything in Growth",
+      "Set up together with our team",
     ],
     cta: "Contact sales",
     ctaHref: "/contact",
@@ -115,8 +115,11 @@ export default function Pricing() {
           <span>Scales With You</span>
         </div>
         <div className={styles.subHeadline}>
-          <span>Choose the plan that fits your business. Upgrade,</span>
-          <span>downgrade, or cancel anytime — no hidden fees.</span>
+          <span>Every plan includes all of Finely: you pay for the size of your team.</span>
+          <span>
+            Free for teams of up to {PLANS.free.members}. Upgrade, downgrade or
+            cancel anytime.
+          </span>
         </div>
 
         {/* Monthly / Yearly switch */}

@@ -478,9 +478,11 @@ with room for two people.
 Enterprise isn't sold online: set `plan = 'enterprise'`, `status = 'active'`
 in the company's `subscription` row by hand.
 
-**Before relying on it:** like the bank link, this was built from Stripe's
-API documentation and tested against a pretend Stripe, not against Stripe
-itself. Try it in Stripe's test mode first.
+**Before relying on it:** this was built from Stripe's API documentation.
+The automated tests use a pretend Stripe; subscribing was also tried by hand
+in Stripe's test mode, but never in live mode. Go through subscribing,
+switching plan and cancelling in test mode with your own Stripe account
+first.
 
 ## Linked banks
 
@@ -762,12 +764,14 @@ and disappear once the cause is gone. Only the moment each person pressed
   can't be linked. For currencies without cents the forms take whole
   numbers, but nothing on the server refuses a fraction (an imported
   statement can bring one in).
-- Plans: untested against Stripe itself (see above). Only the team's size
-  is limited; the other things the pricing section of the home page lists
-  (storage, analytics tiers, support levels, integrations) aren't real
-  differences between plans. Its prices are the ones in
-  `lib/finance/plans.ts`, which are still typed separately from the prices
-  in Stripe. Prices are in US dollars whatever the company's currency.
+- Plans: tried in Stripe's test mode by hand (subscribing; switching plan,
+  cancelling and failed payments less so), never in live mode. Only the
+  team's size differs between plans, which is all the pricing section of the
+  home page claims. Its prices are the ones in `lib/finance/plans.ts`, which
+  are still typed separately from the prices in Stripe. Prices are in US
+  dollars whatever the company's currency. A Stripe account with "Managed
+  Payments" on by default refuses the payment page until each product has a
+  tax code (or that default is switched off).
   There's no free trial of a paid plan, no tax handling beyond what Stripe
   is configured to do, and no email from Finely about a failed payment
   (Stripe sends its own). After handing a company over, Stripe still has the
