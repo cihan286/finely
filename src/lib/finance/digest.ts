@@ -43,6 +43,8 @@ export function digestRange(today: ISODate) {
 /** Everything one company's weekly summary says */
 export interface Digest {
   organizationName: string;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   from: ISODate;
   to: ISODate;
   /** Completed transactions in those days */

@@ -10,6 +10,7 @@
 import type { Metadata } from "next";
 import DashboardHome from "@/components/dashboard/home/DashboardHome";
 import { getBudgets } from "@/lib/data/budgets";
+import { getCompanyLocale } from "@/lib/data/common";
 import { getDashboardSummary } from "@/lib/data/dashboard";
 import { getForecast } from "@/lib/data/recurring";
 import { canManageFinances } from "@/lib/roles";
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
   // Protects the page: visitors who aren't logged in are sent to /login, and
   // people without a company to /onboarding
   const { user, organization, role } = await requireOrganization();
+  const { currency } = await getCompanyLocale(organization.id);
   const [summary, { budgets }, forecast] = await Promise.all([
     getDashboardSummary(),
     getBudgets(),
@@ -33,6 +35,7 @@ export default async function DashboardPage() {
     <DashboardHome
       firstName={user.name.split(" ")[0]}
       organizationName={organization.name}
+      currency={currency}
       canManage={canManageFinances(role)}
       summary={summary}
       budgets={budgets}

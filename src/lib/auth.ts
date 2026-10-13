@@ -166,6 +166,12 @@ export const auth = betterAuth({
       // Without this, someone could sign up with a colleague's address (we
       // don't check ownership at sign-up) and take their place on the team.
       requireEmailVerificationOnInvitation: true,
+      // How many people a company's plan allows on its team (see
+      // lib/data/billing.ts); checked when someone is invited or joins
+      membershipLimit: async (_user, organization) => {
+        const { memberLimitFor } = await import("@/lib/data/billing");
+        return memberLimitFor(organization.id);
+      },
       organizationHooks: {
         // Team changes go through Better Auth, not through lib/data/, so
         // they're written to the company's activity log from here

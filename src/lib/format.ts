@@ -27,27 +27,57 @@ const MONTHS = [
   "Dec",
 ];
 
-// Fixed "en-US" locale so server and client render the same string.
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+// One formatter per currency: they're slow to create. Fixed "en-US" locale
+// so server and client render the same string.
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+function currencyFormatter(currency: string): Intl.NumberFormat {
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        // "$", "€", "CA$": short, but never ambiguous between dollars
+        currencyDisplay: "symbol",
+      });
+    } catch {
+      // Not a currency this system knows: show it as dollars rather than fail
+      formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+    }
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter;
+}
 
-/** formatCurrency(2400, { signed: true }) -> "+$2,400.00" */
+/** "USD" -> "$", "EUR" -> "€", "CAD" -> "CA$" */
+export function currencySymbol(currency: string): string {
+  return (
+    currencyFormatter(currency)
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency
+  );
+}
+
+/**
+ * formatCurrency(2400, { signed: true }) -> "+$2,400.00";
+ * formatCurrency(2400, { currency: "EUR" }) -> "€2,400.00". Without a
+ * currency, US dollars.
+ */
 export function formatCurrency(
   value: number,
-  { signed = false }: { signed?: boolean } = {},
+  { signed = false, currency = "USD" }: { signed?: boolean; currency?: string } = {},
 ): string {
-  const text = currency.format(Math.abs(value));
+  const text = currencyFormatter(currency).format(Math.abs(value));
   if (!signed) return value < 0 ? `-${text}` : text;
   return `${value < 0 ? "-" : "+"}${text}`;
 }
 
-/** 12400 -> "$12k" (chart axis labels) */
-export function formatCompactCurrency(value: number): string {
+/** 12400 -> "$12.4k" (chart axis labels) */
+export function formatCompactCurrency(value: number, currency = "USD"): string {
+  const symbol = currencySymbol(currency);
   if (Math.abs(value) >= 1000)
-    return `$${Math.round(value / 100) / 10}k`.replace(".0k", "k");
-  return `$${value}`;
+    return `${symbol}${Math.round(value / 100) / 10}k`.replace(".0k", "k");
+  return `${symbol}${value}`;
 }
 
 /** "Maya Carter" -> "MC", "maya" -> "M" */

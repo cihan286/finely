@@ -11,6 +11,7 @@
 // logged in to /login.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getCompanyLocale } from "@/lib/data/common";
 import { getInsights } from "@/lib/data/insights";
 import { getRecurring } from "@/lib/data/recurring";
 import { exportFileName, insightsCsv } from "@/lib/finance/export";
@@ -24,12 +25,13 @@ export async function GET(request: Request) {
     ? (requested as InsightPeriod)
     : 6;
 
-  const [insights, { payments }] = await Promise.all([
+  const [insights, { payments }, { currency }] = await Promise.all([
     getInsights(period),
     getRecurring(),
+    getCompanyLocale(organization.id),
   ]);
 
-  return new Response(insightsCsv(organization.name, insights, payments), {
+  return new Response(insightsCsv(organization.name, insights, payments, currency), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName(`insights-${period}-months`, insights.today)}"`,

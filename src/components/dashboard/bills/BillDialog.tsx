@@ -50,6 +50,8 @@ interface BillDialogProps {
   /** For a new bill: values to start with */
   prefill?: BillPrefill;
   categories: Category[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /** Whether to show the Delete button (owners and admins) */
   canManage: boolean;
   /** The list's address, to return to when the window closes */
@@ -87,6 +89,7 @@ function BillForm({
   bill,
   prefill,
   categories,
+  currency,
   canManage,
   today,
   error,
@@ -130,7 +133,7 @@ function BillForm({
       </Field>
 
       <div className={forms.grid}>
-        <Field label="Amount (USD)">
+        <Field label={`Amount (${currency})`}>
           <Input
             name="amount"
             type="number"

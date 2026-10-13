@@ -39,6 +39,9 @@ describe("finelyAccountType", () => {
     expect(finelyAccountType(account({ type: "loan" }))).toBeNull();
     expect(finelyAccountType(account({ type: "investment" }))).toBeNull();
     expect(finelyAccountType(account({ currency: "EUR" }))).toBeNull();
+    // …unless that's the currency the company works in
+    expect(finelyAccountType(account({ currency: "EUR" }), "EUR")).toBe("checking");
+    expect(finelyAccountType(account({}), "EUR")).toBeNull();
   });
 });
 

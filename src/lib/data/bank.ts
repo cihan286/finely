@@ -41,7 +41,7 @@ import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
   DataError,
-  getCompanyTimeZone,
+  getCompanyLocale,
   getFinanceContext,
   isUniqueViolation,
   requiredText,
@@ -294,8 +294,8 @@ async function syncConnection(
     throw error;
   }
 
-  const [timeZone, existingAccounts, rules] = await Promise.all([
-    getCompanyTimeZone(organizationId),
+  const [{ timeZone, currency }, existingAccounts, rules] = await Promise.all([
+    getCompanyLocale(organizationId),
     db
       .select({ id: financialAccount.id, externalId: financialAccount.externalId })
       .from(financialAccount)
@@ -314,7 +314,7 @@ async function syncConnection(
   );
   let newAccounts = 0;
   for (const bankAccount of bankAccounts) {
-    const type = finelyAccountType(bankAccount);
+    const type = finelyAccountType(bankAccount, currency);
     if (!type || accountIds.has(bankAccount.externalId)) continue;
     const [created] = await db
       .insert(financialAccount)

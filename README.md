@@ -10,8 +10,8 @@ accounts (companies with teams and invitations), bank accounts, transactions
 categories, the dashboard,
 with receipts attached, bills, budgets, the Insights page (with the regular
 payments it spots), a 30-day forecast, exports, search, notifications and
-email notifications (a weekly summary and alerts) and an activity log all
-work with real data.
+email notifications (a weekly summary and alerts), an activity log, a
+currency per company and paid plans through Stripe all work with real data.
 Payment cards aren't built yet.
 
 ## How accounts work
@@ -72,6 +72,12 @@ Requirements: Node.js 20.9 or newer and a [Neon](https://neon.tech) database
      are sent. Needed once `RESEND_API_KEY` is set.
    - `CRON_SECRET`: any long random text; protects the scheduled jobs.
      Optional in development (without it the jobs refuse to run).
+   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and the four
+     `STRIPE_PRICE_*`: optional, for paid plans. Until all six are set,
+     nothing can be bought and no plan limit applies. To get Stripe's
+     messages in development, run
+     `stripe listen --forward-to localhost:3000/api/stripe/webhook` (Stripe
+     CLI) and use the webhook secret it prints.
    - `PLAID_CLIENT_ID` / `PLAID_SECRET` / `PLAID_ENV` / `BANK_ENCRYPTION_KEY`:
      optional, for linking banks. "Connect a bank" stays hidden until the
      two Plaid keys and the encryption key are set. With `PLAID_ENV=sandbox`
@@ -126,6 +132,7 @@ src/
 │   ├── api/auth/           Better Auth's API endpoints
 │   ├── api/cron/           The scheduled jobs Vercel runs: the weekly summary
 │   │                       and the daily bank sync
+│   ├── api/stripe/         Where Stripe tells us about subscriptions (webhook)
 │   └── dashboard/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
 │       ├── actions.ts      "Mark all as read" for the notifications
@@ -169,12 +176,17 @@ src/
 │   │   ├── attachments.ts        Which files can be attached
 │   │   ├── bank-sync.ts          What to do with what a linked bank reports
 │   │   ├── audit.ts              The activity log's wording
+│   │   ├── plans.ts              What each plan includes
+│   │   ├── currencies.ts         The currencies a company can work in
+│   │   ├── search.ts             Telling an amount from text in a search
 │   │   ├── category-rules.ts     Choosing a category from a description
 │   │   ├── statement-import.ts   Reading bank statements (dates, amounts, columns)
 │   │   ├── export.ts             The export files' rows and columns
 │   │   └── csv.ts                Turning CSV text into rows and cells, and back
 │   ├── bank/               Talking to banks through Plaid, and encrypting
 │   │                       the banks' keys
+│   ├── billing/            Talking to Stripe, and checking its messages
+│   ├── rate-limit.ts       Slowing down repeated requests (the contact form)
 │   ├── email/              Sending emails (Resend) and their templates
 │   ├── after-response.ts   Doing work after the answer was sent
 │   ├── app-url.ts          The site's own address, for links in emails
@@ -221,6 +233,8 @@ One-time setup:
      local one), `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_EMAIL`,
      `CRON_SECRET` (any long random text), `PLAID_CLIENT_ID`, `PLAID_SECRET`,
      `PLAID_ENV` and `BANK_ENCRYPTION_KEY` (to offer linking banks),
+     `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and the four
+     `STRIPE_PRICE_*` (to offer paid plans; see "Plans and billing"),
      `GOOGLE_CLIENT_ID`,
      `GOOGLE_CLIENT_SECRET`, and the four `SENTRY_*` values.
    - Production only: `BETTER_AUTH_URL` set to the real address, e.g.
@@ -397,12 +411,65 @@ ticking **Always use this category** when adding or editing a transaction.
 Everyone can also tick several transactions in the list and give them all
 one category at once (up to 200).
 
+## Currency
+
+Each company keeps its books in one currency, chosen by an owner or admin in
+Settings (US dollars until then; 27 to choose from, in
+`lib/finance/currencies.ts`). Every amount on screen, in emails,
+notifications and the activity log is shown in it. Nothing is converted:
+changing the currency of a company that already has transactions relabels
+them (100.00 USD becomes 100.00 EUR), so it's meant to be chosen once, at the
+start.
+
+For developers: amounts stay plain numbers. `formatCurrency(amount, {
+currency })` and `formatCompactCurrency(amount, currency)` format them; the
+data functions get the currency from `getFinanceContext()`, pages from
+`getCompanyLocale(organization.id)`, and components as a `currency` prop.
+Without a currency both format US dollars, so a forgotten one shows the
+wrong sign rather than failing: pass it everywhere.
+
+## Plans and billing
+
+Plans differ in how many people can be on a company's team
+(`lib/finance/plans.ts`): Free 2, Starter 5, Growth 25, Enterprise no limit.
+A company without a subscription is on Free. That is the only limit that is
+enforced: Better Auth refuses an invitation or a new member once the team is
+full. Nobody is ever removed: a team that's already bigger than its plan
+allows stays, it just can't grow.
+
+The owner subscribes under **Settings → Plan & billing**. "Choose Starter"
+or "Choose Growth" opens a payment page from Stripe (Finely never sees card
+numbers); afterwards **Manage billing** opens Stripe's own page to change
+plan or payment method, cancel, and find invoices. The plan only changes
+when Stripe tells us so: it calls `/api/stripe/webhook` with
+`customer.subscription.created`, `.updated` and `.deleted`, each signed
+with `STRIPE_WEBHOOK_SECRET`. A message that isn't signed, or is older than
+five minutes, is refused; late and repeated ones change nothing. While a
+failed payment is being retried (`past_due`) the plan stays; once Stripe
+gives up or the subscription is cancelled, the company is on Free again.
+Deleting a company cancels its subscription at Stripe first.
+
+Setting it up: create two products with a monthly and a yearly recurring
+price each in Stripe, add the webhook endpoint, switch on the customer
+portal (Settings → Billing → Customer portal) with "switch plans" allowed
+for those prices, and set the six `STRIPE_*` variables. Until all six are
+set, the Plan & billing section is hidden and **no limit applies**, exactly
+as before. **The moment they are set, every existing company is on Free**
+with room for two people.
+
+Enterprise isn't sold online: set `plan = 'enterprise'`, `status = 'active'`
+in the company's `subscription` row by hand.
+
+**Before relying on it:** like the bank link, this was built from Stripe's
+API documentation and tested against a pretend Stripe, not against Stripe
+itself. Try it in Stripe's test mode first.
+
 ## Linked banks
 
 Owners and admins can **Connect a bank** in Settings. A window from
 [Plaid](https://plaid.com) lets them pick their bank and log in there;
 Finely never sees that login. Finely then adds the bank's everyday and
-savings accounts (in US dollars) and keeps their transactions up to date:
+savings accounts (those in the company's currency) and keeps their transactions up to date:
 when the bank is linked, on **Sync now**, and once a day.
 
 - New transactions get a category from the company's category rules.
@@ -567,8 +634,10 @@ spending aren't in it.
 
 ## Search and notifications
 
-The search box in the top bar opens the Transactions page with the matching
-descriptions (the same search as that page's own filter).
+The search box in the top bar opens the Transactions page with what matches
+(the same search as that page's own filter): part of a description, of the
+notes or of a category's name, or the exact amount ("45", "$1,234.50"),
+whether money in or out.
 
 The bell reports what deserves a look in the company's books: a charge at
 least 50% above what that vendor usually charges, an account below zero, a
@@ -618,7 +687,7 @@ and disappear once the cause is gone. Only the moment each person pressed
   in the emails (they point to Settings), and no alert emails for anything
   but unusual charges.
 - Linked banks: untested against Plaid itself (see above). Only US banks,
-  everyday and savings accounts in US dollars: no credit cards, loans or
+  everyday and savings accounts in the company's currency: no credit cards, loans or
   investments. A bank that asks to log in again has to be disconnected and
   linked again, which adds its accounts a second time (Plaid's "update
   mode" isn't built). Syncing is once a day or on demand, not the moment
@@ -630,11 +699,26 @@ and disappear once the cause is gone. Only the moment each person pressed
   in the rare case that writing the line fails, the change stands without
   one. Someone leaving a company by themselves, and a company being created,
   aren't recorded.
-- The top bar only searches transaction descriptions.
+- Only transactions can be searched: not bills, vendors or the activity log.
+- One currency per company. There are no accounts in other currencies, no
+  exchange rates and no converting; a bank account in another currency
+  can't be linked. Amounts always have two decimals in the forms, even for
+  currencies without cents.
+- Plans: untested against Stripe itself (see above). Only the team's size
+  is limited; the other things the pricing section of the home page lists
+  (storage, analytics tiers, support levels, integrations) aren't real
+  differences between plans, and its prices are typed there separately from
+  `lib/finance/plans.ts` and from Stripe. Prices are in US dollars whatever
+  the company's currency. There's no free trial of a paid plan, no tax
+  handling beyond what Stripe is configured to do, and no email from Finely
+  about a failed payment (Stripe sends its own). After handing a company
+  over, Stripe still has the former owner's email as the customer's until
+  it's changed in "Manage billing".
 - Deleting a company is immediate and final: there's no grace period, no
   export first, and the team isn't emailed. The new owner isn't emailed
   after a handover either.
-- The contact form has a trap for bots but no rate limit.
+- The contact form's rate limit (five messages an hour) is per IP address,
+  so people behind one shared address share it.
 - The Terms of service and Privacy policy weren't written or reviewed by a
   lawyer, and leave out what only the business can decide: the governing law
   and courts, refunds, a liability cap in figures, the company's registered

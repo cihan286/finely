@@ -167,7 +167,7 @@ export async function createBill(input: BillInput): Promise<string> {
     area: "bill",
     action: "created",
     entityId: row.id,
-    summary: `Added the bill “${values.name}” (${formatCurrency(values.amount)}, due ${formatDate(values.dueDate)})`,
+    summary: `Added the bill “${values.name}” (${formatCurrency(values.amount, { currency: actor.currency })}, due ${formatDate(values.dueDate)})`,
   });
   return row.id;
 }
@@ -199,8 +199,8 @@ export async function updateBill(id: string, input: BillInput) {
             { label: "name", before: before.name, after: after.name },
             {
               label: "amount",
-              before: formatCurrency(before.amount),
-              after: formatCurrency(after.amount),
+              before: formatCurrency(before.amount, { currency: actor.currency }),
+              after: formatCurrency(after.amount, { currency: actor.currency }),
             },
             {
               label: "due date",
@@ -254,7 +254,7 @@ export async function deleteBill(id: string) {
     area: "bill",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the ${gone.paidAt ? "paid " : ""}bill “${gone.name}” (${formatCurrency(gone.amount)})`,
+    summary: `Deleted the ${gone.paidAt ? "paid " : ""}bill “${gone.name}” (${formatCurrency(gone.amount, { currency: actor.currency })})`,
   });
 }
 
@@ -336,7 +336,7 @@ export async function payBill(
     area: "bill",
     action: "paid",
     entityId: id,
-    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount)}) as paid on ${formatDate(day)}`,
+    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })}) as paid on ${formatDate(day)}`,
   });
   return { transactionId, nextDueDate: next };
 }

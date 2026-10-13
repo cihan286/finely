@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 import AccountSettings from "@/components/dashboard/settings/AccountSettings";
 import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
 import BankConnections from "@/components/dashboard/settings/BankConnections";
+import BillingSettings from "@/components/dashboard/settings/BillingSettings";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import EmailSettings from "@/components/dashboard/settings/EmailSettings";
@@ -30,11 +31,13 @@ import Message from "@/components/common/form/Message";
 import { isBankEnabled } from "@/lib/bank/provider";
 import { listAccounts } from "@/lib/data/accounts";
 import { listBankConnections } from "@/lib/data/bank";
+import { getBilling } from "@/lib/data/billing";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getEmailPreferences } from "@/lib/data/email-notifications";
 import { getCompanySettings } from "@/lib/data/settings";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { localDay } from "@/lib/dates";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import styles from "./page.module.css";
@@ -47,12 +50,15 @@ export const metadata: Metadata = {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ handedOver?: string | string[] }>;
+  searchParams: Promise<{
+    handedOver?: string | string[];
+    billing?: string | string[];
+  }>;
 }) {
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
-  const { handedOver } = await searchParams;
-  const [accounts, categories, rules, settings, emailPreferences, banks] =
+  const { handedOver, billing: billingResult } = await searchParams;
+  const [accounts, categories, rules, settings, emailPreferences, banks, billing] =
     await Promise.all([
       listAccounts(),
       listCategories(),
@@ -60,6 +66,7 @@ export default async function SettingsPage({
       getCompanySettings(),
       getEmailPreferences(),
       listBankConnections(),
+      getBilling(),
     ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
@@ -120,6 +127,7 @@ export default async function SettingsPage({
         canManage={canManageFinances(role)}
         organization={{ id: organization.id, name: organization.name }}
         timeZone={settings.timeZone}
+        currency={settings.currency}
         timeZones={timeZones}
       />
       <TeamSettings
@@ -144,16 +152,38 @@ export default async function SettingsPage({
           }))}
         />
       )}
-      <AccountSettings canManage={canManageFinances(role)} accounts={accounts} />
+      <AccountSettings
+        canManage={canManageFinances(role)}
+        accounts={accounts}
+        currency={settings.currency}
+      />
       <CategorySettings
         canManage={canManageFinances(role)}
         categories={categories}
+        currency={settings.currency}
       />
       <CategoryRuleSettings
         canManage={canManageFinances(role)}
         rules={rules}
         categories={categories}
       />
+      {/* Shown once paying for a plan is set up */}
+      {billing.enabled && (
+        <BillingSettings
+          isOwner={role === "owner"}
+          plan={billing.plan}
+          memberLimit={billing.memberLimit}
+          memberCount={billing.memberCount}
+          note={billing.note}
+          periodEnd={
+            billing.currentPeriodEnd
+              ? formatDate(localDay(billing.currentPeriodEnd, settings.timeZone))
+              : null
+          }
+          hasCustomer={billing.hasCustomer}
+          justPaid={billingResult === "success"}
+        />
+      )}
       <EmailSettings
         organizationName={organization.name}
         email={user.email}

@@ -35,10 +35,12 @@ import {
   deleteCategoryRule,
   updateCategoryRule,
 } from "@/lib/data/category-rules";
+import { openBillingPortal, startCheckout } from "@/lib/data/billing";
 import { errorMessage } from "@/lib/data/common";
 import { deleteCompany, transferOwnership } from "@/lib/data/company";
 import { updateEmailPreferences } from "@/lib/data/email-notifications";
-import { updateTimeZone } from "@/lib/data/settings";
+import { updateCurrency, updateTimeZone } from "@/lib/data/settings";
+import type { BillingInterval, PaidPlan } from "@/lib/finance/plans";
 import type {
   AccountType,
   CategoryIconKey,
@@ -74,19 +76,29 @@ export async function submitAccount(
   return { error: null, success: `${name} was ${removing ? "removed" : "added"}.` };
 }
 
-/** Changes the company's timezone (owners and admins only). */
+/**
+ * Changes the company's timezone, or its currency when the form sends one
+ * (owners and admins only).
+ */
 export async function submitCompanySettings(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const currency = formField(formData, "currency");
   const timeZone = formField(formData, "timezone");
   try {
-    await updateTimeZone(timeZone);
+    if (currency) await updateCurrency(currency);
+    else await updateTimeZone(timeZone);
   } catch (error) {
     return { error: errorMessage(error) };
   }
   refresh();
-  return { error: null, success: `The company's timezone is now ${timeZone}.` };
+  return {
+    error: null,
+    success: currency
+      ? `The company's amounts are now shown in ${currency}.`
+      : `The company's timezone is now ${timeZone}.`,
+  };
 }
 
 /**
@@ -256,7 +268,7 @@ export async function completeBankLink(
     error: null,
     success:
       result.newAccounts === 0
-        ? `${result.institutionName} is connected, but it has no everyday or savings account in US dollars that Finely can keep.`
+        ? `${result.institutionName} is connected, but it has no everyday or savings account in your company's currency that Finely can keep.`
         : `${result.institutionName} is connected: ${syncSummary(result)}. Transactions can take a few minutes to arrive the first time; press “Sync now” to check.`,
   };
 }
@@ -287,4 +299,28 @@ export async function removeBankConnection(id: string): Promise<ActionState> {
     error: null,
     success: "The bank was disconnected. Its accounts and transactions are still here.",
   };
+}
+
+/**
+ * Sends the owner to Stripe: to its payment page for the chosen plan, or
+ * (intent=portal) to the page where a subscription is changed or cancelled.
+ */
+export async function submitBilling(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  let url;
+  try {
+    url =
+      formField(formData, "intent") === "portal"
+        ? await openBillingPortal()
+        : await startCheckout(
+            formField(formData, "plan") as PaidPlan,
+            formField(formData, "interval") as BillingInterval,
+          );
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  // Outside the try: redirect() works by throwing
+  redirect(url);
 }

@@ -43,6 +43,8 @@ const percent = (share: number) => `${(share * 100).toFixed(1)}%`;
 
 interface InsightsViewProps {
   organizationName: string;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   hasAccounts: boolean;
   canManage: boolean;
   insights: Insights;
@@ -52,6 +54,7 @@ interface InsightsViewProps {
 
 export default function InsightsView({
   organizationName,
+  currency,
   hasAccounts,
   canManage,
   insights,
@@ -143,11 +146,11 @@ export default function InsightsView({
         <>
           {/* Totals for the period */}
           <div className={styles.stats}>
-            <Stat label="Money in" value={formatCurrency(totals.income)} />
-            <Stat label="Money out" value={formatCurrency(totals.expenses)} />
+            <Stat label="Money in" value={formatCurrency(totals.income, { currency: currency })} />
+            <Stat label="Money out" value={formatCurrency(totals.expenses, { currency: currency })} />
             <Stat
               label="Net"
-              value={formatCurrency(totals.net, { signed: true })}
+              value={formatCurrency(totals.net, { signed: true, currency: currency })}
               tone={totals.net >= 0 ? "positive" : "negative"}
             />
             <Stat
@@ -172,7 +175,7 @@ export default function InsightsView({
                 </span>
               </div>
             </div>
-            <MonthlyChart monthly={monthly} />
+            <MonthlyChart monthly={monthly} currency={currency} />
             <details className={styles.tableView}>
               <summary>Show as a table</summary>
               <table className={styles.table}>
@@ -191,10 +194,10 @@ export default function InsightsView({
                         {m.label} {m.month.slice(0, 4)}
                         {m.partial && <span className={styles.muted}> (so far)</span>}
                       </td>
-                      <td className={styles.number}>{formatCurrency(m.income)}</td>
-                      <td className={styles.number}>{formatCurrency(m.expenses)}</td>
+                      <td className={styles.number}>{formatCurrency(m.income, { currency: currency })}</td>
+                      <td className={styles.number}>{formatCurrency(m.expenses, { currency: currency })}</td>
                       <td className={styles.number}>
-                        {formatCurrency(m.income - m.expenses, { signed: true })}
+                        {formatCurrency(m.income - m.expenses, { signed: true, currency: currency })}
                       </td>
                     </tr>
                   ))}
@@ -230,7 +233,7 @@ export default function InsightsView({
                             {c.category}
                           </span>
                           <span className={styles.categoryAmount}>
-                            {formatCurrency(c.amount)}
+                            {formatCurrency(c.amount, { currency: currency })}
                             <span className={styles.muted}> · {percent(share)}</span>
                           </span>
                         </div>
@@ -275,7 +278,7 @@ export default function InsightsView({
                           </Link>
                         </td>
                         <td className={styles.number}>{v.count}</td>
-                        <td className={styles.number}>{formatCurrency(v.amount)}</td>
+                        <td className={styles.number}>{formatCurrency(v.amount, { currency: currency })}</td>
                         <td className={`${styles.number} ${styles.muted}`}>
                           {percent(v.share)}
                         </td>
@@ -294,7 +297,7 @@ export default function InsightsView({
               <p className={styles.muted}>
                 {recurring.length === 0
                   ? "Spotted in the last 13 months, whatever period is chosen above."
-                  : `About ${formatCurrency(recurringPerMonth)} going out per month. Spotted in the last 13 months.`}
+                  : `About ${formatCurrency(recurringPerMonth, { currency: currency })} going out per month. Spotted in the last 13 months.`}
               </p>
             </div>
             {recurring.length === 0 ? (
@@ -337,12 +340,10 @@ export default function InsightsView({
                         >
                           {/* "~" when the amount changes from time to time */}
                           {r.variable && "~"}
-                          {formatCurrency(r.direction === "in" ? r.amount : -r.amount, {
-                            signed: true,
-                          })}
+                          {formatCurrency(r.direction === "in" ? r.amount : -r.amount, { signed: true, currency: currency })}
                         </td>
                         <td className={`${styles.number} ${styles.muted}`}>
-                          {formatCurrency(r.monthlyAmount)}
+                          {formatCurrency(r.monthlyAmount, { currency: currency })}
                         </td>
                         <td>{formatDate(r.nextDay)}</td>
                         <td className={styles.number}>
@@ -391,8 +392,8 @@ export default function InsightsView({
                       </span>
                       <span className={styles.alertText}>
                         <strong>{u.name}</strong> charged{" "}
-                        <strong>{formatCurrency(u.amount)}</strong>,{" "}
-                        {u.percentAbove}% more than usual ({formatCurrency(u.usual)})
+                        <strong>{formatCurrency(u.amount, { currency: currency })}</strong>,{" "}
+                        {u.percentAbove}% more than usual ({formatCurrency(u.usual, { currency: currency })})
                       </span>
                       <span className={styles.muted}>
                         {formatRelativeDate(u.day, today)}

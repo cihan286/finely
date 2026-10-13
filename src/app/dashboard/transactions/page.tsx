@@ -24,7 +24,7 @@ import { listAccounts } from "@/lib/data/accounts";
 import { listAttachments } from "@/lib/data/attachments";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
-import { getCompanyTimeZone } from "@/lib/data/common";
+import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
@@ -51,6 +51,7 @@ export default async function TransactionsPage({
   // Protects the page: visitors who aren't logged in are sent to /login, and
   // people without a company to /onboarding
   const { organization, role } = await requireOrganization();
+  const { currency } = await getCompanyLocale(organization.id);
   const params = await searchParams;
 
   const query: TransactionsQuery = {
@@ -103,6 +104,7 @@ export default async function TransactionsPage({
   return (
     <TransactionsView
       organizationName={organization.name}
+      currency={currency}
       today={todayIn(timeZone)}
       canManage={canManageFinances(role)}
       query={query}

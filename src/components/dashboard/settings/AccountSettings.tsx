@@ -40,11 +40,14 @@ interface AccountSettingsProps {
   /** Whether you may add and remove accounts (owners and admins) */
   canManage: boolean;
   accounts: Account[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
 }
 
 export default function AccountSettings({
   canManage,
   accounts,
+  currency,
 }: AccountSettingsProps) {
   const addFormRef = useRef<HTMLFormElement>(null);
   const [state, dispatch, pending] = useActionState(
@@ -166,7 +169,7 @@ export default function AccountSettings({
                   </span>
                 </div>
                 <span className={styles.balance}>
-                  {formatCurrency(account.balance)}
+                  {formatCurrency(account.balance, { currency: currency })}
                 </span>
                 {canManage && (
                   <form onSubmit={submit}>

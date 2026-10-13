@@ -60,6 +60,8 @@ const ACCOUNT_TYPES = {
 interface DashboardHomeProps {
   firstName: string;
   organizationName: string;
+  /** The company's currency, e.g. "USD" */
+  currency: string;
   /** Whether you may add bank accounts (owners and admins) */
   canManage: boolean;
   summary: DashboardSummary;
@@ -73,15 +75,16 @@ interface DashboardHomeProps {
 const FORECAST_EVENTS_SHOWN = 6;
 
 // "$120.50 over", "$20.00 left"
-function budgetNote(budget: BudgetProgress): string {
+function budgetNote(budget: BudgetProgress, currency: string): string {
   return budget.remaining < 0
-    ? `${formatCurrency(-budget.remaining)} over`
-    : `${formatCurrency(budget.remaining)} left`;
+    ? `${formatCurrency(-budget.remaining, { currency: currency })} over`
+    : `${formatCurrency(budget.remaining, { currency: currency })} left`;
 }
 
 export default function DashboardHome({
   firstName,
   organizationName,
+  currency,
   canManage,
   summary,
   budgets,
@@ -185,7 +188,7 @@ export default function DashboardHome({
                   <div className={styles.metricBody}>
                     <span className={styles.metricValue}>
                       {metric.format === "currency"
-                        ? formatCurrency(metric.value)
+                        ? formatCurrency(metric.value, { currency: currency })
                         : formatNumber(metric.value)}
                     </span>
                     <span
@@ -201,7 +204,7 @@ export default function DashboardHome({
 
           <div className={styles.dashboardGrid}>
             {/* Chart of money in vs. money out (its own file: CashFlowChart.tsx) */}
-            <CashFlowChart cashflow={cashflow} />
+            <CashFlowChart cashflow={cashflow} currency={currency} />
 
             <div className={styles.card}>
               <div className={styles.cardHeader}>
@@ -235,7 +238,7 @@ export default function DashboardHome({
                             </span>
                           </div>
                           <span className={styles.expenseAmount}>
-                            {formatCurrency(expense.amount)}
+                            {formatCurrency(expense.amount, { currency: currency })}
                           </span>
                         </div>
                         <div className={styles.progressBarBg}>
@@ -305,7 +308,7 @@ export default function DashboardHome({
                         <span
                           className={`${styles.budgetNote} ${styles[`budget_${budget.status}`]}`}
                         >
-                          {budgetNote(budget)}
+                          {budgetNote(budget, currency)}
                         </span>
                       </div>
                       <div
@@ -322,8 +325,8 @@ export default function DashboardHome({
                         />
                       </div>
                       <span className={styles.budgetAmounts}>
-                        {formatCurrency(budget.spent)} of{" "}
-                        {formatCurrency(budget.budget)}
+                        {formatCurrency(budget.spent, { currency: currency })} of{" "}
+                        {formatCurrency(budget.budget, { currency: currency })}
                       </span>
                     </Link>
                   );
@@ -358,13 +361,11 @@ export default function DashboardHome({
                     <span
                       className={`${styles.forecastValue} ${forecast.endBalance < 0 ? styles.negative : ""}`}
                     >
-                      {formatCurrency(forecast.endBalance)}
+                      {formatCurrency(forecast.endBalance, { currency: currency })}
                     </span>
                     <span className={styles.forecastNote}>
-                      {formatCurrency(forecast.endBalance - forecast.startBalance, {
-                        signed: true,
-                      })}{" "}
-                      from today&apos;s {formatCurrency(forecast.startBalance)}
+                      {formatCurrency(forecast.endBalance - forecast.startBalance, { signed: true, currency: currency })}{" "}
+                      from today&apos;s {formatCurrency(forecast.startBalance, { currency: currency })}
                     </span>
                   </div>
                   <div className={styles.forecastFigure}>
@@ -372,7 +373,7 @@ export default function DashboardHome({
                     <span
                       className={`${styles.forecastValue} ${forecast.lowest.balance < 0 ? styles.negative : ""}`}
                     >
-                      {formatCurrency(forecast.lowest.balance)}
+                      {formatCurrency(forecast.lowest.balance, { currency: currency })}
                     </span>
                     <span className={styles.forecastNote}>
                       {forecast.lowest.day === forecast.today
@@ -383,8 +384,8 @@ export default function DashboardHome({
                   <div className={styles.forecastFigure}>
                     <span className={styles.forecastLabel}>Expected in / out</span>
                     <span className={styles.forecastValue}>
-                      {formatCurrency(forecast.moneyIn)} /{" "}
-                      {formatCurrency(forecast.moneyOut)}
+                      {formatCurrency(forecast.moneyIn, { currency: currency })} /{" "}
+                      {formatCurrency(forecast.moneyOut, { currency: currency })}
                     </span>
                     <span className={styles.forecastNote}>
                       Unpaid bills and regular payments only
@@ -406,7 +407,7 @@ export default function DashboardHome({
                       >
                         {/* "~" when the amount changes from time to time */}
                         {event.estimated && "~"}
-                        {formatCurrency(event.amount, { signed: true })}
+                        {formatCurrency(event.amount, { signed: true, currency: currency })}
                       </span>
                     </div>
                   ))}
@@ -464,7 +465,7 @@ export default function DashboardHome({
                         <span
                           className={`${styles.txAmount} ${isIncome ? styles.positiveAmount : ""}`}
                         >
-                          {formatCurrency(tx.amount, { signed: true })}
+                          {formatCurrency(tx.amount, { signed: true, currency: currency })}
                         </span>
                       </Link>
                     );
@@ -500,7 +501,7 @@ export default function DashboardHome({
                       </div>
                     </div>
                     <span className={styles.accountBalance}>
-                      {formatCurrency(account.balance)}
+                      {formatCurrency(account.balance, { currency: currency })}
                     </span>
                   </div>
                 ))}

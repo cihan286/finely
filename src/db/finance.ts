@@ -12,7 +12,8 @@
 // person last read the company's notifications,
 // `notification_preference` which emails each person wants,
 // `bank_connection` is a bank the company linked so its transactions arrive
-// by themselves, and `audit_log` records who changed what. Every row belongs to exactly one company, so companies never
+// by themselves, `audit_log` records who changed what, and `subscription`
+// is the plan the company pays for. Every row belongs to exactly one company, so companies never
 // see each other's data.
 //
 // For developers: kept apart from schema.ts because that file is regenerated
@@ -63,6 +64,9 @@ export const companySettings = pgTable("company_settings", {
   // IANA timezone name, e.g. "Europe/Istanbul". Decides which calendar day a
   // transaction falls on and when "today" starts.
   timezone: text("timezone").default("UTC").notNull(),
+  // The currency all of the company's amounts are in (ISO code, e.g.
+  // "EUR"). Amounts are never converted: changing it relabels them.
+  currency: text("currency").default("USD").notNull(),
   // When the weekly email was last sent to this company's team, so a run
   // that is repeated doesn't send it twice
   lastDigestAt: timestamp("last_digest_at"),
@@ -340,6 +344,29 @@ export const notificationPreference = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.organizationId] })],
 );
+
+// The plan a company pays for, as Stripe last told us (see
+// lib/data/billing.ts). Companies without a row are on the Free plan.
+export const subscription = pgTable("subscription", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  // "starter" | "growth" | "enterprise" (set by hand for Enterprise)
+  plan: text("plan").notNull(),
+  // Stripe's word for its state: "active", "past_due", "canceled", …
+  status: text("status").notNull(),
+  // Stripe's IDs of the customer and the subscription
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  // When the paid period ends or renews
+  currentPeriodEnd: timestamp("current_period_end"),
+  // Cancelled, but still running until the period ends
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+  // When the Stripe message this row comes from happened, so an older
+  // message arriving late doesn't overwrite a newer one
+  eventAt: timestamp("event_at"),
+  ...timestamps,
+});
 
 // Who changed what, and when. Rows are only ever added, never changed; they
 // go when the company is deleted (see lib/data/audit.ts).

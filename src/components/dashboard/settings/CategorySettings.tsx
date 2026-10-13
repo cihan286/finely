@@ -46,11 +46,14 @@ interface CategorySettingsProps {
   /** Whether you may change categories (owners and admins) */
   canManage: boolean;
   categories: Category[];
+  /** The company's currency, e.g. "USD" */
+  currency: string;
 }
 
 export default function CategorySettings({
   canManage,
   categories,
+  currency,
 }: CategorySettingsProps) {
   const addFormRef = useRef<HTMLFormElement>(null);
   // The category being edited, if any
@@ -104,7 +107,7 @@ export default function CategorySettings({
           </div>
           <form ref={addFormRef} className={styles.form} onSubmit={submit}>
             <input type="hidden" name="intent" value="add" />
-            <CategoryFields />
+            <CategoryFields currency={currency} />
             <Button
               type="submit"
               variant="primary"
@@ -139,7 +142,7 @@ export default function CategorySettings({
                         <form className={styles.form} onSubmit={submit}>
                           <input type="hidden" name="intent" value="update" />
                           <input type="hidden" name="id" value={category.id} />
-                          <CategoryFields category={category} />
+                          <CategoryFields category={category} currency={currency} />
                           <div className={styles.rowButtons}>
                             <Button
                               variant="outline"
@@ -162,6 +165,7 @@ export default function CategorySettings({
                     ) : (
                       <CategoryRow
                         key={category.id}
+                        currency={currency}
                         category={category}
                         canManage={canManage}
                         pending={pending}
@@ -183,12 +187,14 @@ export default function CategorySettings({
 // One category in the list, with Edit and Delete for owners and admins
 function CategoryRow({
   category,
+  currency,
   canManage,
   pending,
   onEdit,
   onDelete,
 }: {
   category: Category;
+  currency: string;
   canManage: boolean;
   pending: boolean;
   onEdit: () => void;
@@ -207,7 +213,7 @@ function CategoryRow({
       <span className={`${shared.name} ${styles.name}`}>{category.name}</span>
       {category.budget !== null && (
         <span className={styles.budget}>
-          {formatCurrency(category.budget)} a month
+          {formatCurrency(category.budget, { currency: currency })} a month
         </span>
       )}
       {canManage && (
@@ -235,7 +241,13 @@ function CategoryRow({
 }
 
 // Name, type, icon, color and budget: shared by the add and edit forms
-function CategoryFields({ category }: { category?: Category }) {
+function CategoryFields({
+  category,
+  currency,
+}: {
+  category?: Category;
+  currency: string;
+}) {
   // Only money going out can have a budget
   const [kind, setKind] = useState<string>(category?.kind ?? "expense");
   return (
@@ -280,7 +292,7 @@ function CategoryFields({ category }: { category?: Category }) {
         />
       </Field>
       {kind === "expense" && (
-        <Field label="Monthly budget (USD)" optional className={styles.budgetField}>
+        <Field label={`Monthly budget (${currency})`} optional className={styles.budgetField}>
           <Input
             name="budget"
             type="number"

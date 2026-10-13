@@ -31,11 +31,13 @@ import {
   financialAccount,
   notificationPreference,
   notificationRead,
+  subscription,
   transaction,
 } from "@/db/finance";
 import { invitation, member, organization, session, user } from "@/db/schema";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
+import { cancelSubscriptionFor } from "./billing";
 import { DataError } from "./common";
 
 // The signed-in person and their company; stops anyone but the owner
@@ -98,6 +100,9 @@ export async function deleteCompany(confirmation: string) {
   }
 
   const id = company.id;
+  // First, so nobody keeps paying for a company that no longer exists; if
+  // Stripe can't be told, the company stays
+  await cancelSubscriptionFor(id);
   await db.batch([
     // Files and bills point at their transaction, and transactions at their
     // account and category, so: files, bills, transactions, then what those
@@ -110,6 +115,7 @@ export async function deleteCompany(confirmation: string) {
     db.delete(financialAccount).where(eq(financialAccount.organizationId, id)),
     db.delete(bankConnection).where(eq(bankConnection.organizationId, id)),
     db.delete(auditLog).where(eq(auditLog.organizationId, id)),
+    db.delete(subscription).where(eq(subscription.organizationId, id)),
     db.delete(companySettings).where(eq(companySettings.organizationId, id)),
     db.delete(notificationRead).where(eq(notificationRead.organizationId, id)),
     db
