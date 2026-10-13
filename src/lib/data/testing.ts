@@ -40,7 +40,7 @@ export async function setUpTestDb() {
   await migrate(database, { migrationsFolder: "drizzle" });
 }
 
-/** Adds a company with one person in it; returns their IDs */
+/** Adds a company with one person in it (its owner); returns their IDs */
 export async function createTestCompany(name: string, timeZone = "UTC") {
   const organizationId = `org_${name}`;
   const userId = `user_${name}`;
@@ -58,14 +58,37 @@ export async function createTestCompany(name: string, timeZone = "UTC") {
   await database
     .insert(financeSchema.companySettings)
     .values({ organizationId, timezone: timeZone });
-  return { organizationId, userId };
+  await addTestMember({ organizationId }, userId, "owner");
+  return { organizationId, userId, name };
 }
 
-let current: { organizationId: string; userId: string; role: Role } | null = null;
+/** Puts an existing person into a company with a role; returns the member ID */
+export async function addTestMember(
+  company: { organizationId: string },
+  userId: string,
+  role: Role,
+) {
+  const id = `member_${company.organizationId}_${userId}`;
+  await database.insert(authSchema.member).values({
+    id,
+    organizationId: company.organizationId,
+    userId,
+    role,
+    createdAt: new Date(),
+  });
+  return id;
+}
+
+let current: {
+  organizationId: string;
+  userId: string;
+  name?: string;
+  role: Role;
+} | null = null;
 
 /** From now on, the data functions see this person, company and role */
 export function actAs(
-  company: { organizationId: string; userId: string },
+  company: { organizationId: string; userId: string; name?: string },
   role: Role = "owner",
 ) {
   current = { ...company, role };
@@ -76,7 +99,7 @@ export async function currentSession() {
   if (!current) throw new Error("Call actAs() before using a data function.");
   return {
     user: { id: current.userId },
-    organization: { id: current.organizationId },
+    organization: { id: current.organizationId, name: current.name ?? "" },
     role: current.role,
   };
 }

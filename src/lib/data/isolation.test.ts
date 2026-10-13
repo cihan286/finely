@@ -6,8 +6,9 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { bill, category, companySettings, financialAccount, transaction } from "@/db/finance";
+import { member, organization, user } from "@/db/schema";
 import { addDays, todayIn } from "@/lib/dates";
-import { actAs, createTestCompany, setUpTestDb, testDb } from "./testing";
+import { actAs, addTestMember, createTestCompany, setUpTestDb, testDb } from "./testing";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./accounts";
 import {
   createBill,
@@ -28,6 +29,7 @@ import {
   saveCategoryRule,
   updateCategoryRule,
 } from "./category-rules";
+import { deleteCompany, transferOwnership } from "./company";
 import { getDashboardSummary } from "./dashboard";
 import { getInsights } from "./insights";
 import { listNotifications, markNotificationsRead } from "./notifications";
@@ -808,5 +810,100 @@ describe("regular payments and the forecast", () => {
     await createBill({ name: "Tax", amount: 400, dueDate: addDays(today, 10), repeat: "none", categoryId: null });
     expect((await getForecast()).lowest.balance).toBe(-300);
     expect((await listNotifications()).some((n) => n.id === "cash-shortfall")).toBe(true);
+  });
+});
+
+describe("handing over and deleting a company", () => {
+  const rolesIn = async (organizationId: string) =>
+    Object.fromEntries(
+      (
+        await testDb
+          .select({ userId: member.userId, role: member.role })
+          .from(member)
+          .where(eq(member.organizationId, organizationId))
+      ).map((m) => [m.userId, m.role]),
+    );
+
+  it("lets only the owner hand the company over, and only to its own members", async () => {
+    const company = await createTestCompany("dunder");
+    const other = await createTestCompany("sabre");
+    // A second person in dunder
+    await testDb.insert(user).values({ id: "user_jim", name: "Jim", email: "jim@example.com" });
+    const jim = await addTestMember(company, "user_jim", "member");
+    const outsider = `member_${other.organizationId}_${other.userId}`;
+
+    actAs(company, "admin");
+    await expect(transferOwnership(jim)).rejects.toThrow("Only the company's owner can do this.");
+
+    actAs(company);
+    await expect(transferOwnership(outsider)).rejects.toThrow("That person isn't in this company.");
+    await expect(
+      transferOwnership(`member_${company.organizationId}_${company.userId}`),
+    ).rejects.toThrow("You already own this company.");
+    expect(await rolesIn(other.organizationId)).toEqual({ [other.userId]: "owner" });
+
+    await transferOwnership(jim);
+    expect(await rolesIn(company.organizationId)).toEqual({
+      [company.userId]: "admin",
+      user_jim: "owner",
+    });
+  });
+
+  it("deletes only the owner's own company, after its name was typed", async () => {
+    const doomed = await createTestCompany("vandelay");
+    const kept = await createTestCompany("kramerica");
+    for (const company of [doomed, kept]) {
+      actAs(company);
+      const accountId = await createAccount({ name: "Checking", type: "checking" });
+      const categoryId = await createCategory({
+        name: "Supplies",
+        kind: "expense",
+        color: "#6366f1",
+        iconKey: "more",
+        budget: 100,
+      });
+      await createCategoryRule({ matchText: "Latex", categoryId });
+      await createTransaction(transactionFor({ accountId, categoryId }));
+      const billId = await createBill({
+        name: "Rent",
+        amount: 10,
+        dueDate: today,
+        repeat: "monthly",
+        categoryId,
+      });
+      await payBill(billId, { accountId, date: today });
+      await markNotificationsRead();
+    }
+
+    actAs(doomed, "admin");
+    await expect(deleteCompany("vandelay")).rejects.toThrow(
+      "Only the company's owner can do this.",
+    );
+    actAs(doomed);
+    await expect(deleteCompany("kramerica")).rejects.toThrow(
+      "Type the company's name exactly to confirm.",
+    );
+    await expect(deleteCompany("")).rejects.toThrow("Type the company's name exactly to confirm.");
+
+    await deleteCompany(" vandelay ");
+    const organizations = await testDb
+      .select({ id: organization.id })
+      .from(organization)
+      .where(eq(organization.id, doomed.organizationId));
+    expect(organizations).toEqual([]);
+    for (const table of [transaction, bill, category, financialAccount]) {
+      expect(
+        await testDb.$count(table, eq(table.organizationId, doomed.organizationId)),
+      ).toBe(0);
+    }
+    expect(await rolesIn(doomed.organizationId)).toEqual({});
+
+    // The other company is untouched
+    actAs(kept);
+    expect((await listTransactions()).total).toBe(2);
+    expect((await listAccounts()).length).toBe(1);
+    expect((await listBills()).unpaid.length).toBe(1);
+    expect((await listCategoryRules()).length).toBe(1);
+    expect(await rolesIn(kept.organizationId)).toEqual({ [kept.userId]: "owner" });
   });
 });

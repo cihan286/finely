@@ -1,14 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Team roles
 //
-// In plain words: everyone in a company has a role. The owner (who created it)
-// and admins can manage the team — invite people and remove them — and the
-// company's finances: bank accounts, categories, and deleting transactions.
-// Members can add and edit transactions but can't change the team.
+// In plain words: everyone in a company has a role. The owner (who created
+// it, or was handed it) and admins can manage the team — invite people,
+// change their roles and remove them — and the company's finances: bank
+// accounts, categories, and deleting transactions. Members can add and edit
+// transactions but can't change the team. Only the owner can hand the
+// company over to someone else or delete it.
 //
 // For developers: the interface uses these to decide what to show. The team
-// checks are enforced on the server by Better Auth, and the finance checks by
-// the data functions in lib/data/.
+// checks are enforced on the server by Better Auth, and the finance and
+// owner-only checks by the data functions in lib/data/.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Role = "owner" | "admin" | "member";

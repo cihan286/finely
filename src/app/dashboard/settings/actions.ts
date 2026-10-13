@@ -2,8 +2,9 @@
 // What happens when a form on the Settings page is submitted
 //
 // In plain words: changes the company's timezone, adds or removes one of its
-// bank accounts, or adds, changes or deletes a category or a category rule,
-// then reloads the page so it's up to date. If something's wrong, we send
+// bank accounts, adds, changes or deletes a category or a category rule,
+// hands the company over to another member or deletes it, then reloads the
+// page so it's up to date. If something's wrong, we send
 // back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -13,6 +14,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
 import {
@@ -27,6 +29,7 @@ import {
   updateCategoryRule,
 } from "@/lib/data/category-rules";
 import { errorMessage } from "@/lib/data/common";
+import { deleteCompany, transferOwnership } from "@/lib/data/company";
 import { updateTimeZone } from "@/lib/data/settings";
 import type {
   AccountType,
@@ -146,4 +149,40 @@ export async function submitCategoryRule(
     error: null,
     success: `The rule for “${matchText}” was ${done}.${caughtUp}`,
   };
+}
+
+/**
+ * Makes another member the owner; the current owner becomes an admin. The
+ * owner's section then disappears for them, so the page is opened again
+ * with a message instead (?handedOver=1).
+ */
+export async function submitOwnershipTransfer(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await transferOwnership(formField(formData, "memberId"));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  // Outside the try: redirect() works by throwing
+  redirect("/dashboard/settings?handedOver=1");
+}
+
+/**
+ * Deletes the company for everyone (owner only, after typing its name),
+ * then continues to another company the person belongs to, or to setting
+ * one up.
+ */
+export async function submitCompanyDeletion(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await deleteCompany(formField(formData, "confirmation"));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  // Outside the try: redirect() works by throwing
+  redirect("/onboarding");
 }
