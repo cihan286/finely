@@ -22,6 +22,7 @@ import Logo from "@/components/common/logo/Logo";
 import {
   LayoutDashboard,
   ArrowRightLeft,
+  CreditCard,
   Receipt,
   PieChart,
   Settings,
@@ -37,6 +38,7 @@ const NAV_LINKS = [
     icon: ArrowRightLeft,
   },
   { href: "/dashboard/bills", label: "Bills", icon: Receipt },
+  { href: "/dashboard/cards", label: "Cards", icon: CreditCard },
   { href: "/dashboard/insights", label: "Insights", icon: PieChart },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

@@ -204,6 +204,34 @@ export const categoryRule = pgTable(
 );
 
 // One payment in or out of an account. Positive amount = money in.
+// A payment card of the company (one its bank issued): who carries it, its
+// last four digits and, if wanted, how much it may spend per month. Finely
+// only keeps track: it doesn't issue or block cards (see lib/data/cards.ts).
+export const card = pgTable(
+  "card",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("card")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // What the team calls it, e.g. "Marketing card"
+    name: text("name").notNull(),
+    // The last four digits of its number: how people and bank statements
+    // tell cards apart. The full number is never stored.
+    last4: text("last4").notNull(),
+    // Who carries it (empty for a shared card, or if that person's account
+    // was deleted)
+    holderId: text("holder_id").references(() => user.id, { onDelete: "set null" }),
+    // The most it should spend per calendar month; empty without a limit
+    monthlyLimit: money("monthly_limit"),
+    // When it was put away (cancelled, expired); empty while it's in use.
+    // Its past payments keep pointing at it.
+    archivedAt: timestamp("archived_at"),
+    ...timestamps,
+  },
+  (table) => [index("card_organizationId_idx").on(table.organizationId)],
+);
+
 export const transaction = pgTable(
   "transaction",
   {
@@ -219,6 +247,9 @@ export const transaction = pgTable(
     categoryId: text("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
+    // The payment card it was paid with, if that's known. Deleting a card
+    // leaves its transactions without one.
+    cardId: text("card_id").references(() => card.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     amount: money("amount").notNull(),
     // When the payment happened
@@ -249,6 +280,7 @@ export const transaction = pgTable(
     ),
     index("transaction_accountId_idx").on(table.accountId),
     index("transaction_categoryId_idx").on(table.categoryId),
+    index("transaction_cardId_idx").on(table.cardId),
   ],
 );
 

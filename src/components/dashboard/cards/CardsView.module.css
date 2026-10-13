@@ -1,0 +1,219 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Cards page styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The page title with its "Add card" button, and the
+   grid of cards: each drawn like a small payment card, with this month's
+   spending and its limit underneath. Same page frame as the Bills page.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  flex: 1;
+  min-width: 0; /* lets the flex child shrink instead of overflowing */
+  padding: 2rem 3rem;
+  overflow-y: auto;
+  background-color: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Nothing here yet */
+
+.empty {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* The cards, as many side by side as fit */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The picture of the card itself */
+.plastic {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 1.7;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  background-image: linear-gradient(135deg, #0f1b31 0%, #0070da 100%);
+  overflow: hidden;
+}
+
+/* A card that was put away is grey */
+.archived .plastic {
+  background-image: linear-gradient(135deg, #4b5563 0%, #9ca3af 100%);
+}
+
+.plasticTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.cardName {
+  font-weight: 600;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.digits {
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+
+.holder {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* This month's spending against the limit */
+
+.spending {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.spendingRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.spent {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.note_near {
+  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+}
+
+.note_over {
+  color: var(--danger);
+}
+
+.barBg {
+  width: 100%;
+  height: 6px;
+  background-color: var(--hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.fill_ok {
+  background-color: var(--primary);
+}
+
+.fill_near {
+  background-color: var(--warning);
+}
+
+.fill_over {
+  background-color: var(--danger);
+}
+
+/* "View payments" and "Edit" */
+.links {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: auto;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.link {
+  color: var(--primary);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* In the window: Delete and Archive, on the left of the buttons row */
+.dialogLeft {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Screens narrower than 768px (phones and tablets) */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+}

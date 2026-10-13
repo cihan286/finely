@@ -29,6 +29,7 @@ import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import type {
   Account,
+  Card,
   Attachment,
   Category,
   CategoryRule,
@@ -47,6 +48,8 @@ export interface TransactionsQuery {
   q: string;
   account: string;
   category: string;
+  /** A payment card's ID */
+  card: string;
   from: string;
   to: string;
   page: number;
@@ -71,9 +74,9 @@ function hrefFor(
 }
 
 /** The export file for the same search and filters (every page of them) */
-function exportHref({ q, account, category, from, to }: TransactionsQuery): string {
+function exportHref({ q, account, category, card, from, to }: TransactionsQuery): string {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries({ q, account, category, from, to })) {
+  for (const [key, value] of Object.entries({ q, account, category, card, from, to })) {
     if (value) params.set(key, value);
   }
   const search = params.toString();
@@ -96,6 +99,8 @@ interface TransactionsViewProps {
   total: number;
   accounts: Account[];
   categories: Category[];
+  /** The company's payment cards, for the filter and the form */
+  cards: Card[];
   /** The company's category rules (for the import preview) */
   rules: CategoryRule[];
   /**
@@ -172,6 +177,7 @@ export default function TransactionsView({
   total,
   accounts,
   categories,
+  cards,
   rules,
   importResult,
   matchingBills,
@@ -330,6 +336,22 @@ export default function TransactionsView({
               ))}
               <option value="none">Uncategorized</option>
             </Select>
+            {/* Only once the company has cards */}
+            {cards.length > 0 && (
+              <Select
+                name="card"
+                aria-label="Card"
+                defaultValue={query.card}
+                className={styles.filter}
+              >
+                <option value="">All cards</option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} •••• {c.last4}
+                  </option>
+                ))}
+              </Select>
+            )}
             <label className={styles.dateField}>
               <span>From</span>
               <Input
@@ -511,6 +533,7 @@ export default function TransactionsView({
           currency={currency}
           accounts={accounts}
           categories={categories}
+          cards={cards}
           canManage={canManage}
           closeHref={listHref}
           today={today}

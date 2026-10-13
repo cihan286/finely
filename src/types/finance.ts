@@ -190,9 +190,28 @@ export interface BillPaymentCandidate {
   account: string;
 }
 
+// One of the company's payment cards (issued by its bank, not by Finely)
+export interface Card {
+  id: string;
+  /** What the team calls it, e.g. "Marketing card" */
+  name: string;
+  /** The last four digits of its number */
+  last4: string;
+  /** Who carries it; null for a shared card */
+  holderId: string | null;
+  /** That person's name; null for a shared card */
+  holder: string | null;
+  /** The most it should spend per calendar month; null without a limit */
+  monthlyLimit: number | null;
+  /** Whether it was put away (cancelled or expired) */
+  archived: boolean;
+}
+
 // A transaction with everything an edit form needs
 export interface TransactionDetails extends Transaction {
   categoryId: string | null;
+  /** The payment card it was paid with; null if that isn't known */
+  cardId: string | null;
   notes: string | null;
   /** How many receipts or other files are attached */
   attachmentCount: number;

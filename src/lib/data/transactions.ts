@@ -37,6 +37,7 @@ import {
 import { db } from "@/db";
 import {
   attachment,
+  card,
   category,
   financialAccount,
   prefixedId,
@@ -45,6 +46,7 @@ import {
 import { afterResponse } from "@/lib/after-response";
 import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
 import { countOf, describeChanges } from "@/lib/finance/audit";
+import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import type { TransactionExportRow } from "@/lib/finance/export";
 import { amountFromSearch } from "@/lib/finance/search";
@@ -64,6 +66,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { recordAudit } from "./audit";
 import { settleBillsWith } from "./bills";
+import { selectActiveCards } from "./cards";
 import { selectRules } from "./category-rules";
 import { alertUnusualCharges } from "./email-notifications";
 import {
@@ -94,6 +97,12 @@ export interface TransactionInput {
   originalDate?: ISODateTime | null;
   status: TransactionStatus;
   notes?: string | null;
+  /**
+   * The payment card it was paid with; null or left out when that isn't
+   * known (a new transaction then gets the card its description names, if
+   * any)
+   */
+  cardId?: string | null;
 }
 
 /** Ways to narrow down the transactions list */
@@ -106,6 +115,8 @@ export interface TransactionFilters {
   accountId?: string;
   /** A category's ID, or "none" for uncategorized transactions */
   categoryId?: string;
+  /** A payment card's ID */
+  cardId?: string;
   /** First day to include */
   from?: ISODate;
   /** Last day to include */
@@ -122,6 +133,7 @@ const transactionColumns = {
   name: transaction.name,
   categoryName: category.name,
   categoryId: transaction.categoryId,
+  cardId: transaction.cardId,
   amount: transaction.amount,
   occurredAt: transaction.occurredAt,
   status: transaction.status,
@@ -204,6 +216,9 @@ function matching(
     conditions.push(isNull(transaction.categoryId));
   } else if (filters.categoryId) {
     conditions.push(eq(transaction.categoryId, filters.categoryId));
+  }
+  if (filters.cardId) {
+    conditions.push(eq(transaction.cardId, filters.cardId));
   }
   // From the start of the first day to the end of the last, over there
   if (filters.from) {
@@ -305,11 +320,14 @@ async function parseTransactionInput(
   organizationId: string,
   timeZone: string,
   currency: string,
+  /** When editing: the card it has now, which may stay even if archived */
+  currentCardId: string | null = null,
 ) {
   const accountId = requiredText(input.accountId, "Account");
   const categoryId = optionalText(input.categoryId, "Category", 120);
+  const cardId = optionalText(input.cardId, "Card", 120);
 
-  const [accountMatches, categoryMatches] = await Promise.all([
+  const [accountMatches, categoryMatches, [chosenCard]] = await Promise.all([
     db.$count(
       financialAccount,
       and(
@@ -323,9 +341,19 @@ async function parseTransactionInput(
           and(eq(category.id, categoryId), eq(category.organizationId, organizationId)),
         )
       : Promise.resolve(1),
+    cardId
+      ? db
+          .select({ archivedAt: card.archivedAt })
+          .from(card)
+          .where(and(eq(card.id, cardId), eq(card.organizationId, organizationId)))
+      : Promise.resolve([]),
   ]);
   if (accountMatches === 0) throw new DataError("Account not found.");
   if (categoryMatches === 0) throw new DataError("Category not found.");
+  if (cardId && !chosenCard) throw new DataError("Card not found.");
+  if (chosenCard?.archivedAt && cardId !== currentCardId) {
+    throw new DataError("This card is archived. Take it back into use on the Cards page first.");
+  }
 
   const amount = money(input.amount, "Amount", currency);
   if (amount === 0) throw new DataError("Amount can't be zero.");
@@ -341,6 +369,7 @@ async function parseTransactionInput(
   return {
     accountId,
     categoryId,
+    cardId,
     name: requiredText(input.name, "Name"),
     amount,
     occurredAt,
@@ -368,6 +397,13 @@ export async function createTransaction(
     values.categoryId = categoryFromRules(
       values.name,
       await selectRules(organizationId),
+    );
+  }
+  // No card chosen: the one the description names, if it names one
+  if (values.cardId === null && values.amount < 0) {
+    values.cardId = cardFromDescription(
+      values.name,
+      await selectActiveCards(organizationId),
     );
   }
   const [row] = await db
@@ -399,15 +435,16 @@ export async function createTransaction(
 export async function updateTransaction(id: string, input: TransactionInput) {
   const actor = await getFinanceContext();
   const { organizationId, timeZone } = actor;
+  const own = and(eq(transaction.id, id), eq(transaction.organizationId, organizationId));
+  // What it was, to say what changed
+  const [before] = await selectTransactions().where(own);
   const values = await parseTransactionInput(
     input,
     organizationId,
     timeZone,
     actor.currency,
+    before?.cardId ?? null,
   );
-  const own = and(eq(transaction.id, id), eq(transaction.organizationId, organizationId));
-  // What it was, to say what changed
-  const [before] = await selectTransactions().where(own);
   const updated = await db
     .update(transaction)
     .set(values)
@@ -418,6 +455,18 @@ export async function updateTransaction(id: string, input: TransactionInput) {
   const [after] = await selectTransactions().where(own);
   if (before && after) {
     const status = (value: string) => (value === "pending" ? "pending" : "completed");
+    // The cards' names, if the card changed
+    const cardNames = new Map<string, string>();
+    if (before.cardId !== after.cardId) {
+      const ids = [before.cardId, after.cardId].filter((c): c is string => c !== null);
+      const rows = await db
+        .select({ id: card.id, name: card.name })
+        .from(card)
+        .where(and(eq(card.organizationId, organizationId), inArray(card.id, ids)));
+      for (const row of rows) cardNames.set(row.id, row.name);
+    }
+    const cardName = (cardId: string | null) =>
+      cardId ? (cardNames.get(cardId) ?? null) : null;
     const changes = describeChanges([
       { label: "description", before: before.name, after: after.name },
       {
@@ -431,6 +480,7 @@ export async function updateTransaction(id: string, input: TransactionInput) {
         after: formatDate(localDay(after.occurredAt, timeZone)),
       },
       { label: "category", before: before.categoryName, after: after.categoryName },
+      { label: "card", before: cardName(before.cardId), after: cardName(after.cardId) },
       { label: "status", before: status(before.status), after: status(after.status) },
       { label: "notes", before: before.notes, after: after.notes },
     ]);
@@ -566,7 +616,7 @@ export async function importTransactions(
     );
   }
 
-  const [accountMatches, categories, rules] = await Promise.all([
+  const [accountMatches, categories, rules, cards] = await Promise.all([
     db.$count(
       financialAccount,
       and(
@@ -579,6 +629,7 @@ export async function importTransactions(
       .from(category)
       .where(eq(category.organizationId, organizationId)),
     selectRules(organizationId),
+    selectActiveCards(organizationId),
   ]);
   if (accountMatches === 0) throw new DataError("Account not found.");
   const categoryIds = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
@@ -602,6 +653,8 @@ export async function importTransactions(
         categoryId:
           (categoryName && categoryIds.get(categoryName.toLowerCase())) ||
           categoryFromRules(name, rules),
+        // The card the bank's description names, for money out
+        cardId: amount < 0 ? cardFromDescription(name, cards) : null,
       };
     } catch (error) {
       if (error instanceof DataError) throw line(error.message);
@@ -642,6 +695,7 @@ export async function importTransactions(
       amount: p.amount,
       occurredAt: p.occurredAt,
       categoryId: p.categoryId,
+      cardId: p.cardId,
       organizationId,
       accountId,
       status: "completed",

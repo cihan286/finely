@@ -36,6 +36,7 @@ import { BankError, type BankChanges, type BankProvider } from "@/lib/bank/types
 import { zonedTime } from "@/lib/dates";
 import { countOf } from "@/lib/finance/audit";
 import { finelyAccountType, last4From, planSync } from "@/lib/finance/bank-sync";
+import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
@@ -47,6 +48,7 @@ import {
   requiredText,
 } from "./common";
 import { settleBillsWith } from "./bills";
+import { selectActiveCards } from "./cards";
 import { alertUnusualCharges } from "./email-notifications";
 
 /** A linked bank, as shown in Settings (never with its key) */
@@ -295,7 +297,7 @@ async function syncConnection(
     throw error;
   }
 
-  const [{ timeZone, currency }, existingAccounts, rules] = await Promise.all([
+  const [{ timeZone, currency }, existingAccounts, rules, cards] = await Promise.all([
     getCompanyLocale(organizationId),
     db
       .select({ id: financialAccount.id, externalId: financialAccount.externalId })
@@ -307,6 +309,7 @@ async function syncConnection(
         ),
       ),
     selectRules(organizationId),
+    selectActiveCards(organizationId),
   ]);
 
   // The bank's accounts Finely keeps, each with its Finely account
@@ -371,6 +374,8 @@ async function syncConnection(
     id: prefixedId("tx")(),
     organizationId,
     categoryId: categoryFromRules(t.name, rules),
+    // The card the bank's description names, for money out
+    cardId: t.amount < 0 ? cardFromDescription(t.name, cards) : null,
   }));
 
   const writes = [];

@@ -65,6 +65,7 @@ function toTransactionInput(formData: FormData): TransactionInput {
     originalDate: formField(formData, "originalDate") || null,
     status: formField(formData, "status") as TransactionStatus,
     notes: formField(formData, "notes"),
+    cardId: formField(formData, "cardId") || null,
   };
 }
 

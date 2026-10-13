@@ -60,7 +60,9 @@ export default function PrivacyPage() {
             enter or import: the company&apos;s name and timezone, bank account
             names with their last four digits and balances, transactions,
             the receipts and invoices attached to them, bills, categories,
-            budgets and rules, and who is on the team with which role.
+            budgets and rules, the company&apos;s payment cards (a name, the
+            last four digits and who carries each; never the full number),
+            and who is on the team with which role.
           </li>
           <li>
             <strong>Your bank&apos;s data, if you link a bank.</strong> When an
