@@ -184,6 +184,12 @@ describe("plans", () => {
       event(company.organizationId, { type: "customer.subscription.deleted" }),
     );
     expect(await getBilling()).toMatchObject({ plan: "free", memberLimit: 2, currentPeriodEnd: null });
+    // The owner hears that the plan is over
+    expect(sentEmails.at(-1)).toMatchObject({
+      to: "paying-co@example.com",
+      subject: "paying-co is back on Finely's Free plan",
+    });
+    expect(sentEmails.length).toBe(2);
 
     expect((await listAuditLog({ area: "settings" })).entries.map((e) => [e.actor, e.summary])).toEqual([
       ["Finely", "The company's plan changed from Growth to Free"],

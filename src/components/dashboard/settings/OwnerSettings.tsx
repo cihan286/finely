@@ -133,6 +133,26 @@ export default function OwnerSettings({
             can&apos;t be undone.
           </p>
         </div>
+        {/* Plain links: they answer with files, not pages */}
+        <p className={styles.note}>
+          Want to keep a copy? Download the{" "}
+          <a href="/dashboard/transactions/export" download className={styles.exportLink}>
+            transactions
+          </a>
+          , the{" "}
+          <a href="/dashboard/bills/export" download className={styles.exportLink}>
+            bills
+          </a>{" "}
+          and the{" "}
+          <a
+            href="/dashboard/settings/activity/export"
+            download
+            className={styles.exportLink}
+          >
+            activity log
+          </a>{" "}
+          first. Attached files aren&apos;t in them.
+        </p>
         <form className={styles.form} onSubmit={handleDelete}>
           <Field
             label={`Type “${organizationName}” to confirm`}

@@ -44,6 +44,47 @@
   font-size: 0.95rem;
 }
 
+/* Search box */
+
+.searchBox {
+  position: relative;
+  max-width: 420px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.search {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.searchNote {
+  margin-top: -0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.tiles[hidden] {
+  display: none;
+}
+
 /* A link inside a message box */
 .messageLink {
   font-weight: 600;

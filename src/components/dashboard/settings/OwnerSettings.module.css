@@ -25,6 +25,13 @@
   color: var(--text-muted);
 }
 
+/* "Download the transactions" before deleting */
+.exportLink {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
 /* Deleting can't be undone: the card and its button say so in red */
 .danger {
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);

@@ -11,18 +11,22 @@
 // overdue bill, a late regular payment and a pending payment from the past
 // are expected today (pending payments aren't in the balance yet). A regular
 // payment that is already tracked as an unpaid bill is counted once, as the
-// bill. Bills and regular payments that come back within the 30 days are
+// bill, and so is a pending payment that looks like an unpaid bill's (the
+// same amount to the same vendor, within 45 days of the due date). Bills and regular payments that come back within the 30 days are
 // counted each time. It's an estimate: one-off income and spending aren't
 // in it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { addDays } from "@/lib/dates";
+import { addDays, daysBetween } from "@/lib/dates";
 import { nextDueDate } from "@/lib/finance/bills";
+import { sameVendor } from "@/lib/finance/vendors";
 import { billKey, type RecurringPayment } from "@/lib/finance/recurring";
 import type { BillRepeat, ISODate } from "@/types/finance";
 
 /** How far ahead the forecast looks, in days */
 export const FORECAST_DAYS = 30;
+// A pending payment this close to a bill's due date can be that bill's
+const PENDING_BILL_DAYS = 45;
 
 export interface ForecastEvent {
   day: ISODate;
@@ -108,8 +112,24 @@ export function buildForecast({
     );
   }
 
+  // Each bill can be one pending payment's, not several
+  const paidByPending = new Set<number>();
+  const isBillPayment = (payment: { name: string; amount: number; day: ISODate }) => {
+    const index = bills.findIndex(
+      (bill, i) =>
+        !paidByPending.has(i) &&
+        Math.round(bill.amount * 100) === Math.round(-payment.amount * 100) &&
+        Math.abs(daysBetween(bill.dueDate, payment.day)) <= PENDING_BILL_DAYS &&
+        sameVendor(bill.name, payment.name),
+    );
+    if (index >= 0) paidByPending.add(index);
+    return index >= 0;
+  };
+
   for (const payment of pending) {
     if (payment.day > until) continue;
+    // Already there as a bill
+    if (isBillPayment(payment)) continue;
     events.push({
       // One dated in the past can go through any moment
       day: payment.day < today ? today : payment.day,

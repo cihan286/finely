@@ -51,7 +51,7 @@ import {
 } from "@/lib/finance/plans";
 import { afterResponse } from "@/lib/after-response";
 import { sendEmail } from "@/lib/email/send";
-import { paymentFailedEmail } from "@/lib/email/templates";
+import { paymentFailedEmail, planEndedEmail } from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
 import { DataError } from "./common";
@@ -329,10 +329,15 @@ async function saveSubscription(
   // A payment just failed (Stripe keeps trying for a while): tell the owner,
   // once, so the plan isn't lost over an expired card
   if (saved[0].status === "past_due" && previous?.status !== "past_due") {
-    await afterResponse(() => notifyPaymentFailed(organizationId));
+    await afterResponse(() => notifyOwner(organizationId, "payment-failed"));
   }
 
   const after = effectivePlan(saved[0]);
+  // The paid plan is over (cancelled, or Stripe gave up on the payment):
+  // the owner should hear it from us, not find out when an invitation fails
+  if (after === "free" && before !== "free") {
+    await afterResponse(() => notifyOwner(organizationId, PLANS[before].name));
+  }
   if (after !== before) {
     await recordAudit(
       { organizationId, userId: null },
@@ -346,9 +351,10 @@ async function saveSubscription(
   return true;
 }
 
-// Emails a company's owner that the payment for its plan failed. Never
-// throws: it runs after Stripe's message was answered.
-async function notifyPaymentFailed(organizationId: string) {
+// Emails a company's owner that the payment for its plan failed, or that
+// the plan (given by name) has ended. Never throws: it runs after Stripe's
+// message was answered.
+async function notifyOwner(organizationId: string, about: "payment-failed" | string) {
   try {
     const [owner] = await db
       .select({ name: user.name, email: user.email, company: organization.name })
@@ -356,9 +362,14 @@ async function notifyPaymentFailed(organizationId: string) {
       .innerJoin(user, eq(member.userId, user.id))
       .innerJoin(organization, eq(member.organizationId, organization.id))
       .where(and(eq(member.organizationId, organizationId), eq(member.role, "owner")));
-    if (owner) await sendEmail(paymentFailedEmail(owner, owner.company));
+    if (!owner) return;
+    await sendEmail(
+      about === "payment-failed"
+        ? paymentFailedEmail(owner, owner.company)
+        : planEndedEmail(owner, owner.company, about, PLANS.free.members ?? 0),
+    );
   } catch (error) {
-    console.error("[billing] Could not email the owner about a failed payment:", error);
+    console.error("[billing] Could not email the owner about their plan:", error);
   }
 }
 

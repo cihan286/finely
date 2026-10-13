@@ -51,6 +51,8 @@ export default async function BillsPage({
   const editId = single(params.edit);
   const payId = single(params.pay);
   const undoId = single(params.undo);
+  // ?q=rent narrows both lists down
+  const search = single(params.q).trim().slice(0, 100);
   const canManage = canManageFinances(role);
 
   const [
@@ -63,7 +65,7 @@ export default async function BillsPage({
     recurring,
   ] = await Promise.all([
     // ?history=1 lists every paid bill, not just the latest
-    listBills({ allPaid: Boolean(single(params.history)) }),
+    listBills({ allPaid: Boolean(single(params.history)), search }),
     listAccounts(),
     listCategories(),
     editId || payId || undoId ? getBill(editId || payId || undoId) : null,
@@ -105,6 +107,7 @@ export default async function BillsPage({
       unpaid={unpaid}
       paid={paid}
       possiblyPaid={possiblyPaid}
+      search={search}
       morePaid={morePaid}
       allPaid={Boolean(single(params.history))}
       accounts={accounts}

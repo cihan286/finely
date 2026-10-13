@@ -36,7 +36,7 @@ import { getBilling } from "@/lib/data/billing";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getEmailPreferences } from "@/lib/data/email-notifications";
-import { listOwnedCompanies } from "@/lib/data/person";
+import { hasPassword, listOwnedCompanies } from "@/lib/data/person";
 import { getCompanySettings } from "@/lib/data/settings";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localDay } from "@/lib/dates";
@@ -69,6 +69,7 @@ export default async function SettingsPage({
     banks,
     billing,
     ownedCompanies,
+    passwordSet,
   ] = await Promise.all([
     listAccounts(),
     listCategories(),
@@ -78,6 +79,7 @@ export default async function SettingsPage({
     listBankConnections(),
     getBilling(),
     listOwnedCompanies(),
+    hasPassword(),
   ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
@@ -211,6 +213,7 @@ export default async function SettingsPage({
       <PersonSettings
         name={user.name}
         email={user.email}
+        hasPassword={passwordSet}
         ownedCompanies={ownedCompanies}
       />
     </main>
