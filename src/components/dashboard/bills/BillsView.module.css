@@ -26,6 +26,12 @@
   gap: 1rem;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .title {
   font-size: 1.75rem;
   font-weight: 700;
@@ -262,6 +268,13 @@
 .payLink:hover {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+/* "View payment" and "Undo", side by side */
+.rowLinks {
+  display: inline-flex;
+  gap: 0.9rem;
+  white-space: nowrap;
 }
 
 .viewLink {

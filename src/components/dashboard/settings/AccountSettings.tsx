@@ -24,7 +24,7 @@ import Message from "@/components/common/form/Message";
 import { submitAccount } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Account } from "@/types/finance";
-import { formatCurrency } from "@/lib/format";
+import { amountInputProps, formatCurrency } from "@/lib/format";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
 import styles from "./AccountSettings.module.css";
@@ -124,8 +124,9 @@ export default function AccountSettings({
               <Input
                 name="openingBalance"
                 type="number"
-                step="0.01"
-                placeholder="0.00"
+                // No minimum: an account can start below zero
+                step={amountInputProps(currency).step}
+                placeholder={amountInputProps(currency).placeholder}
               />
             </Field>
             <Button

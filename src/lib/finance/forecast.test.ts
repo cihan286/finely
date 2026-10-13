@@ -20,6 +20,26 @@ const regular = (overrides: Partial<RecurringPayment>): RecurringPayment => ({
 });
 
 describe("buildForecast", () => {
+  test("counts pending payments, late ones today, and skips ones after the 30 days", () => {
+    const forecast = buildForecast({
+      today,
+      balance: 1000,
+      bills: [],
+      pending: [
+        { name: "Laptop", amount: -1500, day: "2026-10-09" },
+        { name: "Invoice 12", amount: 800, day: "2026-10-20" },
+        { name: "Far off", amount: -50, day: "2026-12-01" },
+      ],
+      recurring: [],
+    });
+    expect(forecast.events).toEqual([
+      { day: today, name: "Laptop", amount: -1500, source: "pending", estimated: false },
+      { day: "2026-10-20", name: "Invoice 12", amount: 800, source: "pending", estimated: false },
+    ]);
+    expect(forecast.lowest).toEqual({ balance: -500, day: today });
+    expect(forecast.endBalance).toBe(300);
+  });
+
   test("nothing expected: the balance stays where it is", () => {
     const forecast = buildForecast({ today, balance: 1000, bills: [], recurring: [] });
     expect(forecast).toEqual({

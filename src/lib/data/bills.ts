@@ -3,9 +3,12 @@
 //
 // In plain words: lists what the company still owes (soonest first) and what
 // it paid recently, and lets people add, change and pay bills. Paying a bill
-// records the payment as a transaction in the chosen account and, if the
-// bill repeats, adds the next one. Everyone on the team can add, edit and
-// pay bills; only owners and admins can delete them.
+// records the payment as a transaction in the chosen account — or, when the
+// payment is already among the transactions (it came with a bank statement),
+// points the bill at that one — and, if the bill repeats, adds the next one.
+// A payment can be undone, which makes the bill owed again. Everyone on the
+// team can add, edit and pay bills; only owners and admins can delete them
+// or undo a payment.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
@@ -16,7 +19,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, asc, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNotNull,
+  isNull,
+  lt,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   bill,
@@ -25,13 +39,14 @@ import {
   prefixedId,
   transaction,
 } from "@/db/finance";
-import { localDay, zonedTime } from "@/lib/dates";
+import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
 import { describeChanges } from "@/lib/finance/audit";
 import { BILL_REPEAT_LABELS, nextDueDate } from "@/lib/finance/bills";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import {
   BILL_REPEATS,
   type Bill,
+  type BillPaymentCandidate,
   type BillRepeat,
   type ISODate,
 } from "@/types/finance";
@@ -51,6 +66,9 @@ import {
 /** How many paid bills the list shows, most recently paid first */
 export const PAID_BILLS_SHOWN = 20;
 
+/** The most bills an export file holds */
+const MAX_EXPORT_BILLS = 20_000;
+
 /** What a person fills in when adding or editing a bill */
 export interface BillInput {
   name: string;
@@ -62,13 +80,29 @@ export interface BillInput {
   notes?: string | null;
 }
 
-/** What a person fills in when marking a bill as paid */
-export interface BillPayment {
-  /** The account the money left */
-  accountId: string;
-  /** The day it was paid, in the company's timezone */
-  date: ISODate;
-}
+/**
+ * A transaction counts as a possible payment of a bill when it happened
+ * within this many days of the due date, before or after
+ */
+export const PAYMENT_MATCH_DAYS = 45;
+/** How many possible payments the "Mark as paid" window offers */
+const MAX_PAYMENT_CANDIDATES = 5;
+
+/**
+ * What a person fills in when marking a bill as paid: where and when the
+ * money left, or the transaction that already is the payment
+ */
+export type BillPayment =
+  | {
+      /** The account the money left */
+      accountId: string;
+      /** The day it was paid, in the company's timezone */
+      date: ISODate;
+    }
+  | {
+      /** A transaction of the company that is this bill's payment */
+      transactionId: string;
+    };
 
 // Bills with their category's name; add .where() etc. to narrow down
 function selectBills() {
@@ -84,6 +118,7 @@ function selectBills() {
       notes: bill.notes,
       paidAt: bill.paidAt,
       transactionId: bill.transactionId,
+      paymentLinked: bill.paymentLinked,
     })
     .from(bill)
     .leftJoin(category, eq(bill.categoryId, category.id));
@@ -122,6 +157,25 @@ export async function listBills(): Promise<{ unpaid: Bill[]; paid: Bill[] }> {
   };
 }
 
+/** Every bill for the export file: what's still owed first, then the paid ones */
+export async function exportBills(): Promise<{ bills: Bill[]; today: ISODate }> {
+  const { organizationId, timeZone } = await getFinanceContext();
+  const rows = await selectBills()
+    .where(eq(bill.organizationId, organizationId))
+    .orderBy(
+      // Unpaid (no payment day) first
+      sql`${bill.paidAt} is not null`,
+      desc(bill.paidAt),
+      asc(bill.dueDate),
+      asc(bill.createdAt),
+    )
+    .limit(MAX_EXPORT_BILLS);
+  return {
+    bills: rows.map((row) => toBill(row, timeZone)),
+    today: todayIn(timeZone),
+  };
+}
+
 /** One bill, or null if the company has no bill with this ID */
 export async function getBill(id: string): Promise<Bill | null> {
   const { organizationId, timeZone } = await getFinanceContext();
@@ -129,6 +183,76 @@ export async function getBill(id: string): Promise<Bill | null> {
     and(eq(bill.id, id), eq(bill.organizationId, organizationId)),
   );
   return row ? toBill(row, timeZone) : null;
+}
+
+// Transactions that could be the payment of a bill: money out of exactly
+// its amount, around its due date, that no bill points at yet. The closest
+// to the due date first.
+async function selectPaymentCandidates(
+  organizationId: string,
+  timeZone: string,
+  owed: { amount: number; dueDate: ISODate },
+) {
+  const rows = await db
+    .select({
+      id: transaction.id,
+      name: transaction.name,
+      occurredAt: transaction.occurredAt,
+      account: financialAccount.name,
+    })
+    .from(transaction)
+    .innerJoin(financialAccount, eq(transaction.accountId, financialAccount.id))
+    .where(
+      and(
+        eq(transaction.organizationId, organizationId),
+        eq(transaction.amount, -owed.amount),
+        gte(
+          transaction.occurredAt,
+          startOfDay(addDays(owed.dueDate, -PAYMENT_MATCH_DAYS), timeZone),
+        ),
+        lt(
+          transaction.occurredAt,
+          startOfDay(addDays(owed.dueDate, PAYMENT_MATCH_DAYS + 1), timeZone),
+        ),
+        notExists(
+          db
+            .select({ id: bill.id })
+            .from(bill)
+            .where(eq(bill.transactionId, transaction.id)),
+        ),
+      ),
+    );
+  const due = zonedTime(owed.dueDate, "12:00", timeZone).getTime();
+  const distance = (row: (typeof rows)[number]) =>
+    Math.abs(row.occurredAt.getTime() - due);
+  return rows.sort((a, b) => distance(a) - distance(b) || a.id.localeCompare(b.id));
+}
+
+/**
+ * The transactions that look like the payment of an unpaid bill (see
+ * selectPaymentCandidates), for the "Mark as paid" window. Empty for a bill
+ * that is paid or isn't the company's.
+ */
+export async function listBillPaymentCandidates(
+  id: string,
+): Promise<BillPaymentCandidate[]> {
+  const { organizationId, timeZone } = await getFinanceContext();
+  const [owed] = await db
+    .select({ amount: bill.amount, dueDate: bill.dueDate })
+    .from(bill)
+    .where(
+      and(
+        eq(bill.id, id),
+        eq(bill.organizationId, organizationId),
+        isNull(bill.paidAt),
+      ),
+    );
+  if (!owed) return [];
+  const rows = await selectPaymentCandidates(organizationId, timeZone, owed);
+  return rows.slice(0, MAX_PAYMENT_CANDIDATES).map(({ occurredAt, ...row }) => ({
+    ...row,
+    day: localDay(occurredAt, timeZone),
+  }));
 }
 
 // Checks what was typed into the bill form, including that the chosen
@@ -259,10 +383,13 @@ export async function deleteBill(id: string) {
 }
 
 /**
- * Marks a bill as paid: records the payment as a completed transaction in
- * the chosen account and, if the bill repeats, adds the next one. Without a
- * category, the payment gets one from the company's category rules if a rule
- * fits. Returns the next bill's due date (null if it doesn't repeat).
+ * Marks a bill as paid and, if the bill repeats, adds the next one. The
+ * payment is either recorded as a completed transaction in the chosen
+ * account (without a category, it gets one from the company's category
+ * rules if a rule fits), or it is a transaction that's already there: one
+ * of the bill's possible payments (see selectPaymentCandidates), which is
+ * left as it is. Returns the next bill's due date (null if it doesn't
+ * repeat).
  */
 export async function payBill(
   id: string,
@@ -270,55 +397,68 @@ export async function payBill(
 ): Promise<{ transactionId: string; nextDueDate: ISODate | null }> {
   const actor = await getFinanceContext();
   const { organizationId, userId, timeZone } = actor;
-  const accountId = requiredText(payment.accountId, "Account");
-  const day = isoDay(payment.date, "Payment date");
+  const existingId =
+    "transactionId" in payment
+      ? requiredText(payment.transactionId, "Payment")
+      : null;
+  const accountId =
+    "transactionId" in payment ? null : requiredText(payment.accountId, "Account");
+  const day = "transactionId" in payment ? null : isoDay(payment.date, "Payment date");
 
-  const [[row], accountMatches] = await Promise.all([
-    db
-      .select()
-      .from(bill)
-      .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId))),
-    db.$count(
-      financialAccount,
-      and(
-        eq(financialAccount.id, accountId),
-        eq(financialAccount.organizationId, organizationId),
-      ),
-    ),
-  ]);
+  const [row] = await db
+    .select()
+    .from(bill)
+    .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId)));
   if (!row) throw new DataError("Bill not found.");
   if (row.paidAt) throw new DataError("This bill is already paid.");
-  if (accountMatches === 0) throw new DataError("Account not found.");
 
-  const paidAt = zonedTime(day, "12:00", timeZone);
-  const transactionId = prefixedId("tx")();
+  let paidAt: Date;
+  let transactionId: string;
+  let recordPayment = null;
+  if (existingId) {
+    // Only what the window offered: the company's own, of the bill's
+    // amount, and not another bill's payment already
+    const candidates = await selectPaymentCandidates(organizationId, timeZone, row);
+    const existing = candidates.find((candidate) => candidate.id === existingId);
+    if (!existing) {
+      throw new DataError("That transaction can't be this bill's payment.");
+    }
+    paidAt = existing.occurredAt;
+    transactionId = existing.id;
+  } else {
+    const accountMatches = await db.$count(
+      financialAccount,
+      and(
+        eq(financialAccount.id, accountId!),
+        eq(financialAccount.organizationId, organizationId),
+      ),
+    );
+    if (accountMatches === 0) throw new DataError("Account not found.");
+    paidAt = zonedTime(day!, "12:00", timeZone);
+    transactionId = prefixedId("tx")();
+    recordPayment = db.insert(transaction).values({
+      id: transactionId,
+      organizationId,
+      accountId: accountId!,
+      categoryId:
+        row.categoryId ??
+        categoryFromRules(row.name, await selectRules(organizationId)),
+      name: row.name,
+      amount: -row.amount,
+      occurredAt: paidAt,
+      status: "completed",
+      notes: row.notes,
+      createdById: userId,
+    });
+  }
   const next = nextDueDate(row.dueDate, row.repeat as BillRepeat);
 
-  const recordPayment = db.insert(transaction).values({
-    id: transactionId,
-    organizationId,
-    accountId,
-    categoryId:
-      row.categoryId ??
-      categoryFromRules(row.name, await selectRules(organizationId)),
-    name: row.name,
-    amount: -row.amount,
-    occurredAt: paidAt,
-    status: "completed",
-    notes: row.notes,
-    createdById: userId,
-  });
   const markPaid = db
     .update(bill)
-    .set({ paidAt, transactionId })
+    .set({ paidAt, transactionId, paymentLinked: recordPayment === null })
     .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId)));
-  // All together or not at all: a payment without a paid bill would be
-  // paid twice
-  if (next) {
-    await db.batch([
-      recordPayment,
-      markPaid,
-      db.insert(bill).values({
+  const addNext = next
+    ? db.insert(bill).values({
         organizationId,
         name: row.name,
         amount: row.amount,
@@ -327,16 +467,83 @@ export async function payBill(
         categoryId: row.categoryId,
         notes: row.notes,
         createdById: userId,
-      }),
-    ]);
-  } else {
-    await db.batch([recordPayment, markPaid]);
-  }
+      })
+    : null;
+  // All together or not at all: a payment without a paid bill would be
+  // paid twice
+  const steps = [recordPayment, markPaid, addNext].filter((step) => step !== null);
+  await db.batch(steps as [(typeof steps)[number], ...typeof steps]);
   await recordAudit(actor, {
     area: "bill",
     action: "paid",
     entityId: id,
-    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })}) as paid on ${formatDate(day)}`,
+    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })}) as paid on ${formatDate(localDay(paidAt, timeZone))}${recordPayment ? "" : ", with a payment that was already in the transactions"}`,
   });
   return { transactionId, nextDueDate: next };
+}
+
+/**
+ * Undoes a bill's payment (owners and admins only): the bill is owed again.
+ * The transaction that "Mark as paid" recorded is deleted; a payment that
+ * was already in the transactions stays there. The next bill that was added
+ * for a repeating one is removed too, if nobody touched it since. Returns
+ * whether a transaction was deleted.
+ */
+export async function undoBillPayment(id: string): Promise<{ deletedPayment: boolean }> {
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
+  const own = and(eq(bill.id, id), eq(bill.organizationId, organizationId));
+  const [row] = await db.select().from(bill).where(own);
+  if (!row) throw new DataError("Bill not found.");
+  if (!row.paidAt) throw new DataError("This bill isn't paid.");
+
+  // The bill that paying this one added, as long as it's still as it was
+  const next = nextDueDate(row.dueDate, row.repeat as BillRepeat);
+  const [followUp] = next
+    ? await db
+        .select({ id: bill.id })
+        .from(bill)
+        .where(
+          and(
+            eq(bill.organizationId, organizationId),
+            isNull(bill.paidAt),
+            eq(bill.name, row.name),
+            eq(bill.amount, row.amount),
+            eq(bill.dueDate, next),
+            eq(bill.repeat, row.repeat),
+          ),
+        )
+        .orderBy(desc(bill.createdAt))
+        .limit(1)
+    : [];
+
+  const deletePayment =
+    row.transactionId && !row.paymentLinked
+      ? db
+          .delete(transaction)
+          .where(
+            and(
+              eq(transaction.id, row.transactionId),
+              eq(transaction.organizationId, organizationId),
+            ),
+          )
+      : null;
+  const steps = [
+    // First, while it still says which transaction it is
+    db
+      .update(bill)
+      .set({ paidAt: null, transactionId: null, paymentLinked: false })
+      .where(own),
+    deletePayment,
+    followUp ? db.delete(bill).where(eq(bill.id, followUp.id)) : null,
+  ].filter((step) => step !== null);
+  await db.batch(steps as [(typeof steps)[number], ...typeof steps]);
+
+  await recordAudit(actor, {
+    area: "bill",
+    action: "payment-undone",
+    entityId: id,
+    summary: `Undid the payment of the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })})${deletePayment ? " and deleted its transaction" : ""}`,
+  });
+  return { deletedPayment: deletePayment !== null };
 }

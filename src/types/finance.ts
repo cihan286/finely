@@ -171,6 +171,23 @@ export interface Bill {
   paidDay: ISODate | null;
   /** The payment's transaction; null if unpaid or if it was deleted since */
   transactionId: string | null;
+  /**
+   * Whether the payment is a transaction that was already there (imported or
+   * entered by hand), not one that marking the bill as paid recorded
+   */
+  paymentLinked: boolean;
+}
+
+// A transaction that looks like the payment of a bill: money out of the same
+// amount, around the due date
+export interface BillPaymentCandidate {
+  /** The transaction's ID */
+  id: string;
+  name: string;
+  /** The calendar day it happened on, in the company's timezone */
+  day: ISODate;
+  /** The account's name */
+  account: string;
 }
 
 // A transaction with everything an edit form needs

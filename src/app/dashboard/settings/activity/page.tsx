@@ -5,16 +5,19 @@
 // transaction that was deleted, a bill that was paid, a teammate whose role
 // changed — with the moment it happened in the company's timezone. Only
 // owners and admins can read it. It can be narrowed down to one kind of
-// thing, e.g. only transactions.
+// thing, e.g. only transactions, searched (part of what happened, or of a
+// person's name) and saved as a file.
 //
-// For developers: the filter and the page number live in the address
-// (?area=transaction&page=2). listAuditLog() refuses members; they see an
+// For developers: the filter, the search and the page number live in the
+// address (?area=transaction&q=rent&page=2); the search box is a plain form
+// that reloads the page. listAuditLog() refuses members; they see an
 // explanation instead of an error page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
+import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { listAuditLog } from "@/lib/data/audit";
 import { getCompanyTimeZone } from "@/lib/data/common";
@@ -36,13 +39,15 @@ const PATH = "/dashboard/settings/activity";
 const single = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? "";
 
-// This page's address for a filter and a page number
-function hrefFor(area: string, page: number): string {
+// This page's address (or its export file's) for a filter, a search and a
+// page number
+function hrefFor(area: string, q: string, page: number, path = PATH): string {
   const params = new URLSearchParams();
   if (area) params.set("area", area);
+  if (q) params.set("q", q);
   if (page > 1) params.set("page", String(page));
   const search = params.toString();
-  return search ? `${PATH}?${search}` : PATH;
+  return search ? `${path}?${search}` : path;
 }
 
 export default async function ActivityPage({
@@ -56,6 +61,7 @@ export default async function ActivityPage({
   const params = await searchParams;
   const requested = single(params.area);
   const area = requested in AUDIT_AREAS ? requested : "";
+  const q = single(params.q).trim().slice(0, 100);
   const page = Math.max(Math.trunc(Number(single(params.page))) || 1, 1);
 
   const header = (
@@ -80,7 +86,12 @@ export default async function ActivityPage({
   }
 
   const [{ entries, total }, timeZone] = await Promise.all([
-    listAuditLog({ area, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    listAuditLog({
+      area,
+      search: q,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
     getCompanyTimeZone(organization.id),
   ]);
   const firstShown = (page - 1) * PAGE_SIZE + 1;
@@ -93,7 +104,7 @@ export default async function ActivityPage({
       {/* One kind of thing, or everything */}
       <nav className={styles.filters} aria-label="Show">
         <Link
-          href={hrefFor("", 1)}
+          href={hrefFor("", q, 1)}
           className={`${styles.filter} ${area === "" ? styles.filterActive : ""}`}
           aria-current={area === "" ? "page" : undefined}
         >
@@ -102,7 +113,7 @@ export default async function ActivityPage({
         {(Object.keys(AUDIT_AREAS) as AuditArea[]).map((key) => (
           <Link
             key={key}
-            href={hrefFor(key, 1)}
+            href={hrefFor(key, q, 1)}
             className={`${styles.filter} ${area === key ? styles.filterActive : ""}`}
             aria-current={area === key ? "page" : undefined}
           >
@@ -111,12 +122,41 @@ export default async function ActivityPage({
         ))}
       </nav>
 
+      <div className={styles.tools}>
+        {/* Submitting reloads the page with ?q=… (and the filter kept) */}
+        <form action={PATH} className={styles.searchBox} role="search">
+          {area && <input type="hidden" name="area" value={area} />}
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            maxLength={100}
+            placeholder="Search what happened or who did it"
+            aria-label="Search the activity log"
+            className={styles.search}
+          />
+        </form>
+        {total > 0 && (
+          <Button
+            href={hrefFor(area, q, 1, `${PATH}/export`)}
+            download
+            variant="outline"
+            size="sm"
+            text="Export CSV"
+            icon={<Download size={16} />}
+          />
+        )}
+      </div>
+
       <section className={styles.card}>
         {entries.length === 0 ? (
           <p className={styles.empty}>
             {page > 1
               ? "There's nothing on this page."
-              : area
+              : q
+                ? "Nothing matches your search."
+                : area
                 ? "Nothing has been recorded here yet."
                 : "Nothing has been recorded yet. Changes made from now on will show up here."}
           </p>
@@ -145,12 +185,12 @@ export default async function ActivityPage({
               </span>
               <div className={styles.pageLinks}>
                 {page > 1 && (
-                  <Link href={hrefFor(area, page - 1)} className={styles.pageLink}>
+                  <Link href={hrefFor(area, q, page - 1)} className={styles.pageLink}>
                     <ChevronLeft size={16} /> Newer
                   </Link>
                 )}
                 {lastShown < total && (
-                  <Link href={hrefFor(area, page + 1)} className={styles.pageLink}>
+                  <Link href={hrefFor(area, q, page + 1)} className={styles.pageLink}>
                     Older <ChevronRight size={16} />
                   </Link>
                 )}

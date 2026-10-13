@@ -31,6 +31,7 @@ import { Input, Select, Textarea } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
+import { amountInputProps } from "@/lib/format";
 import { initialActionState } from "@/lib/action-state";
 import {
   MAX_RULE_TEXT_LENGTH,
@@ -175,10 +176,7 @@ function TransactionForm({
           <Input
             name="amount"
             type="number"
-            inputMode="decimal"
-            min="0.01"
-            step="0.01"
-            placeholder="0.00"
+            {...amountInputProps(currency)}
             defaultValue={transaction ? Math.abs(transaction.amount) : ""}
             required
             autoFocus

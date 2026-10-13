@@ -6,7 +6,8 @@
 // an admin, and can then leave like anyone else). Deleting the company
 // removes it for everyone, with all its accounts, transactions, bills,
 // categories and rules. That can't be undone, so the owner has to type the
-// company's name first.
+// company's name first. The new owner, and the team of a deleted company,
+// get an email about it.
 //
 // For developers: server-only. Everything else about teams (inviting,
 // roles, removing, renaming) goes through Better Auth; these two are done
@@ -18,7 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import {
   attachment,
@@ -35,6 +36,12 @@ import {
   transaction,
 } from "@/db/finance";
 import { invitation, member, organization, session, user } from "@/db/schema";
+import { afterResponse } from "@/lib/after-response";
+import { sendEmail } from "@/lib/email/send";
+import {
+  companyDeletedEmail,
+  ownershipTransferredEmail,
+} from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
 import { cancelSubscriptionFor } from "./billing";
@@ -60,7 +67,12 @@ export async function transferOwnership(memberId: string) {
   }
 
   const [target] = await db
-    .select({ id: member.id, userId: member.userId, name: user.name })
+    .select({
+      id: member.id,
+      userId: member.userId,
+      name: user.name,
+      email: user.email,
+    })
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
     .where(and(eq(member.id, memberId), eq(member.organizationId, company.id)));
@@ -87,6 +99,10 @@ export async function transferOwnership(memberId: string) {
       summary: `Handed the company over to ${target.name} and became an admin`,
     },
   );
+  // sendEmail() never throws
+  await afterResponse(async () => {
+    await sendEmail(ownershipTransferredEmail(target, company.name, me.name));
+  });
 }
 
 /**
@@ -94,12 +110,18 @@ export async function transferOwnership(memberId: string) {
  * only when `confirmation` is the company's name. Can't be undone.
  */
 export async function deleteCompany(confirmation: string) {
-  const { organization: company } = await requireOwner();
+  const { user: me, organization: company } = await requireOwner();
   if (typeof confirmation !== "string" || confirmation.trim() !== company.name.trim()) {
     throw new DataError("Type the company's name exactly to confirm.");
   }
 
   const id = company.id;
+  // Everyone else on the team, to tell them afterwards
+  const team = await db
+    .select({ name: user.name, email: user.email })
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(and(eq(member.organizationId, id), ne(member.userId, me.id)));
   // First, so nobody keeps paying for a company that no longer exists; if
   // Stripe can't be told, the company stays
   await cancelSubscriptionFor(id);
@@ -135,4 +157,10 @@ export async function deleteCompany(confirmation: string) {
       .where(eq(user.lastOrganizationId, id)),
     db.delete(organization).where(eq(organization.id, id)),
   ]);
+  // sendEmail() never throws
+  await afterResponse(async () => {
+    for (const person of team) {
+      await sendEmail(companyDeletedEmail(person, company.name, me.name));
+    }
+  });
 }

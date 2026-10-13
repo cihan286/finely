@@ -1,10 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Regular payments and the cash-flow forecast: fetching what they need
 //
-// In plain words: reads the last 400 days of completed transactions to spot
+// In plain words: reads the last 26 months of completed transactions to spot
 // payments that come back regularly (lib/finance/recurring.ts), and combines
-// them with the unpaid bills and today's balances into the forecast for the
-// next 30 days (lib/finance/forecast.ts).
+// them with the unpaid bills, the payments still pending and today's
+// balances into the forecast for the next 30 days (lib/finance/forecast.ts).
 //
 // For developers: server-only; finds the company itself via
 // getFinanceContext(). The history is read once per request (React cache),
@@ -37,11 +37,11 @@ export interface RecurringPaymentDetails extends RecurringPayment {
   billed: boolean;
 }
 
-// The company's regular payments and unpaid bills, and when either last
-// changed. Read once per request.
+// The company's regular payments, unpaid bills and pending payments, and
+// when any of them last changed. Read once per request.
 const loadRecurring = cache(async (organizationId: string, timeZone: string) => {
   const today = todayIn(timeZone);
-  const [history, bills] = await Promise.all([
+  const [history, bills, pending] = await Promise.all([
     db
       .select({
         name: transaction.name,
@@ -73,6 +73,20 @@ const loadRecurring = cache(async (organizationId: string, timeZone: string) => 
       })
       .from(bill)
       .where(and(eq(bill.organizationId, organizationId), isNull(bill.paidAt))),
+    db
+      .select({
+        name: transaction.name,
+        amount: transaction.amount,
+        occurredAt: transaction.occurredAt,
+        createdAt: transaction.createdAt,
+      })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.organizationId, organizationId),
+          eq(transaction.status, "pending"),
+        ),
+      ),
   ]);
 
   const categoryNames = new Map(history.map((h) => [h.categoryId, h.category]));
@@ -91,11 +105,18 @@ const loadRecurring = cache(async (organizationId: string, timeZone: string) => 
     billed: billed.has(payment.key),
   }));
 
-  const changes = [...history, ...bills].map((row) => row.createdAt.getTime());
+  const changes = [...history, ...bills, ...pending].map((row) =>
+    row.createdAt.getTime(),
+  );
   return {
     today,
     payments,
     bills: bills.map((b) => ({ ...b, repeat: b.repeat as BillRepeat })),
+    pending: pending.map((p) => ({
+      name: p.name,
+      amount: p.amount,
+      day: localDay(p.occurredAt, timeZone),
+    })),
     /** When a transaction or unpaid bill was last entered; null without any */
     changedAt: changes.length > 0 ? new Date(Math.max(...changes)) : null,
   };
@@ -112,13 +133,13 @@ export async function getRecurring(): Promise<{
 }
 
 /**
- * The estimate of the next 30 days: today's balances plus unpaid bills and
- * regular payments. `changedAt` is when its ingredients last changed (for
+ * The estimate of the next 30 days: today's balances plus unpaid bills,
+ * pending payments and regular payments. `changedAt` is when its ingredients last changed (for
  * the notifications).
  */
 export async function getForecast(): Promise<Forecast & { changedAt: Date | null }> {
   const { organizationId, timeZone } = await getFinanceContext();
-  const [{ today, payments, bills, changedAt }, accounts] = await Promise.all([
+  const [{ today, payments, bills, pending, changedAt }, accounts] = await Promise.all([
     loadRecurring(organizationId, timeZone),
     listAccounts(),
   ]);
@@ -127,6 +148,7 @@ export async function getForecast(): Promise<Forecast & { changedAt: Date | null
       today,
       balance: accounts.reduce((sum, account) => sum + account.balance, 0),
       bills,
+      pending,
       recurring: payments,
     }),
     changedAt,

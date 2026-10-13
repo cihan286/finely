@@ -4,11 +4,14 @@
 // In plain words: what the company still has to pay — soonest first, with
 // what's overdue and due this week added up at the top — and what it paid
 // recently. "Add bill" and clicking a bill open a window to add or edit one;
-// "Mark as paid" opens a window to record the payment.
+// "Mark as paid" opens a window to record the payment, and "Undo" on a paid
+// bill one to take the payment back.
 //
 // For developers: the open window lives in the address (search params), so
-// it can be linked to and the back button works: ?new=1, ?edit=<id> or
-// ?pay=<id>, plus ?paid=1&next=<day> for the message after a payment.
+// it can be linked to and the back button works: ?new=1, ?edit=<id>,
+// ?pay=<id> or ?undo=<id>, plus ?paid=1&next=<day> (?paid=linked when the
+// payment was already among the transactions) and ?undone=1 for the
+// messages afterwards.
 // "Add as bill" on the Insights page opens ?new=1 with name, amount, due,
 // repeat and category filled in; they only pre-fill the form, and are
 // checked like anything typed when it's saved.
@@ -18,7 +21,7 @@ import type { Metadata } from "next";
 import BillsView from "@/components/dashboard/bills/BillsView";
 import { todayIn } from "@/lib/dates";
 import { listAccounts } from "@/lib/data/accounts";
-import { getBill, listBills } from "@/lib/data/bills";
+import { getBill, listBillPaymentCandidates, listBills } from "@/lib/data/bills";
 import { listCategories } from "@/lib/data/categories";
 import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { getRecurring } from "@/lib/data/recurring";
@@ -47,16 +50,27 @@ export default async function BillsPage({
   const params = await searchParams;
   const editId = single(params.edit);
   const payId = single(params.pay);
+  const undoId = single(params.undo);
+  const canManage = canManageFinances(role);
 
-  const [{ unpaid, paid }, accounts, categories, opened, timeZone, recurring] =
-    await Promise.all([
-      listBills(),
-      listAccounts(),
-      listCategories(),
-      editId || payId ? getBill(editId || payId) : null,
-      getCompanyTimeZone(organization.id),
-      getRecurring(),
-    ]);
+  const [
+    { unpaid, paid },
+    accounts,
+    categories,
+    opened,
+    candidates,
+    timeZone,
+    recurring,
+  ] = await Promise.all([
+    listBills(),
+    listAccounts(),
+    listCategories(),
+    editId || payId || undoId ? getBill(editId || payId || undoId) : null,
+    // Transactions that may already be the payment of the bill being paid
+    payId ? listBillPaymentCandidates(payId) : [],
+    getCompanyTimeZone(organization.id),
+    getRecurring(),
+  ]);
 
   // A new bill suggested by a regular payment: what to put in the form
   const amount = Number(single(params.amount));
@@ -75,7 +89,10 @@ export default async function BillsPage({
   // After a payment: the next due date, for a bill that repeats
   const next = single(params.next);
   const paidResult = single(params.paid)
-    ? { nextDueDate: /^\d{4}-\d{2}-\d{2}$/.test(next) ? next : null }
+    ? {
+        nextDueDate: /^\d{4}-\d{2}-\d{2}$/.test(next) ? next : null,
+        linked: single(params.paid) === "linked",
+      }
     : null;
 
   return (
@@ -83,23 +100,29 @@ export default async function BillsPage({
       organizationName={organization.name}
       currency={currency}
       today={todayIn(timeZone)}
-      canManage={canManageFinances(role)}
+      canManage={canManage}
       unpaid={unpaid}
       paid={paid}
       accounts={accounts}
       categories={categories}
       paidResult={paidResult}
+      undone={Boolean(single(params.undone))}
       // Regular payments (money out) that no unpaid bill covers yet
       suggestions={
         recurring.payments.filter((p) => p.direction === "out" && !p.billed).length
       }
-      // Only bills that are still owed can be edited or paid
+      // Only bills that are still owed can be edited or paid, and only a
+      // paid one can have its payment undone (by owners and admins)
       dialog={
-        opened && opened.paidDay === null
-          ? { mode: editId ? "edit" : "pay", bill: opened }
-          : single(params.new)
-            ? { mode: "new", prefill }
-            : null
+        opened && opened.paidDay === null && !undoId
+          ? editId
+            ? { mode: "edit", bill: opened }
+            : { mode: "pay", bill: opened, candidates }
+          : opened && opened.paidDay !== null && undoId && canManage
+            ? { mode: "undo", bill: opened }
+            : single(params.new)
+              ? { mode: "new", prefill }
+              : null
       }
     />
   );

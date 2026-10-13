@@ -127,12 +127,13 @@ src/
 │   ├── globals.css         Design tokens and base styles
 │   ├── (auth)/             /login, /signup, password reset, /onboarding
 │   │                       (company setup) and /accept-invitation/[id]
-│   ├── (site)/             /about, /contact, /terms and /privacy, with the shared
-│   │                       header and footer
+│   ├── (site)/             /about, /contact, /terms, /privacy and /unsubscribe,
+│   │                       with the shared header and footer
 │   ├── api/auth/           Better Auth's API endpoints
 │   ├── api/cron/           The scheduled jobs Vercel runs: the weekly summary
 │   │                       and the daily bank sync
 │   ├── api/stripe/         Where Stripe tells us about subscriptions (webhook)
+│   ├── api/email/          Where email apps' own "Unsubscribe" button calls
 │   └── dashboard/
 │       ├── layout.tsx      Dashboard frame: sidebar + top bar
 │       ├── actions.ts      "Mark all as read" for the notifications
@@ -141,12 +142,15 @@ src/
 │       ├── transactions/   Transactions list, filters, add/edit, CSV import and
 │       │                   export (export/route.ts answers with the file),
 │       │                   attached files (attachments/[id]/route.ts)
-│       ├── bills/          Bills to pay, add/edit and "Mark as paid"
+│       ├── bills/          Bills to pay, add/edit, "Mark as paid", undoing a
+│       │                   payment, and CSV export
+│       ├── budgets/        This month's budgets as a CSV file (no page)
 │       ├── insights/       Trends over 3/6/12 months, vendors, unusual charges,
 │       │                   regular payments; CSV export and printing
 │       └── settings/       Company name, timezone, team, linked banks, bank
 │                           accounts, categories, category rules, emails;
-│                           activity/ is the activity log
+│                           activity/ is the activity log, with its search
+│                           and CSV export
 ├── components/
 │   ├── common/             Shared across the app (Button, form fields, Dialog,
 │   │                       Spinner, Logo, Footer)
@@ -187,7 +191,8 @@ src/
 │   │                       the banks' keys
 │   ├── billing/            Talking to Stripe, and checking its messages
 │   ├── rate-limit.ts       Slowing down repeated requests (the contact form)
-│   ├── email/              Sending emails (Resend) and their templates
+│   ├── email/              Sending emails (Resend), their templates and
+│   │                       their unsubscribe links
 │   ├── after-response.ts   Doing work after the answer was sent
 │   ├── app-url.ts          The site's own address, for links in emails
 │   ├── auth.ts             Better Auth server config
@@ -419,7 +424,8 @@ Settings (US dollars until then; 27 to choose from, in
 notifications and the activity log is shown in it. Nothing is converted:
 changing the currency of a company that already has transactions relabels
 them (100.00 USD becomes 100.00 EUR), so it's meant to be chosen once, at the
-start.
+start. For currencies without cents (yen, won) the amount fields take whole
+numbers (`amountInputProps()` in `lib/format.ts`).
 
 For developers: amounts stay plain numbers. `formatCurrency(amount, {
 currency })` and `formatCompactCurrency(amount, currency)` format them; the
@@ -432,6 +438,8 @@ wrong sign rather than failing: pass it everywhere.
 
 Plans differ in how many people can be on a company's team
 (`lib/finance/plans.ts`): Free 2, Starter 5, Growth 25, Enterprise no limit.
+The prices and team sizes in that file are the ones both Settings and the
+pricing section of the home page show.
 A company without a subscription is on Free. That is the only limit that is
 enforced: Better Auth refuses an invitation or a new member once the team is
 full. Nobody is ever removed: a team that's already bigger than its plan
@@ -501,15 +509,20 @@ Every change in a company adds a line to its activity log: who did it, when,
 and what ("Changed the transaction “Office rent”: amount from -$500.00 to
 -$550.00"). It covers transactions (also imports and bulk categorizing),
 bills, bank accounts and linked banks, categories and budgets, category
-rules, attached files, the company's settings and the team (invitations,
-roles, removals, handing over). A bank sync run by the daily job is recorded
-as done by "Finely". Owners and admins read it under **Settings → See who
-changed what**, newest first, and can narrow it down to one kind of thing.
+rules, attached files, the company's settings and the team (the company
+being created, invitations, roles, removals, someone leaving, handing over).
+A bank sync run by the daily job is recorded as done by "Finely". Owners and
+admins read it under **Settings → See who changed what**, newest first, and
+can narrow it down to one kind of thing, search it (part of what happened or
+of a person's name) and download what's shown with **Export CSV** (up to
+20,000 lines).
 
 Lines are only ever added (`recordAudit()` in `lib/data/audit.ts`, called by
 the data functions right after a change succeeded). **When you add a data
 function that changes something, record it.** Team changes go through Better
-Auth, so they're recorded from its hooks in `lib/auth.ts`.
+Auth, so they're recorded from its hooks in `lib/auth.ts` (leaving has no
+hook of its own there: it's caught by the `hooks.after` that looks at
+`/organization/leave`).
 
 ## Receipts and attachments
 
@@ -542,8 +555,19 @@ Two emails keep a team informed without opening Finely
   charges). A company gets none in a week when nothing happened and nothing
   is due, and never two within six days.
 
-Each person chooses in **Settings → Email notifications** which of the two
-they get, per company. Until they choose, they get both
+The person a company is handed over to gets an email saying so, and when an
+owner deletes a company, everyone else on its team is told
+(`lib/data/company.ts`). These two can't be switched off.
+
+Each person chooses in **Settings → Email notifications** which of the
+first two they get, per company. Both also end with an **Unsubscribe** link
+that stops that kind of email for that company without logging in: it opens
+`/unsubscribe`, which asks to confirm with one button (mail scanners open
+every link, so opening it changes nothing). Email apps that show their own
+"Unsubscribe" button call `/api/email/unsubscribe` instead
+(`List-Unsubscribe` headers). The link is signed with `BETTER_AUTH_SECRET`
+(`lib/email/unsubscribe.ts`), so changing that secret breaks the links in
+emails already sent. Until they choose, they get both
 (`DEFAULT_EMAIL_PREFERENCES` in `lib/finance/digest.ts`). Only verified
 email addresses get these emails. Without `RESEND_API_KEY` they're printed
 in the terminal, like every other email.
@@ -557,7 +581,11 @@ next 7 days added up at the top.
 
 **Mark as paid** asks which account the money left and on which day, and
 then records the payment as a completed transaction in that account (with the
-bill's name and category; without a category, the category rules apply). A
+bill's name and category; without a category, the category rules apply). If
+a transaction of exactly the bill's amount is already there within 45 days
+of the due date — it came with a bank statement or a linked bank — the
+window offers it as the payment instead, and choosing it adds nothing: the
+bill points at that transaction, so the payment isn't counted twice. A
 bill that repeats gets its next one at the same moment, due one period after
 the paid bill's due date (not after the payment day). A day the next month
 doesn't have becomes its last day (Jan 31 → Feb 28), and the bill after that
@@ -565,7 +593,10 @@ continues from there (Mar 28).
 
 Paid bills can't be edited; the last 20 are listed with a link to their
 payment. Deleting a paid bill leaves its payment in the transactions, and
-deleting the payment leaves the bill paid.
+deleting the payment leaves the bill paid. Owners and admins can **Undo** a
+payment: the bill is owed again, the transaction that "Mark as paid" recorded
+is deleted (one that was already there stays), and the next bill of a
+repeating one is removed unless someone changed or paid it since.
 
 ## Budgets
 
@@ -577,8 +608,9 @@ that category's transactions of the month.
 
 Only completed money out counts (pending payments and refunds don't), and the
 month is the calendar month in the company's timezone. A budget is the same
-every month and unused money doesn't carry over. When a category goes over,
-the bell says so once per month.
+every month and unused money doesn't carry over. The bell says so once per
+month when a category has used 80% of its budget, and again when it goes
+over.
 
 ## Exports
 
@@ -587,7 +619,10 @@ current search and filters show (all pages of them, newest first, up to
 20,000): date, description, category, account, amount, status and notes.
 **Export CSV** on the Insights page downloads that period's figures: totals,
 month by month, spending by category, top vendors, regular payments and
-unusual charges, as small tables in one file. In both, amounts are plain
+unusual charges, as small tables in one file. **Export CSV** on the Bills
+page downloads every bill, unpaid and paid, and the one on the dashboard's
+Budgets card this month's budgets with what was spent and what's left. The
+activity log has its own (see above). In all of them, amounts are plain
 numbers with a dot (`-1234.50`) and dates are year-month-day, so any
 spreadsheet or accounting program reads them the same way, and text that a
 spreadsheet would run as a formula is made harmless.
@@ -614,7 +649,10 @@ customer who pays every month (`lib/finance/recurring.ts`). A payment counts
 as regular when the same vendor was paid on at least three different days, at
 least three quarters of the gaps between them fit one rhythm (every week, 2
 weeks, month or 3 months, give or take a few days), the latest gap fits too,
-and the next one isn't long overdue (then it was probably cancelled).
+and the next one isn't long overdue (then it was probably cancelled). Yearly
+payments (insurance, a domain name) are looked for in the last 800 days: two
+payments about a year apart are enough, if their amounts are within 10% of
+each other and no shorter rhythm fits.
 Several payments to one vendor on the same day count as one, so payroll for
 five people is one regular payment. Money in and money out are looked at
 separately.
@@ -625,12 +663,13 @@ one is expected. **Add as bill** opens the Bills page with the form filled
 in; the Bills page also says how many regular payments aren't bills yet.
 
 The dashboard's **Forecast** starts from today's balances and adds what's
-expected in the next 30 days: unpaid bills (an overdue one counts today), and
-regular payments and regular income. A regular payment that is already an
-unpaid bill is counted once, as the bill. It shows the expected balance, the
+expected in the next 30 days: unpaid bills (an overdue one counts today),
+payments that are still pending (they aren't in the balance yet; one dated in
+the past counts today), and regular payments and regular income. A regular
+payment that is already an unpaid bill is counted once, as the bill. It shows the expected balance, the
 lowest point on the way, and what's coming up. If the balance is expected to
 drop below zero, the bell warns. It's an estimate: one-off income and
-spending aren't in it.
+spending that nobody entered yet aren't in it.
 
 ## Search and notifications
 
@@ -642,7 +681,7 @@ whether money in or out.
 The bell reports what deserves a look in the company's books: a charge at
 least 50% above what that vendor usually charges, an account below zero, a
 balance expected to drop below zero within 30 days,
-a category over its monthly budget, bills that are overdue or due within a
+a category over its monthly budget or at 80% of it, bills that are overdue or due within a
 week, payments pending for more than a week, and transactions without a category.
 Clicking one opens the place to deal with it. Notifications aren't stored:
 they're worked out from the data each time (`lib/finance/notifications.ts`)
@@ -652,12 +691,17 @@ and disappear once the cause is gone. Only the moment each person pressed
 ## Known limitations
 
 - Payment cards aren't built.
-- Bills: a payment can't be undone (delete the transaction and add the bill
-  again), there's no partial payment, a bill isn't matched to a payment that
-  arrives through a CSV import (marking it paid as well records it twice),
-  and bills aren't on the dashboard or in the cash flow yet.
+- Bills: there's no partial payment. A payment that's already among the
+  transactions is only offered in the "Mark as paid" window, and only when
+  its amount is exactly the bill's and it's within 45 days of the due date:
+  nothing is matched by itself, so a bill marked as paid by hand before its
+  payment arrives through an import or a linked bank is still recorded
+  twice. Only owners and admins can undo a payment, and only for the last 20
+  paid bills (the ones listed). Unpaid bills are on the dashboard in the
+  forecast only, not in the cash flow chart.
 - Notifications are worked out when the dashboard loads or something is
-  saved, not while a page sits open, and they aren't emailed.
+  saved, not while a page sits open, and only unusual charges are emailed
+  right away.
 - Vendors (Insights) are transactions with the same description, ignoring
   case and reference numbers ("STRIPE ST-ABC1" and "STRIPE ST-XYZ2" are both
   "STRIPE"). A word counts as a reference when it mixes letters and digits,
@@ -665,15 +709,17 @@ and disappear once the cause is gone. Only the moment each person pressed
   of letters only ("STRIPE PAYOUT ABCD") still count as different vendors,
   and so do different spellings of one vendor ("AMZN", "Amazon").
 - Regular payments are only spotted with three or more payments in a weekly,
-  2-weekly, monthly or 3-monthly rhythm: yearly ones aren't, nor are ones on
-  changing days (the "last Friday of the month" mostly works, "whenever the
-  invoice arrives" doesn't). They can't be dismissed or corrected by hand.
-- The forecast only knows unpaid bills and regular payments. Pending
-  transactions, one-off income and day-to-day spending aren't in it, so it
-  tends to look better than reality.
+  2-weekly, monthly or 3-monthly rhythm, or two or more a year apart whose
+  amounts are within 10% of each other: a yearly payment whose price changed
+  more isn't, nor are ones on changing days (the "last Friday of the month"
+  mostly works, "whenever the invoice arrives" doesn't). They can't be
+  dismissed or corrected by hand.
+- The forecast only knows unpaid bills, pending payments and regular
+  payments. One-off income and day-to-day spending aren't in it, so it tends
+  to look better than reality. A pending payment that is also an unpaid bill
+  is counted twice.
 - Budgets are one amount per category for every month: no different amount
-  for one month, no carrying over, no overall budget, and no warning before
-  a budget is exceeded (only the amber bar on the dashboard).
+  for one month, no carrying over and no overall budget.
 - Attached files live in the database, which makes it and its backups grow;
   at some volume they should move to a storage service (the change is
   contained in `lib/data/attachments.ts` and the `attachment` table). Files
@@ -683,9 +729,9 @@ and disappear once the cause is gone. Only the moment each person pressed
 - The weekly summary goes out at the same moment for every company (Monday
   08:00 UTC), whatever its timezone, and is sent one company after another
   in a single run: with many companies it will need a queue, and Resend's
-  rate limit may delay or drop emails. There's no one-click unsubscribe link
-  in the emails (they point to Settings), and no alert emails for anything
-  but unusual charges.
+  rate limit may delay or drop emails. There are no alert emails for
+  anything but unusual charges. The unsubscribe links never expire, and
+  stop working if `BETTER_AUTH_SECRET` changes.
 - Linked banks: untested against Plaid itself (see above). Only US banks,
   everyday and savings accounts in the company's currency: no credit cards, loans or
   investments. A bank that asks to log in again has to be disconnected and
@@ -693,30 +739,32 @@ and disappear once the cause is gone. Only the moment each person pressed
   mode" isn't built). Syncing is once a day or on demand, not the moment
   the bank has news (Plaid's webhooks aren't built). A linked bank's
   transactions aren't matched against ones imported by CSV or entered by
-  hand, or against bills.
-- The activity log can't be exported or searched, keeps everything forever,
-  and isn't written in the same database step as the change it describes:
-  in the rare case that writing the line fails, the change stands without
-  one. Someone leaving a company by themselves, and a company being created,
-  aren't recorded.
-- Only transactions can be searched: not bills, vendors or the activity log.
+  hand, and against bills only when someone marks the bill as paid.
+- The activity log keeps everything forever, and isn't written in the same
+  database step as the change it describes: in the rare case that writing
+  the line fails, the change stands without one. The line for someone
+  leaving a company is written from a Better Auth hook that no automated
+  test covers.
+- The top bar only searches transactions (the activity log has its own
+  search): not bills or vendors.
 - One currency per company. There are no accounts in other currencies, no
   exchange rates and no converting; a bank account in another currency
-  can't be linked. Amounts always have two decimals in the forms, even for
-  currencies without cents.
+  can't be linked. For currencies without cents the forms take whole
+  numbers, but nothing on the server refuses a fraction (an imported
+  statement can bring one in).
 - Plans: untested against Stripe itself (see above). Only the team's size
   is limited; the other things the pricing section of the home page lists
   (storage, analytics tiers, support levels, integrations) aren't real
-  differences between plans, and its prices are typed there separately from
-  `lib/finance/plans.ts` and from Stripe. Prices are in US dollars whatever
-  the company's currency. There's no free trial of a paid plan, no tax
-  handling beyond what Stripe is configured to do, and no email from Finely
-  about a failed payment (Stripe sends its own). After handing a company
-  over, Stripe still has the former owner's email as the customer's until
-  it's changed in "Manage billing".
-- Deleting a company is immediate and final: there's no grace period, no
-  export first, and the team isn't emailed. The new owner isn't emailed
-  after a handover either.
+  differences between plans. Its prices are the ones in
+  `lib/finance/plans.ts`, which are still typed separately from the prices
+  in Stripe. Prices are in US dollars whatever the company's currency.
+  There's no free trial of a paid plan, no tax handling beyond what Stripe
+  is configured to do, and no email from Finely about a failed payment
+  (Stripe sends its own). After handing a company over, Stripe still has the
+  former owner's email as the customer's until it's changed in "Manage
+  billing".
+- Deleting a company is immediate and final: there's no grace period and no
+  export first (the team is told by email afterwards).
 - The contact form's rate limit (five messages an hour) is per IP address,
   so people behind one shared address share it.
 - The Terms of service and Privacy policy weren't written or reviewed by a
@@ -728,5 +776,5 @@ and disappear once the cause is gone. Only the moment each person pressed
 - People can't delete their own account or download their personal data
   themselves; the privacy policy says to write to us.
 - Exports are CSV only, plus the browser's "Save as PDF" for the Insights
-  page: no PDF of the transactions list, no Excel file, and no export of
-  bills or budgets.
+  page: no PDF of the transactions list and no Excel file. The budgets file
+  is this month's only.

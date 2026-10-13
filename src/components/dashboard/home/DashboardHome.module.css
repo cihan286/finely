@@ -148,6 +148,11 @@
   cursor: pointer;
 }
 
+.cardLinks {
+  display: flex;
+  gap: 1rem;
+}
+
 .viewAllBtn:hover {
   text-decoration: underline;
 }

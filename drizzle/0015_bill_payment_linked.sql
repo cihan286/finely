@@ -1,0 +1,1 @@
+ALTER TABLE "bill" ADD COLUMN "payment_linked" boolean DEFAULT false NOT NULL;

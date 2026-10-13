@@ -8,11 +8,10 @@
 // paid counts as Free again.
 //
 // For developers: pure, unit-tested in plans.test.ts; safe to import from
-// client components. The prices here are what the screens show; what is
-// actually charged is set on the prices in Stripe (STRIPE_PRICE_* in
-// .env.example), so keep the two, and the pricing section of the home page
-// (components/home/pricing/Pricing.tsx), in step. The only limit that is
-// enforced is the team's size.
+// client components. The prices here are what the screens show (Settings
+// and the pricing section of the home page); what is actually charged is
+// set on the prices in Stripe (STRIPE_PRICE_* in .env.example), so keep the
+// two in step. The only limit that is enforced is the team's size.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PLAN_KEYS = ["free", "starter", "growth", "enterprise"] as const;

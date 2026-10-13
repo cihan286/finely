@@ -7,8 +7,10 @@
 // calculated from the actual prices so it's always correct.
 //
 // For developers: a client component ("use client") because of the billing
-// toggle. To change plans or prices, edit the `plans` list below.
-// id="pricing" is the target of the "#pricing" links.
+// toggle. The prices and team sizes come from lib/finance/plans.ts, the
+// same ones Settings → Plan & billing shows; the rest of each card is in
+// the `plans` list below. What is actually charged is set on the prices in
+// Stripe. id="pricing" is the target of the "#pricing" links.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -17,6 +19,7 @@ import styles from "./Pricing.module.css";
 import { useState } from "react";
 import Button from "@/components/common/button/Button";
 import { Check, ArrowRight } from "lucide-react";
+import { PLANS } from "@/lib/finance/plans";
 
 // What every plan needs: name, prices, features list and button
 interface Plan {
@@ -39,10 +42,10 @@ const plans: Plan[] = [
   {
     name: "Starter",
     description: "For small teams getting started",
-    monthlyPrice: 29,
-    yearlyPrice: 24,
+    monthlyPrice: PLANS.starter.monthlyPrice,
+    yearlyPrice: PLANS.starter.yearlyPrice,
     features: [
-      "Up to 5 team members",
+      `Up to ${PLANS.starter.members} team members`,
       "Basic analytics dashboard",
       "Email support",
       "10GB storage",
@@ -55,10 +58,10 @@ const plans: Plan[] = [
   {
     name: "Growth",
     description: "For growing businesses that need more",
-    monthlyPrice: 79,
-    yearlyPrice: 65,
+    monthlyPrice: PLANS.growth.monthlyPrice,
+    yearlyPrice: PLANS.growth.yearlyPrice,
     features: [
-      "Up to 25 team members",
+      `Up to ${PLANS.growth.members} team members`,
       "Advanced analytics & reports",
       "Priority support",
       "100GB storage",

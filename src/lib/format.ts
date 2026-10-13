@@ -59,6 +59,23 @@ export function currencySymbol(currency: string): string {
 }
 
 /**
+ * What an amount field needs to know about a currency: yen and won have no
+ * cents, so their fields take whole numbers ("1500", not "1500.00").
+ * Spread it onto a number input next to its `name`.
+ */
+export function amountInputProps(currency: string): {
+  step: string;
+  min: string;
+  placeholder: string;
+  inputMode: "decimal" | "numeric";
+} {
+  const decimals = currencyFormatter(currency).resolvedOptions().maximumFractionDigits ?? 2;
+  return decimals === 0
+    ? { step: "1", min: "1", placeholder: "0", inputMode: "numeric" }
+    : { step: "0.01", min: "0.01", placeholder: "0.00", inputMode: "decimal" };
+}
+
+/**
  * formatCurrency(2400, { signed: true }) -> "+$2,400.00";
  * formatCurrency(2400, { currency: "EUR" }) -> "€2,400.00". Without a
  * currency, US dollars.

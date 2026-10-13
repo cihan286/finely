@@ -280,6 +280,10 @@ export const bill = pgTable(
     transactionId: text("transaction_id").references(() => transaction.id, {
       onDelete: "set null",
     }),
+    // Whether the payment is a transaction that was already there (imported
+    // or entered by hand) rather than one "Mark as paid" recorded; undoing
+    // the payment then leaves that transaction alone
+    paymentLinked: boolean("payment_linked").default(false).notNull(),
     // Who entered it (empty if that person's account was deleted)
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",

@@ -5,7 +5,7 @@
 // books that deserve a look — a charge far above what that vendor usually
 // charges, an account that has gone below zero, a balance that is expected
 // to run short within 30 days, a category that went over
-// its monthly budget, bills that are overdue or
+// its monthly budget or has nearly used it up, bills that are overdue or
 // due within a week, payments that have been "pending" for more than a
 // week, and transactions without a category.
 // Nothing is stored: each one is worked out from the data, and disappears by
@@ -38,6 +38,17 @@ export interface NotificationFacts {
   cashShortfall: { balance: number; day: ISODate; at: Date } | null;
   /** Categories over their budget this month, and when each last changed */
   overBudget: {
+    categoryId: string;
+    name: string;
+    budget: number;
+    spent: number;
+    at: Date;
+  }[];
+  /**
+   * Categories that have used up most of their budget this month without
+   * going over (80% or more), and when each last changed
+   */
+  nearBudget: {
     categoryId: string;
     name: string;
     budget: number;
@@ -111,6 +122,18 @@ export function buildNotifications(
       type: "alert",
       title: "Over budget",
       description: `${category.name} is ${formatCurrency(category.spent - category.budget, { currency: currency })} over its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}.`,
+      href: `/dashboard/transactions?category=${category.categoryId}&from=${monthStart(today)}`,
+      at: category.at,
+    });
+  }
+
+  for (const category of facts.nearBudget) {
+    items.push({
+      // Its own ID: going over later is a new notification
+      id: `budget-near-${category.categoryId}-${today.slice(0, 7)}`,
+      type: "reminder",
+      title: "Budget nearly used up",
+      description: `${category.name} has used ${Math.floor((category.spent / category.budget) * 100)}% of its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}: ${formatCurrency(category.budget - category.spent, { currency: currency })} left.`,
       href: `/dashboard/transactions?category=${category.categoryId}&from=${monthStart(today)}`,
       at: category.at,
     });

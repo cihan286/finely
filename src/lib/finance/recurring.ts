@@ -14,6 +14,12 @@
 // probably stopped). Money in and money out are looked at separately.
 // Several payments to one vendor on the same day count as one (payroll for
 // several people).
+//
+// A yearly payment (insurance, a domain name) is only looked for when no
+// shorter rhythm fits. Two payments a year apart are enough, but then their
+// amounts have to be close: two unrelated purchases from one shop rarely
+// are. The shorter rhythms only look at the last 400 days, so a
+// subscription isn't missed because of how it was paid two years ago.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { daysBetween } from "@/lib/dates";
@@ -22,10 +28,12 @@ import { vendorKey, vendorName } from "@/lib/finance/vendors";
 import type { BillRepeat, ISODate } from "@/types/finance";
 
 /** The rhythms we look for (each is also a way a bill can repeat) */
-export type Cadence = Extract<BillRepeat, "weekly" | "biweekly" | "monthly" | "quarterly">;
+export type Cadence = Exclude<BillRepeat, "none">;
 
-/** How far back to look for a rhythm, in days */
-export const RECURRING_HISTORY_DAYS = 400;
+/** How far back to look for a rhythm, in days: two yearly payments and some slack */
+export const RECURRING_HISTORY_DAYS = 800;
+// The shorter rhythms only look this far back
+const SHORT_HISTORY_DAYS = 400;
 
 // For each rhythm: the gaps (in days) that fit it — banks shift payments
 // around weekends and months differ in length — how many a month it makes,
@@ -42,6 +50,7 @@ const CADENCES: {
   { cadence: "monthly", min: 26, max: 35, perMonth: 1, grace: 10 },
   { cadence: "quarterly", min: 84, max: 98, perMonth: 1 / 3, grace: 20 },
 ];
+const YEARLY = { cadence: "yearly", min: 351, max: 379, perMonth: 1 / 12, grace: 30 } as const;
 
 const MIN_OCCURRENCES = 3;
 const MIN_FITTING_SHARE = 0.75;
@@ -107,21 +116,39 @@ export function detectRecurring(
     groups.set(key, group);
   }
 
+  type Rhythm = (typeof CADENCES)[number] | typeof YEARLY;
+  const fits = (gap: number, c: Rhythm) => gap >= c.min && gap <= c.max;
+  const gapsOf = (occurrences: [ISODate, number][]) =>
+    occurrences.slice(1).map(([day], i) => daysBetween(occurrences[i][0], day));
+
   const found: RecurringPayment[] = [];
   for (const [key, { days, latest }] of groups) {
-    if (days.size < MIN_OCCURRENCES) continue;
-    const occurrences = [...days].sort(([a], [b]) => a.localeCompare(b));
-    const gaps = occurrences
-      .slice(1)
-      .map(([day], i) => daysBetween(occurrences[i][0], day));
+    const all = [...days].sort(([a], [b]) => a.localeCompare(b));
 
-    const fits = (gap: number, c: (typeof CADENCES)[number]) =>
-      gap >= c.min && gap <= c.max;
-    const rhythm = CADENCES.find(
-      (c) =>
-        fits(gaps[gaps.length - 1], c) &&
-        gaps.filter((gap) => fits(gap, c)).length / gaps.length >= MIN_FITTING_SHARE,
+    let occurrences = all.filter(
+      ([day]) => daysBetween(day, today) <= SHORT_HISTORY_DAYS,
     );
+    let rhythm: Rhythm | undefined;
+    if (occurrences.length >= MIN_OCCURRENCES) {
+      const gaps = gapsOf(occurrences);
+      rhythm = CADENCES.find(
+        (c) =>
+          fits(gaps[gaps.length - 1], c) &&
+          gaps.filter((gap) => fits(gap, c)).length / gaps.length >= MIN_FITTING_SHARE,
+      );
+    }
+    if (!rhythm && all.length >= 2) {
+      const amounts = all.map(([, amount]) => amount);
+      // Nothing but payments a year apart, of about the same amount
+      if (
+        gapsOf(all).every((gap) => fits(gap, YEARLY)) &&
+        (Math.max(...amounts) - Math.min(...amounts)) / Math.min(...amounts) <=
+          VARIABLE_SPREAD
+      ) {
+        rhythm = YEARLY;
+        occurrences = all;
+      }
+    }
     if (!rhythm) continue;
 
     const lastDay = occurrences[occurrences.length - 1][0];

@@ -296,8 +296,8 @@ export default function InsightsView({
               <h2 className={styles.cardTitle}>Regular payments</h2>
               <p className={styles.muted}>
                 {recurring.length === 0
-                  ? "Spotted in the last 13 months, whatever period is chosen above."
-                  : `About ${formatCurrency(recurringPerMonth, { currency: currency })} going out per month. Spotted in the last 13 months.`}
+                  ? "Spotted in the last 13 months (yearly ones: 26), whatever period is chosen above."
+                  : `About ${formatCurrency(recurringPerMonth, { currency: currency })} going out per month. Spotted in the last 13 months (yearly ones: 26).`}
               </p>
             </div>
             {recurring.length === 0 ? (

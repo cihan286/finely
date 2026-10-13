@@ -1,6 +1,14 @@
 import { describe, expect, test } from "vitest";
 import { parseCsv } from "./csv";
-import { exportFileName, insightsCsv, transactionsCsv } from "./export";
+import { buildBudgets } from "./budgets";
+import {
+  activityCsv,
+  billsCsv,
+  budgetsCsv,
+  exportFileName,
+  insightsCsv,
+  transactionsCsv,
+} from "./export";
 import { buildInsights } from "./insights";
 
 describe("transactionsCsv", () => {
@@ -93,7 +101,7 @@ describe("insightsCsv", () => {
     ]);
     expect(rows[section("Spending by category") + 2]).toEqual(["Payroll", "3500.00"]);
     expect(rows[section("Top vendors") + 2]).toEqual(["Rent", "3", "3600.00"]);
-    expect(rows[section("Regular payments (from the last 13 months)") + 2]).toEqual([
+    expect(rows[section("Regular payments (from the last 13 months; yearly ones from the last 26)") + 2]).toEqual([
       "Figma",
       "Money out",
       "Software & IT",
@@ -103,6 +111,64 @@ describe("insightsCsv", () => {
       "2026-11-03",
     ]);
   });
+});
+
+test("billsCsv: unpaid and paid bills, one per line", () => {
+  const bill = {
+    id: "bill_1",
+    name: "Office rent",
+    amount: 1200,
+    dueDate: "2026-11-01",
+    repeat: "monthly" as const,
+    categoryId: "cat_1",
+    category: "Rent",
+    notes: null,
+    paidDay: null,
+    transactionId: null,
+    paymentLinked: false,
+  };
+  expect(
+    parseCsv(
+      billsCsv([
+        bill,
+        { ...bill, dueDate: "2026-10-01", category: null, paidDay: "2026-10-02", notes: "Late" },
+      ]),
+    ),
+  ).toEqual([
+    ["Name", "Amount", "Due date", "Repeats", "Category", "Status", "Paid on", "Notes"],
+    ["Office rent", "1200.00", "2026-11-01", "Every month", "Rent", "Unpaid", "", ""],
+    ["Office rent", "1200.00", "2026-10-01", "Every month", "", "Paid", "2026-10-02", "Late"],
+  ]);
+});
+
+test("budgetsCsv: what was budgeted, spent and left this month", () => {
+  const budgets = buildBudgets([
+    { categoryId: "cat_1", name: "Marketing", color: "#000", iconKey: "megaphone", budget: 500, spent: 620.5 },
+    { categoryId: "cat_2", name: "Travel", color: "#000", iconKey: "plane", budget: 1000, spent: 100 },
+  ]);
+  expect(parseCsv(budgetsCsv("2026-10-13", budgets))).toEqual([
+    ["Month", "Category", "Budget", "Spent", "Left", "Used", "Status"],
+    ["2026-10", "Marketing", "500.00", "620.50", "-120.50", "124.1%", "Over budget"],
+    ["2026-10", "Travel", "1000.00", "100.00", "900.00", "10.0%", "Within budget"],
+  ]);
+});
+
+test("activityCsv: one line per entry, formulas made harmless", () => {
+  expect(
+    parseCsv(
+      activityCsv([
+        {
+          when: "2026-10-13 14:05",
+          actor: "Maya Carter",
+          area: "Bills",
+          summary: "=Deleted the bill",
+        },
+      ]),
+    ),
+  ).toEqual([
+    ["When", "Who", "About", "What happened"],
+    ["2026-10-13 14:05", "Maya Carter", "Bills", "'=Deleted the bill"],
+  ]);
 });
 
 test("exportFileName", () => {
