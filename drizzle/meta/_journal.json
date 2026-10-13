@@ -85,6 +85,13 @@
       "when": 1791886961920,
       "tag": "0011_attachments_email_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791888163577,
+      "tag": "0012_bank_connections_audit_log",
+      "breakpoints": true
     }
   ]
 }

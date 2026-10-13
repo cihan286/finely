@@ -33,8 +33,9 @@ export default function AboutPage() {
         <h2 className={styles.heading}>What Finely does</h2>
         <ul className={styles.points}>
           <li className={styles.point}>
-            <strong>Keeps every payment in one place.</strong> Add transactions
-            by hand or import your bank&apos;s CSV export. Importing the same
+            <strong>Keeps every payment in one place.</strong> Link your bank
+            so transactions arrive by themselves, add them by hand, or import
+            your bank&apos;s CSV export. Importing the same
             statement twice is harmless: lines you already have are skipped.
           </li>
           <li className={styles.point}>
@@ -69,8 +70,8 @@ export default function AboutPage() {
         <h2 className={styles.heading}>How we treat your data</h2>
         <p className={styles.text}>
           A company&apos;s data is only ever shown to the people in that
-          company. Finely never asks for your bank login: you choose what to
-          bring in. Amounts are stored to the exact cent, and dates follow your
+          company. Finely never sees your bank login: you import statements
+          yourself, or link your bank through Plaid and log in there. Amounts are stored to the exact cent, and dates follow your
           company&apos;s own timezone, so the numbers match your bank&apos;s.
         </p>
       </section>

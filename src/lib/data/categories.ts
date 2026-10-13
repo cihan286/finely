@@ -18,6 +18,9 @@ import {
   CATEGORY_KINDS,
   type Category,
 } from "@/types/finance";
+import { describeChanges } from "@/lib/finance/audit";
+import { formatCurrency } from "@/lib/format";
+import { recordAudit } from "./audit";
 import {
   DataError,
   getFinanceContext,
@@ -85,12 +88,23 @@ const DUPLICATE_NAME = "There is already a category with this name.";
 
 /** Adds a category (owners and admins only) and returns its ID. */
 export async function createCategory(input: CategoryInput): Promise<string> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   try {
     const [row] = await db
       .insert(category)
       .values({ ...parseCategoryInput(input), organizationId })
-      .returning({ id: category.id });
+      .returning({
+        id: category.id,
+        name: category.name,
+        budget: category.monthlyBudget,
+      });
+    await recordAudit(actor, {
+      area: "category",
+      action: "created",
+      entityId: row.id,
+      summary: `Added the category “${row.name}”${row.budget === null ? "" : ` with a budget of ${formatCurrency(row.budget)} a month`}`,
+    });
     return row.id;
   } catch (error) {
     if (isUniqueViolation(error)) throw new DataError(DUPLICATE_NAME);
@@ -100,16 +114,33 @@ export async function createCategory(input: CategoryInput): Promise<string> {
 
 /** Changes a category (owners and admins only). */
 export async function updateCategory(id: string, input: CategoryInput) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
+  const own = and(eq(category.id, id), eq(category.organizationId, organizationId));
   try {
+    // What it was, to say what changed
+    const [before] = await db.select(categoryColumns).from(category).where(own);
     const updated = await db
       .update(category)
       .set(parseCategoryInput(input))
-      .where(
-        and(eq(category.id, id), eq(category.organizationId, organizationId)),
-      )
-      .returning({ id: category.id });
+      .where(own)
+      .returning(categoryColumns);
     if (updated.length === 0) throw new DataError("Category not found.");
+    const [after] = updated;
+    const kinds = { income: "Money in", expense: "Money out" } as Record<string, string>;
+    const budget = (amount: number | null) =>
+      amount === null ? null : `${formatCurrency(amount)} a month`;
+    const changes = describeChanges([
+      { label: "name", before: before?.name ?? null, after: after.name },
+      { label: "type", before: kinds[before?.kind ?? ""] ?? null, after: kinds[after.kind] },
+      { label: "budget", before: budget(before?.budget ?? null), after: budget(after.budget) },
+    ]);
+    await recordAudit(actor, {
+      area: "category",
+      action: "updated",
+      entityId: id,
+      summary: `Changed the category “${after.name}”${changes ? `: ${changes}` : " (color or icon)"}`,
+    });
   } catch (error) {
     if (isUniqueViolation(error)) throw new DataError(DUPLICATE_NAME);
     throw error;
@@ -121,10 +152,19 @@ export async function updateCategory(id: string, input: CategoryInput) {
  * become uncategorized.
  */
 export async function deleteCategory(id: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const deleted = await db
     .delete(category)
     .where(and(eq(category.id, id), eq(category.organizationId, organizationId)))
-    .returning({ id: category.id });
+    .returning({ id: category.id, name: category.name });
+  if (deleted.length > 0) {
+    await recordAudit(actor, {
+      area: "category",
+      action: "deleted",
+      entityId: id,
+      summary: `Deleted the category “${deleted[0].name}”`,
+    });
+  }
   if (deleted.length === 0) throw new DataError("Category not found.");
 }

@@ -59,6 +59,8 @@ export async function getFinanceContext({ manage = false } = {}) {
   }
   return {
     userId: user.id,
+    // For the activity log: who did it, as they're called now
+    userName: user.name,
     organizationId: organization.id,
     role,
     timeZone: await getCompanyTimeZone(organization.id),

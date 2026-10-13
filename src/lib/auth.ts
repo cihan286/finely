@@ -167,6 +167,44 @@ export const auth = betterAuth({
       // don't check ownership at sign-up) and take their place on the team.
       requireEmailVerificationOnInvitation: true,
       organizationHooks: {
+        // Team changes go through Better Auth, not through lib/data/, so
+        // they're written to the company's activity log from here
+        afterCreateInvitation: async ({ invitation, inviter, organization }) => {
+          await recordTeamChange(organization.id, inviter, "invited", {
+            entityId: invitation.id,
+            summary: `Invited ${invitation.email} as ${roleLabel(invitation.role).toLowerCase()}`,
+          });
+        },
+        afterCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
+          await recordTeamChange(organization.id, cancelledBy, "invitation-cancelled", {
+            entityId: invitation.id,
+            summary: `Cancelled the invitation to ${invitation.email}`,
+          });
+        },
+        afterAcceptInvitation: async ({ member, user, organization }) => {
+          await recordTeamChange(organization.id, user, "joined", {
+            entityId: member.id,
+            summary: `Joined the company as ${roleLabel(member.role).toLowerCase()}`,
+          });
+        },
+        afterUpdateMemberRole: async ({ member, previousRole, user, organization }) => {
+          await recordTeamChange(organization.id, await signedInUser(), "role-changed", {
+            entityId: member.id,
+            summary: `Changed ${user.name}'s role from ${roleLabel(previousRole).toLowerCase()} to ${roleLabel(member.role).toLowerCase()}`,
+          });
+        },
+        afterRemoveMember: async ({ member, user, organization }) => {
+          await recordTeamChange(organization.id, await signedInUser(), "removed", {
+            entityId: member.id,
+            summary: `Removed ${user.name} (${user.email}) from the team`,
+          });
+        },
+        afterUpdateOrganization: async ({ organization, user }) => {
+          if (!organization) return;
+          await recordTeamChange(organization.id, user, "company-updated", {
+            summary: `Changed the company's name to “${organization.name}”`,
+          });
+        },
         // New companies start with a ready-made set of categories, and the
         // timezone of the browser they were created in (sent as metadata
         // by CreateOrganizationForm)
@@ -198,6 +236,33 @@ export const auth = betterAuth({
     nextCookies(),
   ],
 });
+
+// Who is making the current request, for the activity log. Some of Better
+// Auth's hooks only say who was changed, not who changed them.
+async function signedInUser(): Promise<{ id: string; name: string } | null> {
+  try {
+    const { headers } = await import("next/headers");
+    const session = await auth.api.getSession({ headers: await headers() });
+    return session?.user ?? null;
+  } catch {
+    return null; // outside a request
+  }
+}
+
+// Adds a team change to the company's activity log. Loaded here, not at the
+// top of the file: lib/data/ is "server-only" (see afterCreateOrganization).
+async function recordTeamChange(
+  organizationId: string,
+  actor: { id: string; name: string } | null,
+  action: string,
+  event: { summary: string; entityId?: string },
+) {
+  const { recordAudit } = await import("@/lib/data/audit");
+  await recordAudit(
+    { organizationId, userId: actor?.id ?? null, userName: actor?.name ?? null },
+    { area: "team", action, ...event },
+  );
+}
 
 // The shape of a logged-in session (user + session details), for TypeScript
 export type Session = typeof auth.$Infer.Session;

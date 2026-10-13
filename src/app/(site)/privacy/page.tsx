@@ -60,8 +60,22 @@ export default function PrivacyPage() {
             enter or import: the company&apos;s name and timezone, bank account
             names with their last four digits and balances, transactions,
             the receipts and invoices attached to them, bills, categories,
-            budgets and rules, and who is on the team with which role. We never ask for your bank login, and Finely
-            doesn&apos;t connect to your bank.
+            budgets and rules, and who is on the team with which role.
+          </li>
+          <li>
+            <strong>Your bank&apos;s data, if you link a bank.</strong> When an
+            owner or admin links the company&apos;s bank, we receive that
+            bank&apos;s account names, the last digits of the account numbers,
+            balances and transactions, and keep them up to date. You log in
+            at your bank in a window from Plaid; we never see or store your
+            bank login, and we can&apos;t move money. We do store a key that
+            lets us read that data, encrypted, until the bank is
+            disconnected.
+          </li>
+          <li>
+            <strong>A record of changes.</strong> Who added, changed or
+            deleted what in a company, and when, so its owners and admins can
+            look it up.
           </li>
           <li>
             <strong>Your logins.</strong> For each login we keep when it
@@ -125,6 +139,12 @@ export default function PrivacyPage() {
             no form contents, no database values.
           </li>
           <li>
+            <strong>Plaid</strong>, only if you link a bank. Plaid connects to
+            your bank with the login you give it and passes us the accounts
+            and transactions. Its own privacy policy applies to what it
+            collects.
+          </li>
+          <li>
             <strong>Google</strong>, only if you choose &ldquo;Continue with
             Google&rdquo; to sign in.
           </li>
@@ -150,7 +170,9 @@ export default function PrivacyPage() {
           We keep your account and your company&apos;s data for as long as
           they exist in Finely. A company&apos;s owner can delete the company
           in Settings, which removes its accounts, transactions, attached
-          files, bills, categories and rules right away. Logins expire by themselves.
+          files, bills, categories, rules, bank links and record of changes
+          right away. Disconnecting a bank ends our access to it; what was
+          already imported stays until you delete it. Logins expire by themselves.
           Copies in backups disappear as those backups are replaced.
         </p>
       </section>

@@ -26,7 +26,8 @@ import {
   transaction,
 } from "@/db/finance";
 import { localDay, zonedTime } from "@/lib/dates";
-import { nextDueDate } from "@/lib/finance/bills";
+import { describeChanges } from "@/lib/finance/audit";
+import { BILL_REPEAT_LABELS, nextDueDate } from "@/lib/finance/bills";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import {
   BILL_REPEATS,
@@ -34,6 +35,8 @@ import {
   type BillRepeat,
   type ISODate,
 } from "@/types/finance";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { recordAudit } from "./audit";
 import { selectRules } from "./category-rules";
 import {
   DataError,
@@ -153,19 +156,30 @@ async function parseBillInput(input: BillInput, organizationId: string) {
 
 /** Adds a bill and returns its ID. */
 export async function createBill(input: BillInput): Promise<string> {
-  const { organizationId, userId } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId, userId } = actor;
   const values = await parseBillInput(input, organizationId);
   const [row] = await db
     .insert(bill)
     .values({ ...values, organizationId, createdById: userId })
     .returning({ id: bill.id });
+  await recordAudit(actor, {
+    area: "bill",
+    action: "created",
+    entityId: row.id,
+    summary: `Added the bill “${values.name}” (${formatCurrency(values.amount)}, due ${formatDate(values.dueDate)})`,
+  });
   return row.id;
 }
 
 /** Changes a bill that hasn't been paid yet. */
 export async function updateBill(id: string, input: BillInput) {
-  const { organizationId } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId } = actor;
   const values = await parseBillInput(input, organizationId);
+  const own = and(eq(bill.id, id), eq(bill.organizationId, organizationId));
+  // What it was, to say what changed
+  const [before] = await selectBills().where(own);
   const updated = await db
     .update(bill)
     .set(values)
@@ -177,7 +191,42 @@ export async function updateBill(id: string, input: BillInput) {
       ),
     )
     .returning({ id: bill.id });
-  if (updated.length > 0) return;
+  if (updated.length > 0) {
+    const [after] = await selectBills().where(own);
+    const changes =
+      before && after
+        ? describeChanges([
+            { label: "name", before: before.name, after: after.name },
+            {
+              label: "amount",
+              before: formatCurrency(before.amount),
+              after: formatCurrency(after.amount),
+            },
+            {
+              label: "due date",
+              before: formatDate(before.dueDate),
+              after: formatDate(after.dueDate),
+            },
+            {
+              label: "repeat",
+              before: BILL_REPEAT_LABELS[before.repeat as BillRepeat],
+              after: BILL_REPEAT_LABELS[after.repeat as BillRepeat],
+            },
+            { label: "category", before: before.category, after: after.category },
+            { label: "notes", before: before.notes, after: after.notes },
+          ])
+        : "";
+    // Saved without changing anything: nothing to record
+    if (changes) {
+      await recordAudit(actor, {
+        area: "bill",
+        action: "updated",
+        entityId: id,
+        summary: `Changed the bill “${values.name}”: ${changes}`,
+      });
+    }
+    return;
+  }
   // Nothing changed: either it isn't this company's, or it's already paid
   const exists = await db.$count(
     bill,
@@ -193,12 +242,20 @@ export async function updateBill(id: string, input: BillInput) {
  * in the transactions.
  */
 export async function deleteBill(id: string) {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ manage: true });
+  const { organizationId } = actor;
   const deleted = await db
     .delete(bill)
     .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId)))
-    .returning({ id: bill.id });
+    .returning({ id: bill.id, name: bill.name, amount: bill.amount, paidAt: bill.paidAt });
   if (deleted.length === 0) throw new DataError("Bill not found.");
+  const [gone] = deleted;
+  await recordAudit(actor, {
+    area: "bill",
+    action: "deleted",
+    entityId: id,
+    summary: `Deleted the ${gone.paidAt ? "paid " : ""}bill “${gone.name}” (${formatCurrency(gone.amount)})`,
+  });
 }
 
 /**
@@ -211,7 +268,8 @@ export async function payBill(
   id: string,
   payment: BillPayment,
 ): Promise<{ transactionId: string; nextDueDate: ISODate | null }> {
-  const { organizationId, userId, timeZone } = await getFinanceContext();
+  const actor = await getFinanceContext();
+  const { organizationId, userId, timeZone } = actor;
   const accountId = requiredText(payment.accountId, "Account");
   const day = isoDay(payment.date, "Payment date");
 
@@ -274,5 +332,11 @@ export async function payBill(
   } else {
     await db.batch([recordPayment, markPaid]);
   }
+  await recordAudit(actor, {
+    area: "bill",
+    action: "paid",
+    entityId: id,
+    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount)}) as paid on ${formatDate(day)}`,
+  });
   return { transactionId, nextDueDate: next };
 }

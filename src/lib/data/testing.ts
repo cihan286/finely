@@ -98,7 +98,7 @@ export function actAs(
 export async function currentSession() {
   if (!current) throw new Error("Call actAs() before using a data function.");
   return {
-    user: { id: current.userId },
+    user: { id: current.userId, name: `Name of ${current.userId}` },
     organization: { id: current.organizationId, name: current.name ?? "" },
     role: current.role,
   };

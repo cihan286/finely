@@ -1,0 +1,189 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Activity log styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. The page title with its link back to Settings, the row
+   of filters, the list of what happened (what and who on the left, when on
+   the right) and the paging links.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 2rem 3rem;
+  background-color: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.back:hover {
+  color: var(--primary);
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Filters: "Everything", "Transactions", … */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter {
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.filter:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filterActive {
+  border-color: var(--primary);
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
+
+.card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2.5rem 0 1.5rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.summary {
+  font-size: 0.925rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.when {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Paging */
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pageInfo {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pageLinks {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pageLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.pageLink:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Screens narrower than 768px (phones and tablets): the moment goes under
+   the text */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    padding: 0.25rem 1rem 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .entry {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+}

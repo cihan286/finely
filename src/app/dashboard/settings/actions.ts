@@ -3,8 +3,8 @@
 //
 // In plain words: changes the company's timezone, adds or removes one of its
 // bank accounts, adds, changes or deletes a category or a category rule,
-// hands the company over to another member or deletes it, or saves which
-// emails the person wants, then reloads the page so it's up to date. If something's wrong, we send
+// links, syncs or unlinks a bank, hands the company over to another member
+// or deletes it, or saves which emails the person wants, then reloads the page so it's up to date. If something's wrong, we send
 // back a message to show instead.
 //
 // For developers: server actions ("use server"); anyone can call these with a
@@ -17,6 +17,13 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
+import {
+  connectBank,
+  createBankLinkToken,
+  disconnectBank,
+  syncBankConnection,
+  type SyncResult,
+} from "@/lib/data/bank";
 import {
   createCategory,
   deleteCategory,
@@ -204,4 +211,80 @@ export async function submitEmailPreferences(
   }
   refresh();
   return { error: null, success: "Your email preferences were saved." };
+}
+
+// "3 transactions added, 1 updated" / "Nothing new"
+function syncSummary(result: SyncResult): string {
+  const parts = [
+    result.newAccounts > 0 &&
+      `${result.newAccounts} ${result.newAccounts === 1 ? "account" : "accounts"} added`,
+    result.added > 0 &&
+      `${result.added} ${result.added === 1 ? "transaction" : "transactions"} added`,
+    result.updated > 0 && `${result.updated} updated`,
+    result.removed > 0 && `${result.removed} removed`,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "nothing new";
+}
+
+/**
+ * Starts linking a bank: the one-time token for the "log in at your bank"
+ * window (owners and admins only).
+ */
+export async function createBankLink(): Promise<
+  { token: string; error: null } | { token: null; error: string }
+> {
+  try {
+    return { token: await createBankLinkToken(), error: null };
+  } catch (error) {
+    return { token: null, error: errorMessage(error) };
+  }
+}
+
+/** Finishes linking a bank and brings in its accounts and transactions. */
+export async function completeBankLink(
+  publicToken: string,
+  institutionName: string,
+): Promise<ActionState> {
+  let result;
+  try {
+    result = await connectBank(publicToken, institutionName);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return {
+    error: null,
+    success:
+      result.newAccounts === 0
+        ? `${result.institutionName} is connected, but it has no everyday or savings account in US dollars that Finely can keep.`
+        : `${result.institutionName} is connected: ${syncSummary(result)}. Transactions can take a few minutes to arrive the first time; press “Sync now” to check.`,
+  };
+}
+
+/** Brings one linked bank up to date now. */
+export async function syncBank(id: string): Promise<ActionState> {
+  let result;
+  try {
+    result = await syncBankConnection(id);
+  } catch (error) {
+    // The reason is also kept on the connection: show it there too
+    refresh();
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return { error: null, success: `Synced: ${syncSummary(result)}.` };
+}
+
+/** Stops syncing a bank; its accounts and transactions stay. */
+export async function removeBankConnection(id: string): Promise<ActionState> {
+  try {
+    await disconnectBank(id);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  refresh();
+  return {
+    error: null,
+    success: "The bank was disconnected. Its accounts and transactions are still here.",
+  };
 }

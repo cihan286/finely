@@ -26,6 +26,7 @@ import {
   updateBill,
   type BillInput,
 } from "./bills";
+import { listAuditLog } from "./audit";
 import { getBudgets } from "./budgets";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "./categories";
 import {
@@ -1207,5 +1208,82 @@ describe("email notifications", () => {
     sentEmails.length = 0;
     expect(await sendWeeklyDigests()).toEqual({ companies: 0, emails: 0 });
     expect(sentEmails).toEqual([]);
+  });
+});
+
+describe("activity log", () => {
+  it("records who did what, in the company it happened in only", async () => {
+    const company = await createTestCompany("hogwarts");
+    const other = await createTestCompany("durmstrang");
+    actAs(other);
+    await createAccount({ name: "Other Checking", type: "checking" });
+
+    actAs(company);
+    const accountId = await createAccount({ name: "Vault", type: "checking" });
+    const categoryId = await createCategory({
+      name: "Potions",
+      kind: "expense",
+      color: "#6366f1",
+      iconKey: "more",
+    });
+    const id = await createTransaction({
+      accountId,
+      categoryId: null,
+      name: "Cauldron",
+      amount: -40,
+      date: today,
+      status: "completed",
+    });
+    await updateTransaction(id, {
+      accountId,
+      categoryId,
+      name: "Cauldron",
+      amount: -45,
+      date: today,
+      status: "completed",
+    });
+    // Saving again without changing anything isn't worth a line
+    await updateTransaction(id, {
+      accountId,
+      categoryId,
+      name: "Cauldron",
+      amount: -45,
+      date: today,
+      status: "completed",
+    });
+    await deleteTransaction(id);
+
+    const { entries, total } = await listAuditLog();
+    expect(total).toBe(5);
+    expect(entries.map((e) => [e.area, e.action, e.summary])).toEqual([
+      ["transaction", "deleted", expect.stringContaining("Deleted the transaction “Cauldron” (-$45.00")],
+      [
+        "transaction",
+        "updated",
+        "Changed the transaction “Cauldron”: amount from -$40.00 to -$45.00, category from none to Potions",
+      ],
+      ["transaction", "created", "Added the transaction “Cauldron” (-$40.00)"],
+      ["category", "created", "Added the category “Potions”"],
+      ["account", "created", "Added the bank account “Vault”"],
+    ]);
+    expect(entries.every((e) => e.actor === `Name of ${company.userId}`)).toBe(true);
+
+    expect((await listAuditLog({ area: "transaction" })).total).toBe(3);
+    expect((await listAuditLog({ limit: 2, offset: 2 })).entries.map((e) => e.action)).toEqual([
+      "created",
+      "created",
+    ]);
+
+    actAs(other);
+    expect((await listAuditLog()).entries.map((e) => e.summary)).toEqual([
+      "Added the bank account “Other Checking”",
+    ]);
+  });
+
+  it("can only be read by owners and admins", async () => {
+    actAs(globex, "member");
+    await expect(listAuditLog()).rejects.toThrow("Only owners and admins can do this.");
+    actAs(globex, "admin");
+    expect((await listAuditLog()).total).toBeGreaterThan(0);
   });
 });

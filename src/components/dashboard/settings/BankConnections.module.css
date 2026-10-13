@@ -1,0 +1,35 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Linked banks styles
+
+   In plain words: this file (CSS) controls how things look — colors, sizes,
+   spacing and layout. Only what's special to this section: the space under
+   the list, the "Sync now" button's blue hover and the red text of a sync
+   that failed. The card, list and messages come from TeamSettings.module.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.list {
+  margin-bottom: 1.25rem;
+}
+
+/* "Sync now" isn't a destructive action: blue on hover, not red */
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sync:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Why the last sync failed, in place of "up to date as of …" */
+.error {
+  font-size: 0.825rem;
+  color: var(--danger);
+}
+
+.note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
