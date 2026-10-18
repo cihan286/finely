@@ -47,7 +47,7 @@ test("the Content Security Policy blocks nothing Finely itself uses", async ({ p
     found.push(...seen.map((v) => `${label}: ${v}`));
   };
 
-  for (const path of ["/", "/login", "/signup", "/about", "/contact", "/terms", "/privacy"]) {
+  for (const path of ["/", "/login", "/signup", "/about", "/contact", "/terms", "/privacy", "/no-such-page"]) {
     await page.goto(path);
     await collect(path);
   }

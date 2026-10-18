@@ -56,6 +56,19 @@
   }
 }
 
+/* Phones: one short line next to the button */
+@media (max-width: 560px) {
+  .banner {
+    padding: 0.5rem 1rem;
+    flex-wrap: nowrap;
+    font-size: 0.8rem;
+  }
+
+  .long {
+    display: none;
+  }
+}
+
 /* The reminder isn't printed */
 @media print {
   .banner {

@@ -13,7 +13,7 @@ import styles from "./Footer.module.css";
 import Link from "next/link";
 import Logo from "../logo/Logo";
 
-export default function Footer() {
+export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
   // Keeps the copyright year current automatically
   const currentYear = new Date().getFullYear();
 
@@ -64,12 +64,25 @@ export default function Footer() {
 
           <div className={styles.linkColumn}>
             <span className={styles.columnTitle}>Account</span>
-            <Link href="/login" className={styles.link}>
-              Log in
-            </Link>
-            <Link href="/signup" className={styles.link}>
-              Start for free
-            </Link>
+            {signedIn ? (
+              <>
+                <Link href="/dashboard" className={styles.link}>
+                  Your dashboard
+                </Link>
+                <Link href="/your-account" className={styles.link}>
+                  Your account
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className={styles.link}>
+                  Log in
+                </Link>
+                <Link href="/signup" className={styles.link}>
+                  Start for free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

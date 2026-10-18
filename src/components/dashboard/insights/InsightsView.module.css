@@ -13,6 +13,9 @@
   min-width: 0;
   padding: 2rem 3rem;
   overflow-y: auto;
+  /* Holds its own hidden labels (srOnly): without this they're placed
+     against the whole page and can make it scroll behind the panel */
+  position: relative;
   background-color: var(--surface-muted);
   display: flex;
   flex-direction: column;

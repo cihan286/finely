@@ -10,16 +10,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ReactNode } from "react";
+import { getSession } from "@/lib/session";
 import Footer from "@/components/common/footer/Footer";
 import SiteHeader from "@/components/home/site-header/SiteHeader";
 import styles from "./site.module.css";
 
-export default function SiteLayout({ children }: { children: ReactNode }) {
+export default async function SiteLayout({ children }: { children: ReactNode }) {
+  // Logged-in people get a way back to their dashboard instead of "Log in"
+  const signedIn = Boolean(await getSession());
   return (
     <>
-      <SiteHeader />
+      <SiteHeader signedIn={signedIn} />
       <main className={styles.page}>{children}</main>
-      <Footer />
+      <Footer signedIn={signedIn} />
     </>
   );
 }

@@ -575,7 +575,7 @@ async function parseBillInput(
   const amount = money(input.amount, "Amount", currency);
   if (amount <= 0) throw new DataError("Amount must be more than zero.");
   return {
-    name: requiredText(input.name, "Name"),
+    name: requiredText(input.name, "Bill"),
     amount,
     dueDate: isoDay(input.dueDate, "Due date"),
     repeat: oneOf(input.repeat, BILL_REPEATS, "Repeat"),

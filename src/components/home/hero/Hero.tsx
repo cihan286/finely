@@ -2,7 +2,8 @@
 // Hero — the top section of the home page
 //
 // In plain words: the first thing visitors see. It has the navigation bar
-// (logo, links, "Start for free" and "Log in"), the main headline with its
+// (logo, links, "Start for free" and "Log in", or "Open dashboard" for
+// someone logged in), the main headline with its
 // buttons ("Get Started" and "Try the demo"), and the phone picture on the right. On small screens the links move
 // into a menu that opens with the ☰ button.
 //
@@ -21,7 +22,7 @@ import DemoButton from "../demo-button/DemoButton";
 import Logo from "@/components/common/logo/Logo";
 import { ArrowRight, Menu, X } from "lucide-react";
 
-export default function Hero() {
+export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
   // Whether the mobile menu is open
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Whether the menu has been used yet. Until then it has no open/close
@@ -61,14 +62,7 @@ export default function Hero() {
         {/* Sign-up / log-in buttons, plus the ☰ button on small screens */}
         <div className={styles.navActions}>
           <div className={`${styles.authCtas} ${styles.desktopAuth}`}>
-            <Button variant="primary" text="Start for free" href="/signup" />
-            <Button
-              variant="secondary"
-              text="Log in"
-            href="/login"
-              icon={<ArrowRight size="1em" />}
-              iconPosition="right"
-            />
+            <AuthButtons signedIn={signedIn} />
           </div>
 
           <button
@@ -113,14 +107,7 @@ export default function Hero() {
           About
         </Link>
         <div className={`${styles.authCtas} ${styles.mobileAuth}`}>
-          <Button variant="primary" text="Start for free" href="/signup" />
-          <Button
-            variant="secondary"
-            text="Log in"
-            href="/login"
-            icon={<ArrowRight size="1em" />}
-            iconPosition="right"
-          />
+          <AuthButtons signedIn={signedIn} />
         </div>
       </div>
 
@@ -145,5 +132,33 @@ export default function Hero() {
         </div>
       </div>
     </div>
+  );
+}
+
+// "Start for free" and "Log in", or, for someone already logged in, a way
+// back to their dashboard
+function AuthButtons({ signedIn }: { signedIn: boolean }) {
+  if (signedIn) {
+    return (
+      <Button
+        variant="primary"
+        text="Open dashboard"
+        href="/dashboard"
+        icon={<ArrowRight size="1em" />}
+        iconPosition="right"
+      />
+    );
+  }
+  return (
+    <>
+      <Button variant="primary" text="Start for free" href="/signup" />
+      <Button
+        variant="secondary"
+        text="Log in"
+        href="/login"
+        icon={<ArrowRight size="1em" />}
+        iconPosition="right"
+      />
+    </>
   );
 }
