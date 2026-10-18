@@ -379,4 +379,35 @@
   .mediumUp {
     display: none;
   }
+
+  .table th,
+  .table td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  /* The description takes what's left and is cut short with "…", so the
+     amount always fits (max-width: 0 with width: 100% makes a table cell
+     share out the remaining width instead of growing) */
+  .nameCell {
+    max-width: 0;
+    width: 100%;
+  }
+}
+
+/* The narrowest phones (under 400px): tighter still */
+@media (max-width: 400px) {
+  .table th,
+  .table td {
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+  }
+
+  .table {
+    font-size: 0.82rem;
+  }
+
+  .dateCell {
+    font-size: 0.75rem;
+  }
 }
