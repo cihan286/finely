@@ -9,6 +9,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Not yet: Next.js's lint settings (eslint-config-next) don't work with
+    # these major versions yet, so lint fails. Remove a line once
+    # eslint-config-next supports that version.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
     groups:
       # Small updates come together in one pull request; bigger (major)
       # ones come one by one, since they can need code changes
