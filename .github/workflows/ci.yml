@@ -1,6 +1,6 @@
 # Checks every push and pull request: types, lint, tests, database
-# migrations and a production build. A pull request should only be merged
-# when this passes.
+# migrations, a production build and the end-to-end tests. A pull request
+# should only be merged when this passes.
 
 name: CI
 
@@ -59,3 +59,50 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Uses the app in a real browser against a real Postgres (see
+  # playwright.config.ts): signing up, transactions, imports, teams, billing
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: e2e
+          POSTGRES_PASSWORD: e2e
+          POSTGRES_DB: finely_e2e
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      # What the browser saw when a test failed: open index.html, or a
+      # trace with `npx playwright show-trace`
+      - name: Keep the test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:db": "docker run --rm -d --name finely-e2e-db -e POSTGRES_USER=e2e -e POSTGRES_PASSWORD=e2e -e POSTGRES_DB=finely_e2e -p 5433:5432 postgres:17",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
@@ -30,13 +32,16 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "pg": "^8.23.1",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
   }

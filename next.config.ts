@@ -8,7 +8,16 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
+// End-to-end tests (e2e/) build the app with E2E=1: it then talks to a local
+// Postgres instead of Neon (src/db/e2e.ts), and the build goes to its own
+// folder so it never mixes with a normal build.
+const isE2E = process.env.E2E === "1";
+
 const nextConfig: NextConfig = {
+  ...(isE2E && {
+    distDir: ".next-e2e",
+    turbopack: { resolveAlias: { "@/db": "./src/db/e2e.ts" } },
+  }),
   /* config options here */
   // The React Compiler automatically optimizes components so pages re-draw
   // only what actually changed. It makes the app faster without extra code.
