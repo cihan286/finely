@@ -405,7 +405,9 @@ export default function TransactionsView({
                           />
                         </th>
                         <th scope="col">Date</th>
-                        <th scope="col">Description</th>
+                        <th scope="col" className={styles.nameCell}>
+                          Description
+                        </th>
                         <th scope="col" className={styles.mediumUp}>
                           Category
                         </th>

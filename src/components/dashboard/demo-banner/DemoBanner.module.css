@@ -48,11 +48,33 @@
   cursor: not-allowed;
 }
 
+/* The short text is only for phones */
+.short {
+  display: none;
+}
+
 /* Screens narrower than 768px (phones and tablets) */
 @media (max-width: 768px) {
   .banner {
     padding: 0.65rem 1rem;
     flex-wrap: wrap;
+  }
+}
+
+/* Phones: one short line next to the button */
+@media (max-width: 560px) {
+  .banner {
+    padding: 0.5rem 1rem;
+    flex-wrap: nowrap;
+    font-size: 0.8rem;
+  }
+
+  .long {
+    display: none;
+  }
+
+  .short {
+    display: inline;
   }
 }
 
