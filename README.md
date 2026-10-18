@@ -69,15 +69,17 @@ real customers.*
   or repeated messages, Plaid bank linking with access tokens encrypted
   (AES-256-GCM), Resend for email, Sentry for errors (set up to send no
   personal or financial data).
-- **Security.** Login, sign-up and contact-form rate limiting, security
-  headers, roles checked on the server for every action, and a demo that
-  can't email, invite or pay for anything.
+- **Security.** A strict Content Security Policy (only scripts carrying a
+  one-time code per page load can run, so an injected script can't),
+  security headers, login, sign-up and contact-form rate limiting, roles
+  checked on the server for every action, and a demo that can't email,
+  invite or pay for anything.
 - **Accessible.** The public pages, company setup, and every page, main
   dialog and the notifications panel of the demo pass axe's WCAG 2.1 AA checks in both
   light and dark mode (text contrast, names for every button and field,
   headings), checked on every push.
 - **Tested.** 331 unit tests (Vitest) for the calculations and the data
-  rules, and 18 end-to-end tests (Playwright) that use the real app in a
+  rules, and 20 end-to-end tests (Playwright) that use the real app in a
   real browser against a real Postgres: signing up, importing a statement,
   inviting a teammate, Stripe's messages, the demo, phone-sized screens and
   accessibility.
@@ -349,6 +351,20 @@ remove old ones in a later release.
 08:00 UTC) and the bank sync (`/api/cron/bank-sync`, every day at 06:00 UTC), which also
 deletes expired demo companies. To try it by hand:
 `curl -H "Authorization: Bearer $CRON_SECRET" https://<your domain>/api/cron/weekly-digest`.
+
+**Security headers.** Every page tells the browser not to let other sites
+frame it, to use HTTPS only, to keep page addresses private from other
+sites, not to guess file types, and that Finely never uses the camera,
+microphone or location (`headers()` in `next.config.ts`). It also gets a
+strict **Content Security Policy** (`src/lib/csp.ts`, sent by `proxy.ts`):
+only scripts carrying that page load's one-time code (a nonce) may run, and
+the browser may only talk to Finely, Sentry and Plaid's bank login window.
+Next.js puts the nonce on its own scripts, which is why every page is
+rendered per request (`connection()` in `app/layout.tsx`); nothing is built
+ahead of time. When the browser blocks something, it reports it to Sentry
+(with a DSN set). Adding a script, style, font, image or service from
+another address means adding it to `lib/csp.ts`; the end-to-end tests fail
+if any page breaks the policy.
 
 **In production only**, logins, sign-ups and password resets are rate
 limited (too many tries from one IP address get "Too many requests").
