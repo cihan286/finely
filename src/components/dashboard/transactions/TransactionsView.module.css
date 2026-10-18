@@ -244,7 +244,7 @@
 
 .pending {
   background-color: color-mix(in srgb, var(--warning) 14%, transparent);
-  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+  color: var(--warning-text);
 }
 
 .amountCell {

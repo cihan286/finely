@@ -21,7 +21,12 @@ import {
 
 export default function PhoneMockup() {
   return (
-    <div className={styles.frame}>
+    // One picture to screen readers: its made-up figures aren't content
+    <div
+      className={styles.frame}
+      role="img"
+      aria-label="A phone showing Finely: the total balance, a small chart and recent payments"
+    >
       {/* The phone's side buttons */}
       <span className={styles.buttonVolumeUp} />
       <span className={styles.buttonVolumeDown} />

@@ -35,7 +35,7 @@
 
 .note {
   font-size: 0.875rem;
-  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+  color: var(--warning-text);
 }
 
 .hint {

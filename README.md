@@ -72,10 +72,15 @@ real customers.*
 - **Security.** Login, sign-up and contact-form rate limiting, security
   headers, roles checked on the server for every action, and a demo that
   can't email, invite or pay for anything.
+- **Accessible.** The public pages, company setup, and every page, main
+  dialog and the notifications panel of the demo pass axe's WCAG 2.1 AA checks in both
+  light and dark mode (text contrast, names for every button and field,
+  headings), checked on every push.
 - **Tested.** 331 unit tests (Vitest) for the calculations and the data
-  rules, and 14 end-to-end tests (Playwright) that use the real app in a
+  rules, and 18 end-to-end tests (Playwright) that use the real app in a
   real browser against a real Postgres: signing up, importing a statement,
-  inviting a teammate, Stripe's messages, the demo and phone-sized screens.
+  inviting a teammate, Stripe's messages, the demo, phone-sized screens and
+  accessibility.
   GitHub Actions runs everything, plus a type check, lint, a production
   build and a check that every schema change has a migration, on every push.
   Dependabot keeps dependencies up to date.
@@ -357,6 +362,10 @@ notes "for developers". Keep these up to date, and add one to new files.
 
 **Colors and styling.** Don't hard-code colors in components. Use the tokens in
 `src/app/globals.css` (`--primary`, `--text-muted`, `--border`, `--success`, …).
+Every token used for text has at least 4.5:1 contrast (WCAG AA) on the
+backgrounds it's used on; words in the warning color use `--warning-text`,
+since amber itself is too light. A new text color has to pass the
+accessibility test (see "Tests").
 Charts use `--series-income` and `--series-expenses` for money in and out on
 every page; `--success`/`--danger` mean good/bad and aren't series colors.
 Dark mode is defined once there, so components using tokens get it for free.
@@ -471,8 +480,12 @@ stopped after a few wrong passwords), adding transactions and importing a
 CSV statement, inviting a teammate who joins as a member, one company not
 seeing another's money, Stripe's signed messages changing the plan
 (Stripe itself is never called: the tests sign the messages with a pretend
-secret), the demo (its sample data, what it refuses, and its deletion), and
-the security headers. To run them:
+secret), the demo (its sample data, what it refuses, and its deletion), the
+security headers, phone-sized screens, and accessibility: the public pages,
+company setup and the demo's pages, dialogs and notifications panel are checked with axe
+(WCAG 2.1 AA) in light and dark mode (`e2e/accessibility.spec.ts`; pages
+that need a link from an email, like resetting a password, aren't). If it fails, it names the rule and the
+element; most failures are text colors with too little contrast. To run them:
 
 ```bash
 npm run test:e2e:db   # once: a throwaway Postgres in Docker, on port 5433

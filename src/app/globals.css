@@ -6,12 +6,18 @@
    is Finely blue). Every other style file uses these names instead of raw
    color codes, so changing a color here changes it everywhere, and dark mode
    only has to be defined once, in the block below them.
+
+   Every color used for text is dark (or, in dark mode, light) enough to
+   read: at least 4.5:1 contrast against the backgrounds it's used on, as
+   WCAG 2.1 AA asks. e2e/accessibility.spec.ts checks every page in both
+   modes, so check a new color there before using it for text.
    ───────────────────────────────────────────────────────────────────────────── */
 
 :root {
   /* Light mode (default) values */
-  /* Brand */
-  --primary: #2196f3;
+  /* Brand. A deeper blue than the logo's, so white text on buttons and blue
+     links on white are easy to read */
+  --primary: #1669c4;
   --primary-soft: color-mix(in srgb, var(--primary) 10%, transparent);
   --on-primary: #ffffff;
 
@@ -20,7 +26,7 @@
   --foreground: #171717;
   --surface-muted: rgba(0, 0, 0, 0.02);
   --text-muted: #666666;
-  --text-subtle: #888888;
+  --text-subtle: #6b6b6b;
 
   /* Lines & interaction */
   --border: rgba(0, 0, 0, 0.1);
@@ -28,9 +34,11 @@
   --hover: rgba(0, 0, 0, 0.05);
 
   /* Status */
-  --success: #10b981;
+  --success: #036b4e;
   --warning: #f59e0b;
-  --danger: #ef4444;
+  --danger: #c81e1e;
+  /* Amber is too light for text: words in the warning color use this */
+  --warning-text: color-mix(in srgb, var(--warning), var(--foreground) 55%);
 
   /* Chart series. Identity colors, not status: income and expenses are
      different things, not "good" and "bad". Checked for color-blind
@@ -52,13 +60,20 @@
 /* Dark mode: used when the visitor's device is set to dark */
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Lighter on dark backgrounds; buttons then get dark text */
+    --primary: #4fb0f6;
     --primary-soft: color-mix(in srgb, var(--primary) 20%, transparent);
+    --on-primary: #0b1a2a;
 
     --background: #171717;
     --foreground: #ffffff;
     --surface-muted: rgba(0, 0, 0, 0.2);
     --text-muted: #a1a1aa;
-    --text-subtle: #71717a;
+    --text-subtle: #9a9aa2;
+
+    --success: #10b981;
+    --danger: #f87171;
+    --warning-text: color-mix(in srgb, var(--warning), var(--foreground) 30%);
 
     --series-income: #3987e5;
     --series-expenses: #d95926;
