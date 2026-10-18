@@ -30,6 +30,31 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "4500kb",
     },
   },
+  // Safety instructions every page sends the browser. A content security
+  // policy isn't here yet: the attached files' route sets its own
+  // (transactions/attachments/[id]/route.ts).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // No other site may show Finely inside a frame, where it could
+          // trick someone into clicking buttons they can't see
+          { key: "X-Frame-Options", value: "DENY" },
+          // Only ever over HTTPS, for two years (browsers ignore this on
+          // plain http://localhost)
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          // Other sites learn only that a visitor came from Finely, never
+          // which page (addresses can name a transaction or a search)
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Files are only ever treated as what they say they are
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Finely never needs the camera, microphone or location
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
 };
 
 // Error monitoring (see lib/monitoring.ts). When building with

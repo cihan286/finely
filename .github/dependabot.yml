@@ -1,0 +1,21 @@
+# Keeps dependencies up to date: once a week, Dependabot opens a pull
+# request for packages that have a newer version (right away for security
+# fixes). CI checks each one; merge it when it passes.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Small updates come together in one pull request; bigger (major)
+      # ones come one by one, since they can need code changes
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
