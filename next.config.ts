@@ -30,9 +30,9 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "4500kb",
     },
   },
-  // Safety instructions every page sends the browser. A content security
-  // policy isn't here yet: the attached files' route sets its own
-  // (transactions/attachments/[id]/route.ts).
+  // Safety instructions every page sends the browser. The Content Security
+  // Policy isn't here: it needs a new one-time code per page, so proxy.ts
+  // adds it (lib/csp.ts).
   async headers() {
     return [
       {

@@ -7,11 +7,15 @@
 //
 // For developers: Next.js App Router root layout. Pages can override the title
 // with their own `metadata`; it then appears as "<page title> | Finely".
+// Every page is rendered per request (connection() below): each gets a new
+// one-time code for its scripts (proxy.ts, lib/csp.ts), which a page built
+// ahead of time couldn't have.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Arimo, Lexend } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 // Fonts: Arimo for regular text, Lexend for the logo. Next.js downloads them
@@ -36,7 +40,9 @@ export const metadata: Metadata = {
     "Track expenses automatically, see your cash flow in real time, and turn your business's financial data into clear, actionable insights.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Wait for the visitor's request: see the note at the top
+  await connection();
   return (
     <html
       lang="en"
