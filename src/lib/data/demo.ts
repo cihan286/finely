@@ -145,13 +145,16 @@ async function fillDemoCompany(
       data.rules.map((r) => ({ organizationId, matchText: r.matchText, categoryId: categoryId(r.category)! })),
     ),
     db.insert(financialAccount).values(
-      data.accounts.map((a) => ({
+      data.accounts.map((a, i) => ({
         id: accountIds.get(a.key)!,
         organizationId,
         name: a.name,
         type: a.type,
         last4: a.last4,
         openingBalance: a.openingBalance,
+        // A second apart, in the listed order: accounts are shown oldest
+        // first, so the checking account comes first in every list
+        createdAt: new Date(now.getTime() + i * 1000),
       })),
     ),
     db.insert(card).values(

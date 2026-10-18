@@ -79,10 +79,10 @@ real customers.*
   light and dark mode (text contrast, names for every button and field,
   headings), checked on every push.
 - **Tested.** 331 unit tests (Vitest) for the calculations and the data
-  rules, and 20 end-to-end tests (Playwright) that use the real app in a
+  rules, and 25 end-to-end tests (Playwright) that use the real app in a
   real browser against a real Postgres: signing up, importing a statement,
-  inviting a teammate, Stripe's messages, the demo, phone-sized screens and
-  accessibility.
+  inviting a teammate, Stripe's messages, the demo, phone-sized screens,
+  the page layout and accessibility.
   GitHub Actions runs everything, plus a type check, lint, a production
   build and a check that every schema change has a migration, on every push.
   Dependabot keeps dependencies up to date.
@@ -497,7 +497,10 @@ CSV statement, inviting a teammate who joins as a member, one company not
 seeing another's money, Stripe's signed messages changing the plan
 (Stripe itself is never called: the tests sign the messages with a pretend
 secret), the demo (its sample data, what it refuses, and its deletion), the
-security headers, phone-sized screens, and accessibility: the public pages,
+security headers, phone-sized screens, what a person browsing would notice
+(`e2e/ui.spec.ts`: dashboard pages scroll inside their panel, the 404 page,
+a header that knows who's logged in, errors that come into view, list names
+that fit on a phone), and accessibility: the public pages,
 company setup and the demo's pages, dialogs and notifications panel are checked with axe
 (WCAG 2.1 AA) in light and dark mode (`e2e/accessibility.spec.ts`; pages
 that need a link from an email, like resetting a password, aren't). If it fails, it names the rule and the

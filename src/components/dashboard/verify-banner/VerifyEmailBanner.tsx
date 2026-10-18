@@ -15,8 +15,11 @@ export default function VerifyEmailBanner({ email }: { email: string }) {
     <div className={styles.banner} role="status">
       <MailWarning size={18} className={styles.icon} aria-hidden="true" />
       <p className={styles.text}>
-        Please verify your email address. We sent a link to{" "}
-        <strong>{email}</strong>.
+        Please verify your email address.{" "}
+        {/* Phones get the short version: the banner never scrolls away */}
+        <span className={styles.long}>
+          We sent a link to <strong>{email}</strong>.
+        </span>
       </p>
       <ResendVerificationButton
         email={email}

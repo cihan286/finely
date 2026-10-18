@@ -370,7 +370,7 @@ async function parseTransactionInput(
     accountId,
     categoryId,
     cardId,
-    name: requiredText(input.name, "Name"),
+    name: requiredText(input.name, "Description"),
     amount,
     occurredAt,
     status: oneOf(input.status, TRANSACTION_STATUSES, "Status"),

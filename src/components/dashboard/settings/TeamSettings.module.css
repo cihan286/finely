@@ -207,4 +207,17 @@
     flex: none;
     width: 100%;
   }
+
+  /* List rows (people, accounts, categories): the name gets the first line
+     next to its picture, and what follows (an amount, a role, the buttons)
+     moves to a second line, instead of squeezing the name to "M…" */
+  .row {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .row > .who,
+  .row > .name {
+    flex: 1 1 calc(100% - 3.5rem);
+  }
 }
