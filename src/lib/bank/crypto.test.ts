@@ -19,7 +19,10 @@ describe("bank token encryption", () => {
     const stored = encryptToken("token", secret);
     expect(() => decryptToken(stored, "another secret")).toThrow();
     const [version, iv, tag, data] = stored.split(".");
-    const tampered = [version, iv, tag, `${data.slice(0, -2)}AA`].join(".");
+    // Flip one bit of the encrypted bytes, so the token always really changes
+    const bytes = Buffer.from(data, "base64url");
+    bytes[0] ^= 1;
+    const tampered = [version, iv, tag, bytes.toString("base64url")].join(".");
     expect(() => decryptToken(tampered, secret)).toThrow();
     expect(() => decryptToken("not a token", secret)).toThrow(
       "The stored bank token is not readable.",
