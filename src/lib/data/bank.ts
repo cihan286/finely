@@ -45,6 +45,7 @@ import {
   getCompanyLocale,
   getFinanceContext,
   isUniqueViolation,
+  refuseInDemo,
   requiredText,
 } from "./common";
 import { settleBillsWith } from "./bills";
@@ -110,7 +111,8 @@ export async function listBankConnections(): Promise<BankConnectionSummary[]> {
  * opens the "log in at your bank" window in the browser.
  */
 export async function createBankLinkToken(): Promise<string> {
-  const { userId } = await getFinanceContext({ manage: true });
+  const { userId, organizationId } = await getFinanceContext({ manage: true });
+  await refuseInDemo(organizationId);
   try {
     return await requireProvider().createLinkToken(userId);
   } catch (error) {
@@ -127,6 +129,7 @@ export async function connectBank(
   institutionName: string,
 ): Promise<SyncResult & { institutionName: string }> {
   const actor = await getFinanceContext({ manage: true });
+  await refuseInDemo(actor.organizationId);
   const provider = requireProvider();
   const token = requiredText(publicToken, "Bank link", 500);
   // Shown on screen later; whatever the browser sent, kept short

@@ -41,19 +41,36 @@ export function errorMessage(error: unknown): string {
 }
 
 /**
- * A company's timezone and currency ("UTC" and "USD" until set). Read once
- * per request.
+ * A company's timezone and currency ("UTC" and "USD" until set), and whether
+ * it's a demo company (lib/data/demo.ts). Read once per request.
  */
 export const getCompanyLocale = cache(async (organizationId: string) => {
   const [row] = await db
     .select({
       timezone: companySettings.timezone,
       currency: companySettings.currency,
+      demoExpiresAt: companySettings.demoExpiresAt,
     })
     .from(companySettings)
     .where(eq(companySettings.organizationId, organizationId));
-  return { timeZone: row?.timezone ?? "UTC", currency: row?.currency ?? "USD" };
+  return {
+    timeZone: row?.timezone ?? "UTC",
+    currency: row?.currency ?? "USD",
+    isDemo: Boolean(row?.demoExpiresAt),
+    /** When a demo company is deleted; null for real companies */
+    demoExpiresAt: row?.demoExpiresAt ?? null,
+  };
 });
+
+/**
+ * Stops what a demo company may not do (anything that reaches outside
+ * Finely, like a bank or Stripe), with a message that can be shown.
+ */
+export async function refuseInDemo(organizationId: string) {
+  if ((await getCompanyLocale(organizationId)).isDemo) {
+    throw new DataError("This isn't available in the demo. Sign up to use it with your own company.");
+  }
+}
 
 /** A company's timezone ("UTC" until set) */
 export async function getCompanyTimeZone(organizationId: string): Promise<string> {

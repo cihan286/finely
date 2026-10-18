@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { betterAuth } from "better-auth";
-import { createAuthMiddleware, isAPIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
@@ -20,6 +20,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { appUrl, vercelUrls } from "@/lib/app-url";
+import { isDemoEmail } from "@/lib/demo";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
@@ -34,6 +35,13 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
 /** Google sign-in is offered only once its credentials are configured. */
 export const isGoogleEnabled = Boolean(googleClientId && googleClientSecret);
+
+// What a demo person may not do (see hooks.before)
+const DEMO_BLOCKED_PATHS = new Set([
+  "/organization/invite-member",
+  "/organization/create",
+  "/change-email",
+]);
 
 export const auth = betterAuth({
   baseURL: appUrl,
@@ -152,6 +160,18 @@ export const auth = betterAuth({
   },
 
   hooks: {
+    // The demo's pretend people ("Try the demo", lib/data/demo.ts) can't
+    // reach anyone outside it: no inviting, no changing their email address
+    // to a real one, and no new companies (which would outlive the demo)
+    before: createAuthMiddleware(async (ctx) => {
+      if (!DEMO_BLOCKED_PATHS.has(ctx.path)) return;
+      const current = await getSessionFromCtx(ctx);
+      if (isDemoEmail(current?.user.email)) {
+        throw new APIError("FORBIDDEN", {
+          message: "This isn't available in the demo. Sign up to use it with your own company.",
+        });
+      }
+    }),
     // Leaving a company by yourself has no hook of its own in Better Auth
     // (being removed by someone else does), so it's written to the
     // company's activity log from here

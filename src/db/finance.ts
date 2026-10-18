@@ -73,6 +73,9 @@ export const companySettings = pgTable("company_settings", {
   // When the weekly email was last sent to this company's team, so a run
   // that is repeated doesn't send it twice
   lastDigestAt: timestamp("last_digest_at"),
+  // Only for a demo company ("Try the demo"): when it's deleted, with its
+  // pretend people. Empty for every real company. (See lib/data/demo.ts.)
+  demoExpiresAt: timestamp("demo_expires_at"),
   ...timestamps,
 });
 

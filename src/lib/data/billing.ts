@@ -54,7 +54,7 @@ import { sendEmail } from "@/lib/email/send";
 import { paymentFailedEmail, planEndedEmail } from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
 import { recordAudit } from "./audit";
-import { DataError } from "./common";
+import { DataError, refuseInDemo } from "./common";
 
 /** The team size allowed while billing isn't set up (Better Auth's own default) */
 const UNLIMITED_MEMBERS = 100;
@@ -176,6 +176,7 @@ async function requireBillingOwner() {
     throw new DataError("Only the company's owner can change its plan.");
   }
   if (!isBillingEnabled) throw new DataError("Paying for a plan isn't set up yet.");
+  await refuseInDemo(context.organization.id);
   return context;
 }
 

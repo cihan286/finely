@@ -12,6 +12,7 @@
 
 import { after } from "next/server";
 import { Resend } from "resend";
+import { isDemoEmail } from "@/lib/demo";
 
 export interface Email {
   to: string;
@@ -41,6 +42,8 @@ const from =
  * it was handed over (or printed, without Resend).
  */
 export async function sendEmail(email: Email): Promise<boolean> {
+  // Demo people's addresses can't receive mail: don't try (lib/demo.ts)
+  if (isDemoEmail(email.to)) return true;
   if (!resend) {
     console.info(
       `\n[email not sent: RESEND_API_KEY missing] to ${email.to}\nSubject: ${email.subject}\n\n${email.text}\n`,

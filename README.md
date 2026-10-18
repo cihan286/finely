@@ -12,7 +12,8 @@ with receipts attached, bills, budgets, the Insights page (with the regular
 payments it spots), a 30-day forecast, exports, search, notifications and
 email notifications (a weekly summary and alerts), an activity log, a
 currency per company, payment cards and paid plans through Stripe all work
-with real data.
+with real data. **Try the demo** on the home page opens a company full of
+sample data without signing up (see "The demo").
 
 ## How accounts work
 
@@ -172,7 +173,8 @@ src/
 ├── lib/
 │   ├── data/               Reading and saving company data (always use these);
 │   │                       company.ts hands a company over or deletes it,
-│   │                       person.ts is a person's own data and account
+│   │                       person.ts is a person's own data and account,
+│   │                       demo.ts starts and deletes demo companies
 │   ├── finance/            Calculations, with no database or screen (tested)
 │   │   ├── dashboard-summary.ts  The dashboard's numbers
 │   │   ├── insights.ts           The Insights page's numbers
@@ -193,6 +195,7 @@ src/
 │   │   ├── category-rules.ts     Choosing a category from a description
 │   │   ├── statement-import.ts   Reading bank statements (dates, amounts, columns)
 │   │   ├── export.ts             The export files' rows and columns
+│   │   ├── demo-data.ts          The demo company's made-up finances
 │   │   └── csv.ts                Turning CSV text into rows and cells, and back
 │   ├── bank/               Talking to banks through Plaid, and encrypting
 │   │                       the banks' keys
@@ -208,6 +211,7 @@ src/
 │   ├── roles.ts            Team roles (owner, admin, member) and their labels
 │   ├── action-state.ts     What server actions read from forms and answer
 │   ├── contact.ts          Checking a message from the Contact page (tested)
+│   ├── demo.ts             Telling the demo's pretend people apart
 │   ├── dates.ts            Calendar days in a company's timezone
 │   ├── format.ts           Currency, number and date formatting
 │   ├── monitoring.ts       Sentry settings (what is and isn't sent)
@@ -267,7 +271,8 @@ remove old ones in a later release.
 **Scheduled jobs** are started by Vercel's scheduler (`crons` in
 `vercel.json`, production only), which opens their address with
 `CRON_SECRET`: the weekly summary (`/api/cron/weekly-digest`, Mondays at
-08:00 UTC) and the bank sync (`/api/cron/bank-sync`, every day at 06:00 UTC). To try it by hand:
+08:00 UTC) and the bank sync (`/api/cron/bank-sync`, every day at 06:00 UTC), which also
+deletes expired demo companies. To try it by hand:
 `curl -H "Authorization: Bearer $CRON_SECRET" https://<your domain>/api/cron/weekly-digest`.
 
 **In production only**, logins, sign-ups and password resets are rate
@@ -324,8 +329,8 @@ its own.
 
 **Company data.** Every table that holds business data (transactions, bills,
 cards…) needs an `organization_id` column, and every query must filter by the
-active company. **Add each new table to `deleteCompany()` in
-`src/lib/data/company.ts`**, in an order its foreign keys allow, and to its
+active company. **Add each new table to `companyDeletionSteps()` in
+`src/lib/data/company.ts`** (used by `deleteCompany()` and for expired demos), in an order its foreign keys allow, and to its
 test. Never take the company ID from the browser. Read and save
 company data through the functions in `src/lib/data/` (`listTransactions()`,
 `createAccount()`, …): each one looks up the active company and checks the
@@ -394,9 +399,10 @@ The end-to-end tests (`e2e/`, Playwright) use the real app in a real
 browser against a real Postgres: signing up and logging in (and being
 stopped after a few wrong passwords), adding transactions and importing a
 CSV statement, inviting a teammate who joins as a member, one company not
-seeing another's money, and Stripe's signed messages changing the plan
+seeing another's money, Stripe's signed messages changing the plan
 (Stripe itself is never called: the tests sign the messages with a pretend
-secret). To run them:
+secret), the demo (its sample data, what it refuses, and its deletion), and
+the security headers. To run them:
 
 ```bash
 npm run test:e2e:db   # once: a throwaway Postgres in Docker, on port 5433
@@ -416,6 +422,37 @@ Stripe's payment page aren't covered: both need the real services.
 **Server vs. client components.** Components are Server Components by default.
 Add `"use client"` only to components that need state, effects or browser
 APIs, and keep those as small as possible (see `CashFlowChart.tsx`).
+
+## The demo
+
+**Try the demo** on the home page lets anyone look around without signing
+up. Each press makes a fresh copy of a pretend design studio, Northpeak
+Studio, and logs the visitor in as its owner, Maya Carter. The copy is full
+of made-up data (`lib/finance/demo-data.ts`): half a year of transactions
+(a client on a retainer, invoices, card payouts, payroll every two weeks,
+rent, subscriptions, ads, coffee and taxis on a card), two accounts, two
+cards (one over its limit), budgets (one exceeded), three bills (one
+overdue), a teammate, a pending payment, a few uncategorized ones and one
+unusually large cloud bill, so every page and the bell have something to
+show. Dates are relative to the day the demo starts, in the visitor's
+timezone.
+
+Visitors can change anything: nobody else sees their copy. A banner under
+the top bar says it's a demo and when it's deleted, with **Sign up for
+real**, which logs out of it and opens the sign-up page.
+
+- **It can't reach the outside world.** The pretend people's addresses end in
+  `@demo.finely.invalid` (`lib/demo.ts`); `.invalid` can never receive mail,
+  and `sendEmail()` doesn't even try. Inviting people, changing the email
+  address and setting up another company are refused for them (`auth.ts`),
+  and so are linking a bank and paying for a plan (`refuseInDemo()` in
+  `lib/data/common.ts`). Use `refuseInDemo()` for anything new that reaches
+  outside Finely.
+- **It's deleted after a day**, with its pretend people and so their logins
+  (`deleteExpiredDemos()` in `lib/data/demo.ts`): whenever a new demo starts,
+  and by the daily bank-sync job. A demo company is one whose
+  `company_settings.demo_expires_at` is set.
+- **It's limited** to 5 new demos per IP address per hour.
 
 ## Importing bank statements
 

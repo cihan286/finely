@@ -20,6 +20,8 @@ const baseURL = `http://localhost:${port}`;
 export const databaseUrl =
   process.env.E2E_DATABASE_URL ?? "postgresql://e2e:e2e@localhost:5433/finely_e2e";
 export const stripeWebhookSecret = "whsec_e2e_not_a_real_secret";
+// Lets the tests start the scheduled jobs (e.g. demo.spec.ts)
+export const cronSecret = "e2e-cron-secret-not-used-anywhere-else";
 
 export default defineConfig({
   testDir: "e2e",
@@ -60,6 +62,7 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "e2e-only-secret-not-used-anywhere-else",
       BETTER_AUTH_URL: baseURL,
       NEXT_TELEMETRY_DISABLED: "1",
+      CRON_SECRET: cronSecret,
       // Paid plans are switched on, but with a pretend Stripe: the tests
       // never reach Stripe, they send the app signed messages as Stripe would
       // (see billing.spec.ts). The plans' team limits apply, as in production.
