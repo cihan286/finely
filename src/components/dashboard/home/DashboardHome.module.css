@@ -279,7 +279,7 @@
 }
 
 .budget_near {
-  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+  color: var(--warning-text);
 }
 
 .budget_over {

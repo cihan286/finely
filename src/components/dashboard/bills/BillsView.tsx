@@ -318,7 +318,7 @@ export default function BillsView({
                           href={`${LIST_PATH}?pay=${bill.id}`}
                           scroll={false}
                           className={styles.payLink}
-                          aria-label={`Mark ${bill.name} as paid`}
+                          aria-label={`Mark as paid: ${bill.name}`}
                         >
                           Mark as paid
                         </Link>
@@ -388,7 +388,7 @@ export default function BillsView({
                           <Link
                             href={`/dashboard/transactions?edit=${bill.transactionId}`}
                             className={styles.viewLink}
-                            aria-label={`View the payment of ${bill.name}`}
+                            aria-label={`View payment of ${bill.name}`}
                           >
                             View payment
                           </Link>

@@ -149,7 +149,7 @@ export default function CardsView({
                 <Link
                   href={`/dashboard/transactions?card=${card.id}&from=${monthStart(today)}`}
                   className={styles.link}
-                  aria-label={`View the payments of ${card.name}`}
+                  aria-label={`View payments of ${card.name}`}
                 >
                   View payments
                 </Link>

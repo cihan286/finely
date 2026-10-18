@@ -241,7 +241,7 @@
 }
 
 .dueNote.dueSoon {
-  color: color-mix(in srgb, var(--warning), var(--foreground) 40%);
+  color: var(--warning-text);
   font-weight: 600;
 }
 
