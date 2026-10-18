@@ -4,16 +4,86 @@ Financial clarity for modern businesses. Finely is a SaaS app that helps
 businesses track expenses, follow their cash flow and turn financial data into
 actionable insights.
 
-**Status:** a portfolio project, in active development. The landing page, sign-up/login, business
-accounts (companies with teams and invitations), bank accounts, transactions
-(added by hand, imported from a bank's CSV or synced from a linked bank),
-categories, the dashboard,
-with receipts attached, bills, budgets, the Insights page (with the regular
-payments it spots), a 30-day forecast, exports, search, notifications and
-email notifications (a weekly summary and alerts), an activity log, a
-currency per company, payment cards and paid plans through Stripe all work
-with real data. **Try the demo** on the home page opens a company full of
-sample data without signing up (see "The demo").
+**[Open the live app →](https://finely-lemon.vercel.app)** and press **Try the
+demo**: no sign-up, you're logged in to a pretend design studio with half a
+year of sample data, and only you see your copy.
+
+![The dashboard of the demo company](docs/screenshots/dashboard.png)
+
+*A portfolio project, built to the standard of a real SaaS product. See
+[Known limitations](#known-limitations) for what it would still need before
+real customers.*
+
+## What it does
+
+- **Companies and teams.** Everyone works inside a company, with owners,
+  admins and members, invitations by email, handing a company over and
+  deleting it. One person can belong to several companies.
+- **Money in and out.** Bank accounts, transactions added by hand, imported
+  from any bank's CSV export (columns are recognized automatically) or synced
+  from a linked bank through Plaid. Categories, rules that categorize new
+  transactions, attached receipts and payment cards with monthly limits.
+- **Insights.** A dashboard of balances and cash flow; trends over 3, 6 or 12
+  months; top vendors; **regular payments it finds by itself** (rent,
+  payroll, subscriptions, a client on a retainer); **unusually high
+  charges**; a 30-day balance forecast; budgets per category and overall.
+- **Staying on top of it.** Bills with due dates, which payments arriving
+  from the bank mark as paid; a notification bell; a weekly summary email and
+  alerts; an activity log of who changed what; exports to CSV.
+- **Paid plans** through Stripe, with a team-size limit per plan.
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/regular-payments.png" alt="Regular payments found by Insights"></td>
+    <td><img src="docs/screenshots/cards-and-alerts.png" alt="Payment cards and the notification bell"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Regular payments, found from the transactions alone</sub></td>
+    <td align="center"><sub>Card limits, and what the bell warns about</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/insights.png" alt="Insights: money in and out by month"></td>
+    <td><img src="docs/screenshots/transactions.png" alt="The transactions list with filters"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Insights over 3, 6 or 12 months</sub></td>
+    <td align="center"><sub>Transactions: search, filter, categorize several at once</sub></td>
+  </tr>
+</table>
+
+![Finely on a phone](docs/screenshots/phone.png)
+
+## How it's built
+
+- **Next.js 16** (App Router, Server Components and server actions) with
+  React 19 and the React Compiler, in strict TypeScript.
+- **Postgres on Neon** through Drizzle ORM, with migrations applied on every
+  deploy. Money is stored as exact decimals; every company has its own
+  timezone, which decides the day each transaction falls on.
+- **Multi-tenant by design.** Every query is scoped to the signed-in
+  person's company on the server, and a test suite runs the real data code
+  against an in-memory Postgres to prove that one company can never read or
+  change another's data, and that members can't do what only admins may.
+- **Real integrations.** Better Auth (email and Google sign-in, sessions,
+  organizations), Stripe subscriptions with signed webhooks that ignore late
+  or repeated messages, Plaid bank linking with access tokens encrypted
+  (AES-256-GCM), Resend for email, Sentry for errors (set up to send no
+  personal or financial data).
+- **Security.** Login, sign-up and contact-form rate limiting, security
+  headers, roles checked on the server for every action, and a demo that
+  can't email, invite or pay for anything.
+- **Tested.** 331 unit tests (Vitest) for the calculations and the data
+  rules, and 14 end-to-end tests (Playwright) that use the real app in a
+  real browser against a real Postgres: signing up, importing a statement,
+  inviting a teammate, Stripe's messages, the demo and phone-sized screens.
+  GitHub Actions runs everything, plus a type check, lint, a production
+  build and a check that every schema change has a migration, on every push.
+  Dependabot keeps dependencies up to date.
+- Hosted on **Vercel**, with daily and weekly jobs (bank sync, the weekly
+  summary, deleting expired demos).
+
+The rest of this README is the developer guide: how the app works in
+detail, how to run it, and the conventions to follow.
 
 ## How accounts work
 
