@@ -129,7 +129,22 @@ export async function deleteCompany(confirmation: string) {
   // First, so nobody keeps paying for a company that no longer exists; if
   // Stripe can't be told, the company stays
   await cancelSubscriptionFor(id);
-  await db.batch([
+  await db.batch(companyDeletionSteps(id));
+  // sendEmail() never throws
+  await afterResponse(async () => {
+    for (const person of team) {
+      await sendEmail(companyDeletedEmail(person, company.name, me.name));
+    }
+  });
+}
+
+/**
+ * The statements that delete a company and everything in it, in an order
+ * its foreign keys allow. Run them together (db.batch): all or nothing.
+ * Also used for demo companies that expired (demo.ts).
+ */
+export function companyDeletionSteps(id: string) {
+  return [
     // Files and bills point at their transaction, and transactions at their
     // account and category, so: files, bills, transactions, then what those
     // belonged to
@@ -162,11 +177,5 @@ export async function deleteCompany(confirmation: string) {
       .set({ lastOrganizationId: null })
       .where(eq(user.lastOrganizationId, id)),
     db.delete(organization).where(eq(organization.id, id)),
-  ]);
-  // sendEmail() never throws
-  await afterResponse(async () => {
-    for (const person of team) {
-      await sendEmail(companyDeletedEmail(person, company.name, me.name));
-    }
-  });
+  ] as const;
 }

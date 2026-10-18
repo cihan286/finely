@@ -32,7 +32,7 @@ export default function PrivacyPage() {
         Finely holds your company&apos;s financial records, so here is plainly
         what we collect, what we do with it, and what we don&apos;t.
       </p>
-      <p className={styles.updated}>Last updated: October 13, 2026</p>
+      <p className={styles.updated}>Last updated: October 18, 2026</p>
 
       <section className={styles.section}>
         <h2 className={styles.heading}>Who this is about</h2>
@@ -90,6 +90,13 @@ export default function PrivacyPage() {
             contact form, with your name and email address. To stop abuse of
             the form, we count for an hour how many messages came from an IP
             address.
+          </li>
+          <li>
+            <strong>Trying the demo.</strong> &ldquo;Try the demo&rdquo; makes a
+            pretend company with a pretend login, without asking for anything
+            about you. Like any login, it keeps the IP address and browser it
+            came from, and we count for an hour how many demos came from an
+            IP address.
           </li>
         </ul>
       </section>
@@ -183,6 +190,8 @@ export default function PrivacyPage() {
           files, bills, categories, rules, bank links and record of changes
           right away. Disconnecting a bank ends our access to it; what was
           already imported stays until you delete it. Logins expire by themselves.
+          A demo company is deleted, with its pretend login and anything
+          typed into it, a day after it was started.
           Copies in backups disappear as those backups are replaced.
         </p>
       </section>

@@ -1,0 +1,7 @@
+/* The button, with room for an error under it */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}

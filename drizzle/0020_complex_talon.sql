@@ -1,0 +1,1 @@
+ALTER TABLE "company_settings" ADD COLUMN "demo_expires_at" timestamp;

@@ -3,7 +3,7 @@
 //
 // In plain words: the first thing visitors see. It has the navigation bar
 // (logo, links, "Start for free" and "Log in"), the main headline with its
-// buttons, and the phone picture on the right. On small screens the links move
+// buttons ("Get Started" and "Try the demo"), and the phone picture on the right. On small screens the links move
 // into a menu that opens with the ☰ button.
 //
 // For developers: a client component ("use client") because the mobile menu
@@ -17,6 +17,7 @@ import styles from "./Hero.module.css";
 import Button from "@/components/common/button/Button";
 import Link from "next/link";
 import PhoneMockup from "../phone-mockup/PhoneMockup";
+import DemoButton from "../demo-button/DemoButton";
 import Logo from "@/components/common/logo/Logo";
 import { ArrowRight, Menu, X } from "lucide-react";
 
@@ -135,13 +136,8 @@ export default function Hero() {
           </p>
           <div className={styles.ctas}>
             <Button variant="primary" text="Get Started" href="/signup" />
-            <Button
-              variant="secondary"
-              text="Learn More"
-              href="#features"
-              icon={<ArrowRight size="1em" />}
-              iconPosition="right"
-            />
+            {/* A ready-made company to look around in, no sign-up needed */}
+            <DemoButton />
           </div>
         </div>
         <div className={styles.rightColumn}>

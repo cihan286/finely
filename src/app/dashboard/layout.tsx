@@ -19,9 +19,10 @@ import type { ReactNode } from "react";
 import styles from "./layout.module.css";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
 import TopBar from "@/components/dashboard/topbar/TopBar";
+import DemoBanner from "@/components/dashboard/demo-banner/DemoBanner";
 import VerifyEmailBanner from "@/components/dashboard/verify-banner/VerifyEmailBanner";
 import { todayIn } from "@/lib/dates";
-import { getCompanyTimeZone } from "@/lib/data/common";
+import { getCompanyLocale } from "@/lib/data/common";
 import { listNotifications } from "@/lib/data/notifications";
 import { listUserOrganizations, requireOrganization } from "@/lib/session";
 
@@ -33,10 +34,10 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   const { user, organization } = await requireOrganization();
-  const [organizations, notifications, timeZone] = await Promise.all([
+  const [organizations, notifications, { timeZone, demoExpiresAt }] = await Promise.all([
     listUserOrganizations(),
     listNotifications(),
-    getCompanyTimeZone(organization.id),
+    getCompanyLocale(organization.id),
   ]);
 
   return (
@@ -52,8 +53,15 @@ export default async function DashboardLayout({
         />
         {/* Reminder until the email address is verified */}
         {!user.emailVerified && <VerifyEmailBanner email={user.email} />}
+        {/* A demo company ("Try the demo"): made up, and deleted soon */}
+        {demoExpiresAt && <DemoBanner hoursLeft={hoursUntil(demoExpiresAt)} />}
         {children}
       </div>
     </div>
   );
+}
+
+// Whole hours from now until a moment, rounded up (never below zero)
+function hoursUntil(moment: Date): number {
+  return Math.max(0, Math.ceil((moment.getTime() - Date.now()) / (60 * 60 * 1000)));
 }
