@@ -5,7 +5,7 @@
 // company's financial data.
 //
 // For developers: plain text, no data. Keep the claims in step with what the
-// app really does (see the README).
+// app really does (see the README and docs/features.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
