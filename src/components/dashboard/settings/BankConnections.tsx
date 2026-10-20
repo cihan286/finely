@@ -22,6 +22,7 @@ import { useState, useTransition } from "react";
 import { Landmark, RefreshCw } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { useNotify } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import Spinner from "@/components/common/spinner/Spinner";
 import {
   completeBankLink,
@@ -128,9 +129,15 @@ export default function BankConnections({ canManage, connections }: BankConnecti
       .open();
   };
 
-  const handleDisconnect = (connection: BankConnectionRow) => {
+  const confirm = useConfirm();
+
+  const handleDisconnect = async (connection: BankConnectionRow) => {
     if (
-      !window.confirm(fill(t.confirmDisconnect, { bank: connection.institutionName }))
+      !(await confirm({
+        text: fill(t.confirmDisconnect, { bank: connection.institutionName }),
+        confirmText: t.disconnect,
+        danger: true,
+      }))
     ) {
       return;
     }

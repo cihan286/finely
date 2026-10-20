@@ -23,6 +23,7 @@ import Button from "@/components/common/button/Button";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { useNotify } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { authClient } from "@/lib/auth-client";
 import { canManageTeam, roleLabel } from "@/lib/roles";
 import { formatShortDate, getInitials } from "@/lib/format";
@@ -71,6 +72,7 @@ export default function TeamSettings({
   const t = m.settings.team;
   const canManage = canManageTeam(role);
   const notify = useNotify();
+  const confirm = useConfirm();
   // Which action is in progress
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -106,8 +108,9 @@ export default function TeamSettings({
     if (ok) form.reset();
   };
 
-  const handleRemove = (member: MemberRow) => {
-    if (!window.confirm(fill(t.confirmRemove, { name: member.name }))) return;
+  const handleRemove = async (member: MemberRow) => {
+    const text = fill(t.confirmRemove, { name: member.name });
+    if (!(await confirm({ text, confirmText: t.remove, danger: true }))) return;
     run(
       `remove-${member.id}`,
       () => authClient.organization.removeMember({ memberIdOrEmail: member.id }),
@@ -125,7 +128,8 @@ export default function TeamSettings({
   };
 
   const handleLeave = async () => {
-    if (!window.confirm(fill(t.confirmLeave, { company: organization.name }))) return;
+    const text = fill(t.confirmLeave, { company: organization.name });
+    if (!(await confirm({ text, confirmText: t.leave, danger: true }))) return;
     setBusy("leave");
     const { error } = await authClient.organization.leave({
       organizationId: organization.id,

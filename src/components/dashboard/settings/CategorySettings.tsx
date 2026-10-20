@@ -28,6 +28,7 @@ import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import { submitCategory } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
@@ -78,12 +79,18 @@ export default function CategorySettings({
   const adding = pending && intent === "add";
   const updating = pending && intent === "update";
 
-  const submit = (e: SubmitEvent<HTMLFormElement>) => {
+  const confirm = useConfirm();
+
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget, e.nativeEvent.submitter);
     if (
       formData.get("intent") === "delete" &&
-      !window.confirm(fill(t.confirmDelete, { name: String(formData.get("name")) }))
+      !(await confirm({
+        text: fill(t.confirmDelete, { name: String(formData.get("name")) }),
+        confirmText: m.common.delete,
+        danger: true,
+      }))
     ) {
       return;
     }

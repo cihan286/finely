@@ -42,6 +42,7 @@
 }
 
 .card {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -118,6 +119,27 @@
 .close:hover {
   background-color: var(--hover);
   color: var(--foreground);
+}
+
+/* The time left, shrinking towards the left along the bottom edge */
+.timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background-color: var(--accent);
+  opacity: 0.6;
+  transform-origin: left;
+  animation-name: countDown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes countDown {
+  to {
+    transform: scaleX(0);
+  }
 }
 
 /* Leaving: the card slides out to the right, then the gap closes */

@@ -30,6 +30,7 @@ import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { submitCategoryRule } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import {
@@ -81,12 +82,18 @@ export default function CategoryRuleSettings({
   const adding = pending && intent === "add";
   const updating = pending && intent === "update";
 
-  const submit = (e: SubmitEvent<HTMLFormElement>) => {
+  const confirm = useConfirm();
+
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget, e.nativeEvent.submitter);
     if (
       formData.get("intent") === "delete" &&
-      !window.confirm(fill(t.confirmDelete, { text: String(formData.get("matchText")) }))
+      !(await confirm({
+        text: fill(t.confirmDelete, { text: String(formData.get("matchText")) }),
+        confirmText: m.common.delete,
+        danger: true,
+      }))
     ) {
       return;
     }

@@ -21,6 +21,7 @@ import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { submitCard } from "@/app/dashboard/cards/actions";
 import { initialActionState } from "@/lib/action-state";
 import { amountInputProps } from "@/lib/format";
@@ -76,22 +77,24 @@ function CardForm({
   submit,
 }: CardFormProps) {
   const close = useCloseDialog();
+  const confirm = useConfirm();
   const { m } = useI18n();
   const words = m.cards;
   const t = words.dialog;
   const isNew = card === null;
 
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const submitter = e.nativeEvent.submitter;
+    // Includes the pressed button's name/value (intent=delete, …)
+    const formData = new FormData(e.currentTarget, submitter);
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm(t.confirmDelete)
+      !(await confirm({ text: t.confirmDelete, confirmText: m.common.delete, danger: true }))
     ) {
       return;
     }
-    // Includes the pressed button's name/value (intent=delete, …)
-    submit(new FormData(e.currentTarget, submitter));
+    submit(formData);
   };
 
   return (

@@ -35,6 +35,11 @@ export const common = {
     info: "Good to know",
     label: "Messages",
   },
+  // The window that asks before something can't be taken back
+  confirm: {
+    title: "Are you sure?",
+    yes: "Yes, continue",
+  },
 };
 
 // The text browsers and search engines show for the site

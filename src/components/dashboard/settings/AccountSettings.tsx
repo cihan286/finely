@@ -22,6 +22,7 @@ import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { submitAccount } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Account } from "@/types/finance";
@@ -69,12 +70,18 @@ export default function AccountSettings({
   const [removing, setRemoving] = useState(false);
   const adding = pending && !removing;
 
-  const submit = (e: SubmitEvent<HTMLFormElement>) => {
+  const confirm = useConfirm();
+
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     if (
       formData.get("intent") === "remove" &&
-      !window.confirm(fill(t.confirmRemove, { name: String(formData.get("name")) }))
+      !(await confirm({
+        text: fill(t.confirmRemove, { name: String(formData.get("name")) }),
+        confirmText: t.remove,
+        danger: true,
+      }))
     ) {
       return;
     }

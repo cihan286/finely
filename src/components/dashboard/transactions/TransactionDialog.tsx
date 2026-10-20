@@ -29,6 +29,7 @@ import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select, Textarea } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
 import { amountInputProps } from "@/lib/format";
@@ -127,6 +128,7 @@ function TransactionForm({
   submit,
 }: TransactionFormProps) {
   const close = useCloseDialog();
+  const confirm = useConfirm();
   const { locale, m } = useI18n();
   const words = m.transactions;
   const t = words.dialog;
@@ -134,17 +136,18 @@ function TransactionForm({
   // Whether "always use this category" is ticked
   const [remember, setRemember] = useState(false);
 
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const submitter = e.nativeEvent.submitter;
+    // Includes the pressed button's name/value (intent=delete)
+    const formData = new FormData(e.currentTarget, submitter);
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm(t.confirmDelete)
+      !(await confirm({ text: t.confirmDelete, confirmText: m.common.delete, danger: true }))
     ) {
       return;
     }
-    // Includes the pressed button's name/value (intent=delete)
-    submit(new FormData(e.currentTarget, submitter));
+    submit(formData);
   };
 
   const incomeCategories = categories.filter((c) => c.kind === "income");

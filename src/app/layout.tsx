@@ -5,8 +5,8 @@
 // inside this file. It loads the fonts, the global styles, and sets the text
 // browsers and search engines show for the site: the tab title and description.
 // It also decides the page's language (English or Turkish) and hands its
-// words to every part of the page, and the notification window that pops
-// up after an action.
+// words to every part of the page, the notices that pop up after an action
+// and the window that asks "Are you sure?".
 //
 // For developers: Next.js App Router root layout. Pages can override the title
 // with their own `metadata`; it then appears as "<page title> | Finely".
@@ -19,6 +19,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Arimo, Lexend } from "next/font/google";
 import { connection } from "next/server";
+import { ConfirmProvider } from "@/components/common/confirm/Confirm";
 import { NoticeProvider } from "@/components/common/notice/Notice";
 import { I18nProvider } from "@/i18n/client";
 import { clientMessages } from "@/i18n/messages";
@@ -65,7 +66,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     >
       <body>
         <I18nProvider locale={locale} messages={clientMessages(m)}>
-          <NoticeProvider>{children}</NoticeProvider>
+          <NoticeProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </NoticeProvider>
         </I18nProvider>
       </body>
     </html>

@@ -18,6 +18,7 @@
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { FileText, Paperclip, Trash2 } from "lucide-react";
 import { useNotify } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import Spinner from "@/components/common/spinner/Spinner";
 import {
   removeAttachment,
@@ -48,6 +49,7 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
   const t = m.transactions.attachments;
   const [attachments, setAttachments] = useState(initial);
   const notify = useNotify();
+  const confirm = useConfirm();
   const showError = (text: string) => notify({ type: "error", text });
   // What is being saved: "upload", or the ID of the file being deleted
   const [busy, setBusy] = useState<string | null>(null);
@@ -97,8 +99,9 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     );
   };
 
-  const handleDelete = (attachment: Attachment) => {
-    if (!window.confirm(fill(t.confirmDelete, { name: attachment.name }))) return;
+  const handleDelete = async (attachment: Attachment) => {
+    const text = fill(t.confirmDelete, { name: attachment.name });
+    if (!(await confirm({ text, confirmText: m.common.delete, danger: true }))) return;
     run(
       attachment.id,
       () => removeAttachment(attachment.id),

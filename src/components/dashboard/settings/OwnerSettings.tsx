@@ -26,6 +26,7 @@ import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import {
   submitCompanyDeletion,
   submitOwnershipTransfer,
@@ -65,13 +66,18 @@ export default function OwnerSettings({
   const [typed, setTyped] = useState("");
   const confirmed = typed.trim() === organizationName.trim();
 
-  const handleTransfer = (e: SubmitEvent<HTMLFormElement>) => {
+  const confirm = useConfirm();
+
+  const handleTransfer = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const member = members.find((m) => m.id === formData.get("memberId"));
     if (
       !member ||
-      !window.confirm(fill(t.confirmHandOver, { name: member.name, company: organizationName }))
+      !(await confirm({
+        text: fill(t.confirmHandOver, { name: member.name, company: organizationName }),
+        confirmText: t.makeOwner,
+      }))
     ) {
       return;
     }

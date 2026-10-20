@@ -35,6 +35,10 @@ export const common: typeof enCommon = {
     info: "Bilginize",
     label: "Mesajlar",
   },
+  confirm: {
+    title: "Emin misiniz?",
+    yes: "Evet, devam et",
+  },
 };
 
 export const meta: typeof enMeta = {

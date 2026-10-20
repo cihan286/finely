@@ -4,8 +4,9 @@
 // In plain words: the small cards that slide in at the bottom right of the
 // screen to say how something went: a green check when it worked ("Your
 // password was changed."), a red mark when it didn't, a blue "i" for a plain
-// note. Each slides away by itself after a few seconds (longer for errors,
-// and not while the pointer is on them), or straight away with its ×.
+// note. Each slides away by itself after 5 seconds, counted down by a thin
+// bar along its bottom (which stops while the pointer is on them), or
+// straight away with its ×.
 // Several stack up, newest at the bottom. On phones they come up from the
 // bottom edge instead.
 //
@@ -49,8 +50,8 @@ export interface Notice {
   link?: { href: string; text: string };
 }
 
-// How long each kind stays, in milliseconds
-const DURATION: Record<NoticeType, number> = { success: 5000, info: 6000, error: 8000 };
+// How long each one stays, in milliseconds
+const DURATION = 5000;
 // Older ones make room beyond this many
 const MAX_SHOWN = 4;
 
@@ -222,13 +223,6 @@ function NoticeCard({
   const [leaving, setLeaving] = useState(false);
   const Icon = ICONS[notice.type];
 
-  // Counts again from the start after a pause
-  useEffect(() => {
-    if (paused || leaving) return;
-    const timer = window.setTimeout(() => setLeaving(true), DURATION[notice.type]);
-    return () => window.clearTimeout(timer);
-  }, [paused, leaving, notice.type]);
-
   return (
     <div
       className={`${styles.item} ${leaving ? styles.leaving : ""}`}
@@ -264,6 +258,17 @@ function NoticeCard({
           >
             <X size={16} />
           </button>
+          {/* The time left: its animation is the timer, so a pause stops
+              both where they are */}
+          <span
+            className={styles.timer}
+            style={{
+              animationDuration: `${DURATION}ms`,
+              animationPlayState: paused ? "paused" : "running",
+            }}
+            onAnimationEnd={() => setLeaving(true)}
+            aria-hidden="true"
+          />
         </div>
       </div>
     </div>

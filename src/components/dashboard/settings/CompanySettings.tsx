@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import { Input, Select } from "@/components/common/form/controls";
 import { useActionNotice, useNotify } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
@@ -103,13 +104,15 @@ export default function CompanySettings({
     startTransition(() => dispatchTimeZone(formData));
   };
 
-  const handleCurrency = (e: SubmitEvent<HTMLFormElement>) => {
+  const confirm = useConfirm();
+
+  const handleCurrency = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const chosen = String(formData.get("currency"));
     if (
       chosen === currency ||
-      !window.confirm(fill(t.confirmCurrency, { to: chosen, from: currency }))
+      !(await confirm({ text: fill(t.confirmCurrency, { to: chosen, from: currency }) }))
     ) {
       return;
     }

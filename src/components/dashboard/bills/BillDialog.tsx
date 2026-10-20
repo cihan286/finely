@@ -22,6 +22,7 @@ import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
 import { Input, Select, Textarea } from "@/components/common/form/controls";
 import { useActionNotice } from "@/components/common/notice/Notice";
+import { useConfirm } from "@/components/common/confirm/Confirm";
 import { submitBill } from "@/app/dashboard/bills/actions";
 import { amountInputProps } from "@/lib/format";
 import { initialActionState } from "@/lib/action-state";
@@ -98,6 +99,7 @@ function BillForm({
   submit,
 }: BillFormProps) {
   const close = useCloseDialog();
+  const confirm = useConfirm();
   const { m } = useI18n();
   const words = m.bills;
   const t = words.dialog;
@@ -105,17 +107,18 @@ function BillForm({
   // Bills are money going out
   const expenseCategories = categories.filter((c) => c.kind === "expense");
 
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const submitter = e.nativeEvent.submitter;
+    // Includes the pressed button's name/value (intent=delete)
+    const formData = new FormData(e.currentTarget, submitter);
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm(t.confirmDelete)
+      !(await confirm({ text: t.confirmDelete, confirmText: m.common.delete, danger: true }))
     ) {
       return;
     }
-    // Includes the pressed button's name/value (intent=delete)
-    submit(new FormData(e.currentTarget, submitter));
+    submit(formData);
   };
 
   return (
