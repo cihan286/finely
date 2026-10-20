@@ -226,6 +226,7 @@ export const settings = {
     typeToConfirm: "Type “{text}” to confirm",
     deleting: "Deleting",
     deleteButton: "Delete company",
+    deleted: "{company} was deleted, with all its data.",
   },
   person: {
     language: "Language",

@@ -19,7 +19,7 @@
 import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/common/button/Button";
-import Message from "@/components/common/form/Message";
+import { Notify, useActionNotice } from "@/components/common/notice/Notice";
 import { submitBilling } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import {
@@ -66,6 +66,7 @@ export default function BillingSettings({
 }: BillingSettingsProps) {
   const t = useI18n().m.settings.billing;
   const [state, dispatch, pending] = useActionState(submitBilling, initialActionState);
+  useActionNotice(state);
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const full = memberLimit !== null && memberCount >= memberLimit;
 
@@ -77,11 +78,11 @@ export default function BillingSettings({
 
   return (
     <div className={shared.stack} id="billing">
-      {state.error && <Message type="error">{state.error}</Message>}
       {justPaid && (
-        <Message type="success">
-          {plan === "free" ? t.thanksPending : fill(t.thanks, { plan: PLANS[plan].name })}
-        </Message>
+        <Notify
+          type="success"
+          text={plan === "free" ? t.thanksPending : fill(t.thanks, { plan: PLANS[plan].name })}
+        />
       )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>

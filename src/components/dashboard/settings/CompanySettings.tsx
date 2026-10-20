@@ -27,7 +27,7 @@ import {
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import { Input, Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice, useNotify } from "@/components/common/notice/Notice";
 import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
@@ -76,19 +76,31 @@ export default function CompanySettings({
   const { locale, m } = i18n;
   const t = m.settings.company;
   const saveText = (busy: boolean) => (busy ? m.common.saving : m.settings.save);
-  // Renaming: its result, and whether it's being saved
-  const [renamed, setRenamed] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const notify = useNotify();
+  // Whether the name is being saved
   const [renaming, setRenaming] = useState(false);
-  const [state, dispatch, pending] = useActionState(
+  // One of each per form, so saving one doesn't show the others as saving
+  const [timeZoneState, dispatchTimeZone, savingTimeZone] = useActionState(
     submitCompanySettings,
     initialActionState,
   );
+  const [currencyState, dispatchCurrency, savingCurrency] = useActionState(
+    submitCompanySettings,
+    initialActionState,
+  );
+  const [budgetState, dispatchBudget, savingBudget] = useActionState(
+    submitCompanySettings,
+    initialActionState,
+  );
+  useActionNotice(timeZoneState);
+  useActionNotice(currencyState);
+  useActionNotice(budgetState);
   const deviceTimeZone = useDeviceTimeZone();
 
   const save = (value: string) => {
     const formData = new FormData();
     formData.set("timezone", value);
-    startTransition(() => dispatch(formData));
+    startTransition(() => dispatchTimeZone(formData));
   };
 
   const handleCurrency = (e: SubmitEvent<HTMLFormElement>) => {
@@ -101,13 +113,13 @@ export default function CompanySettings({
     ) {
       return;
     }
-    startTransition(() => dispatch(formData));
+    startTransition(() => dispatchCurrency(formData));
   };
 
   const handleBudget = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    startTransition(() => dispatch(formData));
+    startTransition(() => dispatchBudget(formData));
   };
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
@@ -120,24 +132,22 @@ export default function CompanySettings({
     const name = String(new FormData(e.currentTarget).get("name")).trim();
     if (!name || name === organization.name) return;
     setRenaming(true);
-    setRenamed(null);
     const { error } = await authClient.organization.update({
       organizationId: organization.id,
       data: { name },
     });
     setRenaming(false);
     if (error) {
-      setRenamed({ type: "error", text: authErrorText(error, i18n, t.renameFailed) });
+      notify({ type: "error", text: authErrorText(error, i18n, t.renameFailed) });
       return;
     }
-    setRenamed({ type: "success", text: fill(t.renamed, { name }) });
+    notify({ type: "success", text: fill(t.renamed, { name }) });
     // The name is also shown in the top bar and on other pages
     router.refresh();
   };
 
   return (
     <div className={shared.stack}>
-      {renamed && <Message type={renamed.type}>{renamed.text}</Message>}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>{t.name}</h2>
@@ -170,11 +180,6 @@ export default function CompanySettings({
         )}
       </section>
 
-      {(state.error || state.success) && (
-        <Message type={state.error ? "error" : "success"}>
-          {state.error ?? state.success}
-        </Message>
-      )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>{t.timezone}</h2>
@@ -200,9 +205,9 @@ export default function CompanySettings({
               type="submit"
               variant="primary"
               size="sm"
-              loading={pending}
-              text={saveText(pending)}
-              disabled={pending}
+              loading={savingTimeZone}
+              text={saveText(savingTimeZone)}
+              disabled={savingTimeZone}
             />
           </form>
         ) : (
@@ -215,7 +220,7 @@ export default function CompanySettings({
               type="button"
               className={styles.linkButton}
               onClick={() => save(deviceTimeZone)}
-              disabled={pending}
+              disabled={savingTimeZone}
             >
               {t.useDevice}
             </button>
@@ -248,9 +253,9 @@ export default function CompanySettings({
               type="submit"
               variant="primary"
               size="sm"
-              loading={pending}
-              text={saveText(pending)}
-              disabled={pending}
+              loading={savingCurrency}
+              text={saveText(savingCurrency)}
+              disabled={savingCurrency}
             />
           </form>
         ) : (
@@ -283,9 +288,9 @@ export default function CompanySettings({
               type="submit"
               variant="primary"
               size="sm"
-              loading={pending}
-              text={saveText(pending)}
-              disabled={pending}
+              loading={savingBudget}
+              text={saveText(savingBudget)}
+              disabled={savingBudget}
             />
           </form>
         ) : (

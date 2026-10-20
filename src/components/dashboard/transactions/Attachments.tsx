@@ -17,7 +17,7 @@
 
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { FileText, Paperclip, Trash2 } from "lucide-react";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import Spinner from "@/components/common/spinner/Spinner";
 import {
   removeAttachment,
@@ -47,7 +47,8 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
   const { locale, m } = useI18n();
   const t = m.transactions.attachments;
   const [attachments, setAttachments] = useState(initial);
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
   // What is being saved: "upload", or the ID of the file being deleted
   const [busy, setBusy] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -60,11 +61,10 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     action: () => Promise<{ error: string | null; attachments?: Attachment[] }>,
   ) => {
     setBusy(key);
-    setError(null);
     startTransition(async () => {
       const result = await action();
       setBusy(null);
-      if (result.error) setError(result.error);
+      if (result.error) showError(result.error);
       else if (result.attachments) setAttachments(result.attachments);
     });
   };
@@ -75,7 +75,7 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     e.target.value = "";
     if (!file) return;
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setError(
+      showError(
         fill(t.tooLarge, {
           max: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
           size: formatFileSize(file.size, locale),
@@ -116,8 +116,6 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
           tabIndex={-1}
         />
       </div>
-
-      {error && <Message type="error">{error}</Message>}
 
       {attachments.length === 0 ? (
         <p className={styles.hint}>

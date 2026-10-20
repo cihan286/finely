@@ -23,11 +23,6 @@
   font-weight: 600;
 }
 
-.error {
-  font-size: 0.85rem;
-  color: var(--danger);
-}
-
 .actions {
   display: flex;
   align-items: center;
@@ -38,8 +33,4 @@
 /* The shared boxes fill their container; here it sits next to the button */
 .actions .select {
   width: auto;
-}
-
-.message {
-  margin-bottom: 1rem;
 }

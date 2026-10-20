@@ -27,6 +27,7 @@ import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitBillPayment } from "@/app/dashboard/bills/actions";
 import { initialActionState } from "@/lib/action-state";
 import { nextDueDate } from "@/lib/finance/bills";
@@ -62,11 +63,11 @@ export default function PayBillDialog(props: PayBillDialogProps) {
     submitBillPayment,
     initialActionState,
   );
+  useActionNotice(state);
   return (
     <Dialog title={t.markAsPaid} closeHref={props.closeHref} busy={pending}>
       <PayBillForm
         {...props}
-        error={state.error}
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
@@ -75,7 +76,6 @@ export default function PayBillDialog(props: PayBillDialogProps) {
 }
 
 interface PayBillFormProps extends PayBillDialogProps {
-  error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;
 }
@@ -88,7 +88,6 @@ function PayBillForm({
   currency,
   canManage,
   today,
-  error,
   pending,
   submit,
 }: PayBillFormProps) {
@@ -109,7 +108,6 @@ function PayBillForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
-      {error && <Message type="error">{error}</Message>}
 
       <input type="hidden" name="id" value={bill.id} />
 

@@ -28,7 +28,7 @@ import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
 import PersonSettings from "@/components/dashboard/settings/PersonSettings";
 import TeamSettings from "@/components/dashboard/settings/TeamSettings";
 import Link from "next/link";
-import Message from "@/components/common/form/Message";
+import { Notify } from "@/components/common/notice/Notice";
 import { isBankEnabled } from "@/lib/bank/provider";
 import { listAccounts } from "@/lib/data/accounts";
 import { listBankConnections } from "@/lib/data/bank";
@@ -132,14 +132,15 @@ export default async function SettingsPage({
         </p>
       </div>
       {handedOver && role !== "owner" && (
-        <Message type="success">
-          {fill(t.handedOver, {
+        <Notify
+          type="success"
+          text={fill(t.handedOver, {
             owner:
               organization.members.find((member) => member.role === "owner")?.user.name ??
               t.someoneElse,
             company: organization.name,
           })}
-        </Message>
+        />
       )}
       <CompanySettings
         canManage={canManageFinances(role)}

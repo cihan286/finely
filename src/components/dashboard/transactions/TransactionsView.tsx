@@ -27,6 +27,7 @@ import {
 import Button from "@/components/common/button/Button";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
+import { Notify } from "@/components/common/notice/Notice";
 import type {
   Account,
   Card,
@@ -224,11 +225,7 @@ export default async function TransactionsView({
         )}
       </div>
 
-      {importResult && (
-        <Message type="success">
-          {importMessage(importResult, t)}
-        </Message>
-      )}
+      {importResult && <Notify type="success" text={importMessage(importResult, t)} />}
       {matchingBills > 0 && (
         <Message type="info">
           {plural(matchingBills, t.billsMatch, { search: query.q })}{" "}
@@ -241,12 +238,11 @@ export default async function TransactionsView({
         </Message>
       )}
       {ruleResult !== null && (
-        <Message type="success">
-          {ruleResult === 0 ? t.ruleSavedNone : plural(ruleResult, t.ruleSaved)}{" "}
-          <Link href="/dashboard/settings#rules" className={styles.messageLink}>
-            {t.seeAllRules}
-          </Link>
-        </Message>
+        <Notify
+          type="success"
+          text={ruleResult === 0 ? t.ruleSavedNone : plural(ruleResult, t.ruleSaved)}
+          link={{ href: "/dashboard/settings#rules", text: t.seeAllRules }}
+        />
       )}
 
       {accounts.length === 0 ? (

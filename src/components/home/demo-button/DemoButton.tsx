@@ -8,10 +8,10 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { PlayCircle } from "lucide-react";
 import Button from "@/components/common/button/Button";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import { startDemoAction } from "@/app/demo-actions";
 import { useI18n } from "@/i18n/client";
 import styles from "./DemoButton.module.css";
@@ -19,14 +19,14 @@ import styles from "./DemoButton.module.css";
 export default function DemoButton({ variant = "secondary" }: { variant?: "primary" | "secondary" | "outline" }) {
   const { m } = useI18n();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
 
   const start = () => {
-    setError(null);
     startTransition(async () => {
       // On success the action opens the dashboard and this never returns
       const result = await startDemoAction(Intl.DateTimeFormat().resolvedOptions().timeZone);
-      if (result?.error) setError(result.error);
+      if (result?.error) showError(result.error);
     });
   };
 
@@ -41,7 +41,6 @@ export default function DemoButton({ variant = "secondary" }: { variant?: "prima
         disabled={pending}
         action={start}
       />
-      {error && <Message type="error">{error}</Message>}
     </div>
   );
 }

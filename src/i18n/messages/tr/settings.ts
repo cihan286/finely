@@ -227,6 +227,7 @@ export const settings: typeof en = {
     typeToConfirm: "Onaylamak için “{text}” yazın",
     deleting: "Siliniyor",
     deleteButton: "Şirketi sil",
+    deleted: "{company} tüm verileriyle birlikte silindi.",
   },
   person: {
     language: "Dil",

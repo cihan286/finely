@@ -21,7 +21,7 @@ import Button from "@/components/common/button/Button";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
 import { Input, Select, Textarea } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitBill } from "@/app/dashboard/bills/actions";
 import { amountInputProps } from "@/lib/format";
 import { initialActionState } from "@/lib/action-state";
@@ -65,6 +65,7 @@ interface BillDialogProps {
 export default function BillDialog(props: BillDialogProps) {
   const t = useI18n().m.bills;
   const [state, dispatch, pending] = useActionState(submitBill, initialActionState);
+  useActionNotice(state);
   return (
     <Dialog
       title={props.bill ? t.dialog.editTitle : t.add}
@@ -73,7 +74,6 @@ export default function BillDialog(props: BillDialogProps) {
     >
       <BillForm
         {...props}
-        error={state.error}
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
@@ -82,7 +82,6 @@ export default function BillDialog(props: BillDialogProps) {
 }
 
 interface BillFormProps extends BillDialogProps {
-  error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;
 }
@@ -95,7 +94,6 @@ function BillForm({
   currency,
   canManage,
   today,
-  error,
   pending,
   submit,
 }: BillFormProps) {
@@ -122,7 +120,6 @@ function BillForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
-      {error && <Message type="error">{error}</Message>}
 
       <input type="hidden" name="id" value={bill?.id ?? ""} />
 

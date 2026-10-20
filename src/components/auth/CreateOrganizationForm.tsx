@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { authErrorText } from "@/i18n/auth-errors";
 import { useI18n } from "@/i18n/client";
@@ -41,14 +41,14 @@ export default function CreateOrganizationForm() {
   const router = useRouter();
   const i18n = useI18n();
   const t = i18n.m.auth.onboarding;
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const name = String(new FormData(e.currentTarget).get("name")).trim();
     if (!name) return;
-    setError(null);
     setLoading(true);
 
     // Creates the company, makes you its owner and switches you into it
@@ -60,7 +60,7 @@ export default function CreateOrganizationForm() {
     });
 
     if (error) {
-      setError(authErrorText(error, i18n, t.failed));
+      showError(authErrorText(error, i18n, t.failed));
       setLoading(false);
       return;
     }
@@ -72,11 +72,6 @@ export default function CreateOrganizationForm() {
     // method="post": if it is sent before the page has finished loading, the
     // fields (such as the password) must not end up in the address bar
     <form className={styles.form} method="post" onSubmit={handleSubmit}>
-      {error && (
-        <Message type="error">
-          {error}
-        </Message>
-      )}
 
       <Field
         label={t.companyName}

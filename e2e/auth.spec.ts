@@ -27,8 +27,12 @@ test("someone logs out and back in, and wrong passwords are refused", async ({ p
   await page.getByLabel("Email").fill(owner.email);
   await page.getByLabel("Password", { exact: true }).fill("not-the-password");
   await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /invalid|incorrect|wrong/i })).toBeVisible();
+  const refused = page.getByRole("alertdialog").filter({ hasText: /invalid|incorrect|wrong/i });
+  await expect(refused).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
+  // The notification window covers the page until it's closed
+  await refused.getByRole("button", { name: "OK" }).click();
+  await expect(refused).toBeHidden();
 
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Log in" }).click();
@@ -44,13 +48,20 @@ test("guessing passwords is stopped after a few tries", async ({ page }) => {
 
   await page.goto("/login");
   await page.getByLabel("Email").fill(owner.email);
-  const tooMany = page.getByRole("alert").filter({ hasText: "Too many requests" });
-  for (let attempt = 1; attempt <= 5 && !(await tooMany.isVisible()); attempt++) {
+  const notice = page.getByRole("alertdialog");
+  const tooMany = notice.filter({ hasText: "Too many requests" });
+  for (let attempt = 1; attempt <= 5; attempt++) {
     await page.getByLabel("Password", { exact: true }).fill(`wrong-guess-${attempt}`);
     await page.getByRole("button", { name: "Log in" }).click();
-    await expect(page.getByRole("button", { name: "Log in" })).toBeEnabled();
+    await expect(notice).toBeVisible();
+    if (await tooMany.isVisible()) break;
+    // Closed, to try again
+    await notice.getByRole("button", { name: "OK" }).click();
+    await expect(notice).toBeHidden();
   }
   await expect(tooMany).toBeVisible();
+  await tooMany.getByRole("button", { name: "OK" }).click();
+  await expect(tooMany).toBeHidden();
 
   // Even the right password has to wait
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);

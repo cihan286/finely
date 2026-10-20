@@ -27,7 +27,7 @@ import { Plus } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import { submitCategory } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
@@ -71,6 +71,12 @@ export default function CategorySettings({
     },
     initialActionState,
   );
+  useActionNotice(state);
+  // What the last form sent does ("add", "update" or "delete"), so only its
+  // button shows as saving
+  const [intent, setIntent] = useState("");
+  const adding = pending && intent === "add";
+  const updating = pending && intent === "update";
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,17 +87,12 @@ export default function CategorySettings({
     ) {
       return;
     }
+    setIntent(String(formData.get("intent")));
     startTransition(() => dispatch(formData));
   };
 
   return (
     <div className={shared.stack} id="categories">
-      {(state.error || state.success) && (
-        <Message type={state.error ? "error" : "success"}>
-          {state.error ?? state.success}
-        </Message>
-      )}
-
       {/* Add form: owners and admins only */}
       {canManage && (
         <section className={shared.card}>
@@ -106,8 +107,8 @@ export default function CategorySettings({
               type="submit"
               variant="primary"
               size="sm"
-              loading={pending}
-              text={pending ? m.common.saving : t.addButton}
+              loading={adding}
+              text={adding ? m.common.saving : t.addButton}
               icon={<Plus size={16} />}
               disabled={pending}
             />
@@ -151,8 +152,8 @@ export default function CategorySettings({
                               type="submit"
                               variant="primary"
                               size="sm"
-                              loading={pending}
-                              text={pending ? m.common.saving : m.common.save}
+                              loading={updating}
+                              text={updating ? m.common.saving : m.common.save}
                               disabled={pending}
                             />
                           </div>

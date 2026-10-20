@@ -28,7 +28,7 @@ import { Trash2 } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select, Textarea } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { submitTransaction } from "@/app/dashboard/transactions/actions";
 import { amountInputProps } from "@/lib/format";
@@ -84,6 +84,7 @@ export default function TransactionDialog(props: TransactionDialogProps) {
     submitTransaction,
     initialActionState,
   );
+  useActionNotice(state);
   return (
     <Dialog
       title={props.transaction ? t.editTitle : t.addTitle}
@@ -92,7 +93,6 @@ export default function TransactionDialog(props: TransactionDialogProps) {
     >
       <TransactionForm
         {...props}
-        error={state.error}
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
@@ -109,7 +109,6 @@ export default function TransactionDialog(props: TransactionDialogProps) {
 }
 
 interface TransactionFormProps extends Omit<TransactionDialogProps, "attachments"> {
-  error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;
 }
@@ -124,7 +123,6 @@ function TransactionForm({
   canManage,
   closeHref,
   today,
-  error,
   pending,
   submit,
 }: TransactionFormProps) {
@@ -154,11 +152,6 @@ function TransactionForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
-      {error && (
-        <Message type="error">
-          {error}
-        </Message>
-      )}
 
       <input type="hidden" name="id" value={transaction?.id ?? ""} />
       <input type="hidden" name="originalDate" value={transaction?.date ?? ""} />

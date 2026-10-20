@@ -2,8 +2,8 @@
 // Contact form
 //
 // In plain words: the form on the Contact page — your name, email address,
-// company (optional) and message. Sending it emails us; a note then confirms
-// it's on its way.
+// company (optional) and message. Sending it emails us; a window then
+// confirms it's on its way, and the form is emptied.
 //
 // For developers: a client component ("use client") for the submit. Sent with
 // onSubmit + startTransition rather than <form action>, so what was typed
@@ -13,23 +13,30 @@
 
 "use client";
 
-import { startTransition, useActionState, type SubmitEvent } from "react";
+import { startTransition, useActionState, useRef, type SubmitEvent } from "react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Textarea } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitContactMessage } from "@/app/(site)/contact/actions";
-import { initialActionState } from "@/lib/action-state";
+import { initialActionState, type ActionState } from "@/lib/action-state";
 import { CONTACT_LIMITS } from "@/lib/contact";
 import { useI18n } from "@/i18n/client";
 import styles from "./ContactForm.module.css";
 
 export default function ContactForm() {
   const t = useI18n().m.home.contactForm;
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, dispatch, pending] = useActionState(
-    submitContactMessage,
+    async (previous: ActionState, formData: FormData) => {
+      const result = await submitContactMessage(previous, formData);
+      // Sent: emptied, so it isn't sent twice by accident
+      if (!result.error) formRef.current?.reset();
+      return result;
+    },
     initialActionState,
   );
+  useActionNotice(state);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,13 +44,8 @@ export default function ContactForm() {
     startTransition(() => dispatch(formData));
   };
 
-  // Sent: the note replaces the form, so it can't be sent twice by accident
-  if (state.success) return <Message type="success">{state.success}</Message>;
-
   return (
-    <form className={styles.form} method="post" onSubmit={handleSubmit}>
-      {state.error && <Message type="error">{state.error}</Message>}
-
+    <form ref={formRef} className={styles.form} method="post" onSubmit={handleSubmit}>
       <div className={styles.row}>
         <Field label={t.name}>
           <Input name="name" autoComplete="name" maxLength={CONTACT_LIMITS.name} required />

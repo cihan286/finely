@@ -22,6 +22,7 @@ import { Mail, UserPlus } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { canManageTeam, roleLabel } from "@/lib/roles";
 import { formatShortDate, getInitials } from "@/lib/format";
@@ -69,8 +70,8 @@ export default function TeamSettings({
   const { locale, m } = i18n;
   const t = m.settings.team;
   const canManage = canManageTeam(role);
-  // Feedback for the last action, and which action is in progress
-  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const notify = useNotify();
+  // Which action is in progress
   const [busy, setBusy] = useState<string | null>(null);
 
   // Runs one team action, shows its result, and reloads the lists on success
@@ -80,14 +81,13 @@ export default function TeamSettings({
     success: string,
   ) => {
     setBusy(key);
-    setMessage(null);
     const { error } = await action();
     setBusy(null);
     if (error) {
-      setMessage({ type: "error", text: authErrorText(error, i18n, m.common.somethingWentWrong) });
+      notify({ type: "error", text: authErrorText(error, i18n, m.common.somethingWentWrong) });
       return false;
     }
-    setMessage({ type: "success", text: success });
+    notify({ type: "success", text: success });
     router.refresh();
     return true;
   };
@@ -127,13 +127,12 @@ export default function TeamSettings({
   const handleLeave = async () => {
     if (!window.confirm(fill(t.confirmLeave, { company: organization.name }))) return;
     setBusy("leave");
-    setMessage(null);
     const { error } = await authClient.organization.leave({
       organizationId: organization.id,
     });
     if (error) {
       setBusy(null);
-      setMessage({ type: "error", text: authErrorText(error, i18n, m.common.somethingWentWrong) });
+      notify({ type: "error", text: authErrorText(error, i18n, m.common.somethingWentWrong) });
       return;
     }
     // This login now has no company: /onboarding opens another one the
@@ -152,12 +151,6 @@ export default function TeamSettings({
 
   return (
     <div className={styles.stack}>
-      {message && (
-        <Message type={message.type}>
-          {message.text}
-        </Message>
-      )}
-
       {/* Invite form: owners and admins only */}
       {canManage ? (
         <section className={styles.card}>

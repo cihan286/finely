@@ -21,6 +21,7 @@ import { refresh } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { setFlashNotice } from "@/lib/flash-notice";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
 import {
   connectBank,
@@ -223,6 +224,12 @@ export async function submitCompanyDeletion(
   } catch (error) {
     return { error: await errorMessage(error) };
   }
+  // The next page says so (the typed name is the company's, checked above)
+  const m = await getMessages();
+  await setFlashNotice(
+    "success",
+    fill(m.settings.owner.deleted, { company: formField(formData, "confirmation").trim() }),
+  );
   // Outside the try: redirect() works by throwing
   redirect("/onboarding");
 }

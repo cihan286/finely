@@ -37,7 +37,7 @@ import {
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
 } from "@/components/auth/passwordRules";
-import Message from "@/components/common/form/Message";
+import { useActionNotice, useNotify } from "@/components/common/notice/Notice";
 import { submitAccountDeletion } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
@@ -70,15 +70,13 @@ export default function PersonSettings({
   const i18n = useI18n();
   const { m } = i18n;
   const t = m.settings.person;
+  const notify = useNotify();
   const [renaming, setRenaming] = useState(false);
-  const [renamed, setRenamed] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
   const [deletion, dispatch, deleting] = useActionState(
     submitAccountDeletion,
     initialActionState,
   );
+  useActionNotice(deletion);
   // What was typed to confirm the deletion
   const [typed, setTyped] = useState("");
   const confirmed = typed.trim().toLowerCase() === email.toLowerCase();
@@ -100,7 +98,6 @@ export default function PersonSettings({
     const newEmail = String(new FormData(form).get("newEmail")).trim().toLowerCase();
     if (!newEmail || newEmail === email.toLowerCase()) return;
     setMoving(true);
-    setRenamed(null);
     const { error } = await authClient.changeEmail({
       newEmail,
       // Where the link in the email leads once the address has changed
@@ -108,7 +105,7 @@ export default function PersonSettings({
     });
     setMoving(false);
     if (error) {
-      setRenamed({
+      notify({
         type: "error",
         text: authErrorText(error, i18n, t.emailFailed),
       });
@@ -117,7 +114,7 @@ export default function PersonSettings({
     form.reset();
     // The same answer whether or not the address is free, so this can't be
     // used to find out who has a Finely account
-    setRenamed({
+    notify({
       type: "success",
       text: fill(t.emailSent, { email: newEmail, current: email }),
     });
@@ -128,7 +125,6 @@ export default function PersonSettings({
     const form = e.currentTarget;
     const formData = new FormData(form);
     setChanging(true);
-    setRenamed(null);
     const { error } = await authClient.changePassword({
       currentPassword: String(formData.get("currentPassword")),
       newPassword: String(formData.get("newPassword")),
@@ -137,7 +133,7 @@ export default function PersonSettings({
     });
     setChanging(false);
     if (error) {
-      setRenamed({
+      notify({
         type: "error",
         text:
           error.code === "INVALID_PASSWORD"
@@ -147,7 +143,7 @@ export default function PersonSettings({
       return;
     }
     form.reset();
-    setRenamed({
+    notify({
       type: "success",
       text: t.passwordChanged,
     });
@@ -158,26 +154,22 @@ export default function PersonSettings({
     const typedName = String(new FormData(e.currentTarget).get("name")).trim();
     if (!typedName || typedName === name) return;
     setRenaming(true);
-    setRenamed(null);
     const { error } = await authClient.updateUser({ name: typedName });
     setRenaming(false);
     if (error) {
-      setRenamed({
+      notify({
         type: "error",
         text: authErrorText(error, i18n, t.nameFailed),
       });
       return;
     }
-    setRenamed({ type: "success", text: t.nameSaved });
+    notify({ type: "success", text: t.nameSaved });
     // The name is also shown in the top bar and in the team list
     router.refresh();
   };
 
   return (
     <div className={shared.stack} id="you">
-      {renamed && <Message type={renamed.type}>{renamed.text}</Message>}
-      {deletion.error && <Message type="error">{deletion.error}</Message>}
-
       {/* The only place to switch on phones, where the top bar has no room */}
       <section className={shared.card}>
         <div className={shared.cardHeader}>

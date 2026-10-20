@@ -28,6 +28,13 @@ export const common = {
   openDashboard: "Open dashboard",
   home: "Finely home",
   somethingWentWrong: "Something went wrong. Please try again.",
+  // The titles of the notification window, and its button
+  notice: {
+    success: "Done",
+    error: "That didn't work",
+    info: "Good to know",
+    ok: "OK",
+  },
 };
 
 // The text browsers and search engines show for the site

@@ -13,7 +13,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { authErrorText } from "@/i18n/auth-errors";
 import { useI18n } from "@/i18n/client";
@@ -23,19 +23,19 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
   const router = useRouter();
   const i18n = useI18n();
   const t = i18n.m.auth.invitation;
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
   // Which button is working: "accept", "decline" or none
   const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
 
   const respond = async (choice: "accept" | "decline") => {
     setBusy(choice);
-    setError(null);
     const { error } =
       choice === "accept"
         ? await authClient.organization.acceptInvitation({ invitationId })
         : await authClient.organization.rejectInvitation({ invitationId });
     if (error) {
-      setError(authErrorText(error, i18n, i18n.m.common.somethingWentWrong));
+      showError(authErrorText(error, i18n, i18n.m.common.somethingWentWrong));
       setBusy(null);
       return;
     }
@@ -47,11 +47,6 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
 
   return (
     <div className={styles.form}>
-      {error && (
-        <Message type="error">
-          {error}
-        </Message>
-      )}
       <div className={styles.submit}>
         <Button
           loading={busy === "accept"}

@@ -15,12 +15,13 @@
 
 "use client";
 
-import { startTransition, useActionState, useRef, type SubmitEvent } from "react";
+import { startTransition, useActionState, useRef, useState, type SubmitEvent } from "react";
 import { Landmark, Plus } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitAccount } from "@/app/dashboard/settings/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Account } from "@/types/finance";
@@ -62,6 +63,11 @@ export default function AccountSettings({
     },
     initialActionState,
   );
+  useActionNotice(state);
+  // Whether the last form sent removes an account, so removing doesn't show
+  // the add button as saving
+  const [removing, setRemoving] = useState(false);
+  const adding = pending && !removing;
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -72,17 +78,12 @@ export default function AccountSettings({
     ) {
       return;
     }
+    setRemoving(formData.get("intent") === "remove");
     startTransition(() => dispatch(formData));
   };
 
   return (
     <div className={shared.stack} id="accounts">
-      {(state.error || state.success) && (
-        <Message type={state.error ? "error" : "success"}>
-          {state.error ?? state.success}
-        </Message>
-      )}
-
       {/* Add form: owners and admins only */}
       {canManage && (
         <section className={shared.card}>
@@ -131,8 +132,8 @@ export default function AccountSettings({
               type="submit"
               variant="primary"
               size="sm"
-              loading={pending}
-              text={pending ? m.common.saving : t.addButton}
+              loading={adding}
+              text={adding ? m.common.saving : t.addButton}
               icon={<Plus size={16} />}
               disabled={pending}
             />

@@ -23,7 +23,7 @@ import { FileUp } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import { importStatement } from "@/app/dashboard/transactions/actions";
 import {
@@ -98,24 +98,24 @@ function ImportForm({
   // The chosen file's name and its lines, split into cells
   const [file, setFile] = useState<{ name: string; rows: string[][] } | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const chosen = e.target.files?.[0];
     e.target.value = ""; // so choosing the same file again still works
     if (!chosen) return;
-    setError(null);
     if (chosen.size > MAX_FILE_BYTES) {
-      setError(t.tooLarge);
+      showError(t.tooLarge);
       return;
     }
     const rows = parseCsv(await chosen.text());
     if (rows.length === 0) {
-      setError(t.empty);
+      showError(t.empty);
       return;
     }
     if (rows.length > MAX_IMPORT_ROWS + 1) {
-      setError(fill(t.tooManyLines, { max: MAX_IMPORT_ROWS }));
+      showError(fill(t.tooManyLines, { max: MAX_IMPORT_ROWS }));
       return;
     }
     setFile({ name: chosen.name, rows });
@@ -127,11 +127,6 @@ function ImportForm({
     return (
       <div className={forms.form}>
         <p className={styles.intro}>{t.intro}</p>
-        {error && (
-          <Message type="error">
-            {error}
-          </Message>
-        )}
         <AccountSelect accounts={accounts} value={accountId} onChange={setAccountId} />
         <label className={styles.dropZone}>
           <FileUp size={24} />
@@ -187,12 +182,11 @@ function ImportForm({
   const totalOut = rows.reduce((sum, r) => (r.amount < 0 ? sum + r.amount : sum), 0);
 
   const handleImport = () => {
-    setError(null);
     startImport(async () => {
       // On success the server goes back to the list, so this only returns
       // when something went wrong
       const result = await importStatement(accountId, rows);
-      if (result?.error) setError(result.error);
+      if (result?.error) showError(result.error);
     });
   };
 
@@ -206,19 +200,12 @@ function ImportForm({
           onClick={() => {
             setFile(null);
             setMapping(null);
-            setError(null);
           }}
           disabled={pending}
         >
           {t.chooseAnother}
         </button>
       </div>
-
-      {error && (
-        <Message type="error">
-          {error}
-        </Message>
-      )}
 
       <AccountSelect accounts={accounts} value={accountId} onChange={setAccountId} />
 

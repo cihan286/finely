@@ -25,7 +25,7 @@ import {
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import {
   submitCompanyDeletion,
   submitOwnershipTransfer,
@@ -59,6 +59,8 @@ export default function OwnerSettings({
     submitCompanyDeletion,
     initialActionState,
   );
+  useActionNotice(transfer);
+  useActionNotice(deletion);
   // What was typed to confirm the deletion
   const [typed, setTyped] = useState("");
   const confirmed = typed.trim() === organizationName.trim();
@@ -84,10 +86,6 @@ export default function OwnerSettings({
 
   return (
     <div className={shared.stack} id="owner">
-      {(transfer.error || deletion.error) && (
-        <Message type="error">{transfer.error ?? deletion.error}</Message>
-      )}
-
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>{t.handOver}</h2>

@@ -18,7 +18,7 @@
 import { startTransition, useActionState, type SubmitEvent } from "react";
 import Button from "@/components/common/button/Button";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitUndoBillPayment } from "@/app/dashboard/bills/actions";
 import { initialActionState } from "@/lib/action-state";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -44,11 +44,11 @@ export default function UndoPaymentDialog(props: UndoPaymentDialogProps) {
     submitUndoBillPayment,
     initialActionState,
   );
+  useActionNotice(state);
   return (
     <Dialog title={t.title} closeHref={props.closeHref} busy={pending}>
       <UndoPaymentForm
         {...props}
-        error={state.error}
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
@@ -57,7 +57,6 @@ export default function UndoPaymentDialog(props: UndoPaymentDialogProps) {
 }
 
 interface UndoPaymentFormProps extends UndoPaymentDialogProps {
-  error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;
 }
@@ -66,7 +65,6 @@ interface UndoPaymentFormProps extends UndoPaymentDialogProps {
 function UndoPaymentForm({
   bill,
   currency,
-  error,
   pending,
   submit,
 }: UndoPaymentFormProps) {
@@ -82,7 +80,6 @@ function UndoPaymentForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
-      {error && <Message type="error">{error}</Message>}
 
       <input type="hidden" name="id" value={bill.id} />
 

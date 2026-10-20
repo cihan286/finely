@@ -3,7 +3,7 @@
 //
 // In plain words: the email + password form on the login page. When submitted,
 // it asks the server to check the details. If they're right, the user goes to
-// the dashboard; if not, an error message appears above the form.
+// the dashboard; if not, a window pops up saying what went wrong.
 //
 // For developers: a client component ("use client") because it reacts to
 // typing and clicks in the browser.
@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { Input, PasswordInput } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { Notify, useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { authErrorText } from "@/i18n/auth-errors";
 import { useI18n } from "@/i18n/client";
@@ -40,8 +40,8 @@ export default function LoginForm({
   const router = useRouter();
   const i18n = useI18n();
   const { auth: t, common } = i18n.m;
-  // The error message to show (e.g. "Invalid email or password"), if any
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
   // True while waiting for the server; the button shows "Logging in…"
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +50,6 @@ export default function LoginForm({
     // the details ourselves
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    setError(null);
     setLoading(true);
 
     const { error } = await authClient.signIn.email({
@@ -59,7 +58,7 @@ export default function LoginForm({
     });
 
     if (error) {
-      setError(authErrorText(error, i18n, t.login.failed));
+      showError(authErrorText(error, i18n, t.login.failed));
       setLoading(false);
       return;
     }
@@ -76,7 +75,7 @@ export default function LoginForm({
         <>
           <GoogleButton
             label={t.login.continueWithGoogle}
-            onError={setError}
+            onError={showError}
             callbackURL={next}
           />
           <div className={styles.divider}>{t.or}</div>
@@ -86,12 +85,7 @@ export default function LoginForm({
       {/* method="post": if it is sent before the page has finished loading, the
           fields (such as the password) must not end up in the address bar */}
       <form className={styles.form} method="post" onSubmit={handleSubmit}>
-        {notice && !error && <Message type="success">{notice}</Message>}
-        {error && (
-          <Message type="error">
-            {error}
-          </Message>
-        )}
+        {notice && <Notify type="success" text={notice} />}
 
         <Field label={t.emailLabel}>
           <Input

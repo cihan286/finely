@@ -25,7 +25,7 @@ import {
 } from "react";
 import Button from "@/components/common/button/Button";
 import { Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { categorizeSelected } from "@/app/dashboard/transactions/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Category } from "@/types/finance";
@@ -72,6 +72,7 @@ export default function BulkCategorize({ categories, children }: BulkCategorizeP
     },
     initialActionState,
   );
+  useActionNotice(state);
 
   // A box was ticked or unticked somewhere in the table
   const handleChange = (e: FormEvent<HTMLFormElement>) => {
@@ -99,21 +100,12 @@ export default function BulkCategorize({ categories, children }: BulkCategorizeP
 
   return (
     <form ref={formRef} onChange={handleChange} onSubmit={handleSubmit}>
-      {(state.error || state.success) && selected === 0 && (
-        <div className={styles.message}>
-          <Message type={state.error ? "error" : "success"}>
-            {state.error ?? state.success}
-          </Message>
-        </div>
-      )}
-
       {/* Only while something is ticked */}
       {selected > 0 && (
         <div className={styles.bar}>
           <span className={styles.count} role="status">
             {fill(t.selected, { count: selected })}
           </span>
-          {state.error && <span className={styles.error}>{state.error}</span>}
           <div className={styles.actions}>
             <Select
               name="bulkCategory"

@@ -21,7 +21,7 @@
 import { useState, useTransition } from "react";
 import { Landmark, RefreshCw } from "lucide-react";
 import Button from "@/components/common/button/Button";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import Spinner from "@/components/common/spinner/Spinner";
 import {
   completeBankLink,
@@ -82,7 +82,12 @@ interface BankConnectionsProps {
 
 export default function BankConnections({ canManage, connections }: BankConnectionsProps) {
   const t = useI18n().m.settings.banks;
-  const [message, setMessage] = useState<ActionState | null>(null);
+  const notify = useNotify();
+  // Shows how an action went
+  const show = ({ error, success }: ActionState) => {
+    if (error) notify({ type: "error", text: error });
+    else if (success) notify({ type: "success", text: success });
+  };
   // What is in progress: "connect", or a connection's ID with what's done to it
   const [busy, setBusy] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -90,19 +95,17 @@ export default function BankConnections({ canManage, connections }: BankConnecti
   // Runs a server action and shows its answer
   const run = (key: string, action: () => Promise<ActionState>) => {
     setBusy(key);
-    setMessage(null);
     startTransition(async () => {
-      setMessage(await action());
+      show(await action());
       setBusy(null);
     });
   };
 
   const handleConnect = async () => {
     setBusy("connect");
-    setMessage(null);
     const link = await createBankLink();
     if (!link.token) {
-      setMessage({ error: link.error });
+      show({ error: link.error });
       setBusy(null);
       return;
     }
@@ -110,7 +113,7 @@ export default function BankConnections({ canManage, connections }: BankConnecti
     try {
       plaid = await loadPlaid();
     } catch {
-      setMessage({ error: t.windowFailed });
+      show({ error: t.windowFailed });
       setBusy(null);
       return;
     }
@@ -136,11 +139,6 @@ export default function BankConnections({ canManage, connections }: BankConnecti
 
   return (
     <div className={shared.stack} id="banks">
-      {message && (message.error || message.success) && (
-        <Message type={message.error ? "error" : "success"}>
-          {message.error ?? message.success}
-        </Message>
-      )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>

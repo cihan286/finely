@@ -20,7 +20,7 @@ import Button from "@/components/common/button/Button";
 import Dialog, { useCloseDialog } from "@/components/common/dialog/Dialog";
 import Field from "@/components/common/form/Field";
 import { Input, Select } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitCard } from "@/app/dashboard/cards/actions";
 import { initialActionState } from "@/lib/action-state";
 import { amountInputProps } from "@/lib/format";
@@ -46,6 +46,7 @@ interface CardDialogProps {
 export default function CardDialog(props: CardDialogProps) {
   const t = useI18n().m.cards;
   const [state, dispatch, pending] = useActionState(submitCard, initialActionState);
+  useActionNotice(state);
   return (
     <Dialog
       title={props.card ? t.dialog.editTitle : t.add}
@@ -54,7 +55,6 @@ export default function CardDialog(props: CardDialogProps) {
     >
       <CardForm
         {...props}
-        error={state.error}
         pending={pending}
         submit={(formData) => startTransition(() => dispatch(formData))}
       />
@@ -63,7 +63,6 @@ export default function CardDialog(props: CardDialogProps) {
 }
 
 interface CardFormProps extends CardDialogProps {
-  error: string | null;
   pending: boolean;
   submit: (formData: FormData) => void;
 }
@@ -73,7 +72,6 @@ function CardForm({
   card,
   members,
   currency,
-  error,
   pending,
   submit,
 }: CardFormProps) {
@@ -98,7 +96,6 @@ function CardForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
-      {error && <Message type="error">{error}</Message>}
 
       <input type="hidden" name="id" value={card?.id ?? ""} />
 

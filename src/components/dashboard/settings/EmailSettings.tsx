@@ -15,7 +15,7 @@
 
 import { startTransition, useActionState, type SubmitEvent } from "react";
 import Button from "@/components/common/button/Button";
-import Message from "@/components/common/form/Message";
+import { useActionNotice } from "@/components/common/notice/Notice";
 import { submitEmailPreferences } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import type { EmailPreferences } from "@/types/finance";
@@ -46,6 +46,7 @@ export default function EmailSettings({
     submitEmailPreferences,
     initialActionState,
   );
+  useActionNotice(state);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,11 +56,6 @@ export default function EmailSettings({
 
   return (
     <div className={shared.stack} id="emails">
-      {(state.error || state.success) && (
-        <Message type={state.error ? "error" : "success"}>
-          {state.error ?? state.success}
-        </Message>
-      )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>{t.title}</h2>

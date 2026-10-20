@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Download, Plus, Repeat, Search } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
+import { Notify } from "@/components/common/notice/Notice";
 import { daysBetween } from "@/lib/dates";
 import { billStatus, summarizeBills } from "@/lib/finance/bills";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -158,16 +159,18 @@ export default async function BillsView({
         </div>
       </div>
 
-      {undone && (
-        <Message type="success">{t.undone}</Message>
-      )}
+      {undone && <Notify type="success" text={t.undone} />}
 
       {paidResult && (
-        <Message type="success">
-          {paidResult.linked ? t.paidLinked : t.paidAdded}
-          {paidResult.nextDueDate &&
-            ` ${fill(t.nextDue, { date: formatDate(paidResult.nextDueDate, locale) })}`}
-        </Message>
+        <Notify
+          type="success"
+          text={
+            (paidResult.linked ? t.paidLinked : t.paidAdded) +
+            (paidResult.nextDueDate
+              ? ` ${fill(t.nextDue, { date: formatDate(paidResult.nextDueDate, locale) })}`
+              : "")
+          }
+        />
       )}
 
       {/* Regular payments found in the history that could be bills */}

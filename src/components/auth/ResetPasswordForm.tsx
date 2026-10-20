@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import Field from "@/components/common/form/Field";
 import { PasswordInput } from "@/components/common/form/controls";
-import Message from "@/components/common/form/Message";
+import { useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { fill } from "@/i18n/config";
 import { authErrorText } from "@/i18n/auth-errors";
@@ -29,7 +29,8 @@ export default function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
   const i18n = useI18n();
   const { auth: t, common } = i18n.m;
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotify();
+  const showError = (text: string) => notify({ type: "error", text });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -39,11 +40,9 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
     // Catch typos: both boxes must contain the same password
     if (password !== String(data.get("confirm"))) {
-      setError(t.reset.mismatch);
+      showError(t.reset.mismatch);
       return;
     }
-
-    setError(null);
     setLoading(true);
     const { error } = await authClient.resetPassword({
       newPassword: password,
@@ -51,7 +50,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     });
 
     if (error) {
-      setError(authErrorText(error, i18n, t.reset.invalid));
+      showError(authErrorText(error, i18n, t.reset.invalid));
       setLoading(false);
       return;
     }
@@ -63,11 +62,6 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     // method="post": if it is sent before the page has finished loading, the
     // fields (such as the password) must not end up in the address bar
     <form className={styles.form} method="post" onSubmit={handleSubmit}>
-      {error && (
-        <Message type="error">
-          {error}
-        </Message>
-      )}
 
       <Field
         label={t.reset.newPassword}

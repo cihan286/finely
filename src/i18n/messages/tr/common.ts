@@ -29,6 +29,12 @@ export const common: typeof enCommon = {
   openDashboard: "Panele git",
   home: "Finely ana sayfa",
   somethingWentWrong: "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+  notice: {
+    success: "Tamamlandı",
+    error: "Bu işlem yapılamadı",
+    info: "Bilginize",
+    ok: "Tamam",
+  },
 };
 
 export const meta: typeof enMeta = {
