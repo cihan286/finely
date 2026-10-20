@@ -60,8 +60,8 @@ jobs:
       - name: Build
         run: npm run build
 
-  # main's history was rewritten to drop commits authored by Claude. An old
-  # clone that merges instead of resetting would bring them back.
+  # main's history was rewritten once. An old clone that merges instead of
+  # resetting would bring the replaced commits back.
   history:
     runs-on: ubuntu-latest
     timeout-minutes: 5

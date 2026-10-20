@@ -74,6 +74,14 @@
   color: var(--primary);
 }
 
+.sourceLink {
+  text-decoration: underline;
+}
+
+.sourceLink:hover {
+  color: var(--primary);
+}
+
 .bottomSection {
   margin-top: 4rem;
   padding-top: 2rem;

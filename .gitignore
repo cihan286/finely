@@ -45,3 +45,7 @@ next-env.d.ts
 /.next-e2e/
 /test-results/
 /playwright-report/
+
+# AI assistant instructions (kept locally, not published)
+/AGENTS.md
+/CLAUDE.md

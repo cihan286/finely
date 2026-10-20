@@ -23,7 +23,7 @@ export default function Features() {
           <span>Scale Your Operations</span>
         </div>
         <div className={styles.subHeadline}>
-          <span>Automate workflows, gain actionable insights, and</span>
+          <span>Automate workflows, gain actionable insights, and</span>{" "}
           {/* One line on wide screens, split in two below 650px (see CSS) */}
           <span className={styles.lastLine}>
             <span>empower your team with tools designed for</span>{" "}

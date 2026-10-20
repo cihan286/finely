@@ -90,6 +90,13 @@ export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
       {/* Copyright line */}
       <div className={styles.bottomSection}>
         <p>© {currentYear} Finely, Inc. All rights reserved.</p>
+        {/* Finely is a portfolio project: say so, and point to the code */}
+        <p>
+          A portfolio project by cihan286.{" "}
+          <a href="https://github.com/cihan286/finely" className={styles.sourceLink}>
+            Source code on GitHub
+          </a>
+        </p>
       </div>
     </footer>
   );

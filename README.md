@@ -1,5 +1,10 @@
 # Finely
 
+[![CI](https://github.com/cihan286/finely/actions/workflows/ci.yml/badge.svg)](https://github.com/cihan286/finely/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/live%20demo-finely--lemon.vercel.app-0a7?logo=vercel)](https://finely-lemon.vercel.app)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
+
 Financial clarity for modern businesses. Finely is a SaaS app that helps
 businesses track expenses, follow their cash flow and turn financial data into
 actionable insights.
@@ -165,3 +170,9 @@ is. What's missing at that level:
 - **Deleting a company** is immediate: there's no grace period.
 - **Terms and privacy** describe what the app really does in plain words;
   they aren't legal documents.
+
+## Author
+
+Designed and built by **cihan286** ([GitHub](https://github.com/cihan286)).
+Questions or feedback are welcome through
+[GitHub issues](https://github.com/cihan286/finely/issues).

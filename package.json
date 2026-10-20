@@ -1,7 +1,17 @@
 {
   "name": "finely",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "A SaaS app for businesses to track expenses, follow cash flow and turn financial data into insights.",
+  "author": "cihan286 (https://github.com/cihan286)",
+  "homepage": "https://finely-lemon.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cihan286/finely.git"
+  },
   "private": true,
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
