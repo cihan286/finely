@@ -60,6 +60,30 @@ jobs:
       - name: Build
         run: npm run build
 
+  # main's history was rewritten to drop commits authored by Claude. An old
+  # clone that merges instead of resetting would bring them back.
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: No commits from the old history
+        run: |
+          # git log ANDs --author with --grep, so each runs on its own
+          bad=$( {
+            git log --format='%h %s' --author='noreply@anthropic.com'
+            git log --format='%h %s' --committer='noreply@anthropic.com'
+            git log --format='%h %s' -i --grep='^Co-Authored-By: Claude' --grep='^Claude-Session:'
+          } | sort -u )
+          if [ -n "$bad" ]; then
+            echo "$bad"
+            echo "::error::These commits come from main's old history. On the machine that pushed them: git fetch && git reset --hard origin/main"
+            exit 1
+          fi
+
   # Uses the app in a real browser against a real Postgres (see
   # playwright.config.ts): signing up, transactions, imports, teams, billing
   e2e:
