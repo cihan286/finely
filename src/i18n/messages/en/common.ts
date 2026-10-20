@@ -28,12 +28,12 @@ export const common = {
   openDashboard: "Open dashboard",
   home: "Finely home",
   somethingWentWrong: "Something went wrong. Please try again.",
-  // The titles of the notification window, and its button
+  // The titles of the pop-up notices, and the name of their stack
   notice: {
     success: "Done",
     error: "That didn't work",
     info: "Good to know",
-    ok: "OK",
+    label: "Messages",
   },
 };
 

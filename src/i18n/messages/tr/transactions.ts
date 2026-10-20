@@ -1,6 +1,11 @@
 import type { transactions as en } from "../en/transactions";
 
 export const transactions: typeof en = {
+  done: {
+    added: "“{name}” eklendi.",
+    saved: "“{name}” kaydedildi.",
+    deleted: "“{name}” silindi.",
+  },
   title: "İşlemler",
   subtitle: "{company} şirketine giren ve çıkan her ödeme.",
   exportCsv: "CSV olarak dışa aktar",
@@ -111,6 +116,8 @@ export const transactions: typeof en = {
     saveChanges: "Değişiklikleri kaydet",
   },
   attachments: {
+    added: "{name} eklendi.",
+    removed: "{name} silindi.",
     label: "Fişler ve ekler",
     title: "Fişler ve ekler",
     add: "Dosya ekle",

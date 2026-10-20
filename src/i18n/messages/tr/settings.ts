@@ -36,6 +36,7 @@ export const settings: typeof en = {
     timezoneSaved: "Şirketin saat dilimi artık {zone}.",
   },
   team: {
+    left: "{company} şirketinden ayrıldınız.",
     invite: "Birini davet edin",
     inviteHint:
       "Katılmak için bir bağlantı alacaklar. Yöneticiler ekibi yönetebilir; üyeler Finely'yi kullanabilir ama ekibi değiştiremez.",

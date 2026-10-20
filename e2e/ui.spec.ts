@@ -61,11 +61,11 @@ test.describe("on a phone", () => {
     const dialog = page.getByRole("dialog", { name: "Add transaction" });
     await dialog.getByLabel(/^Amount/).fill("12");
     // A blank description (a space gets past the browser's own check): the
-    // button is at the bottom, and Finely's error pops up over the dialog
+    // button is at the bottom, and Finely's error slides up over the dialog
     await dialog.getByRole("textbox", { name: "Description" }).fill(" ");
     await dialog.getByRole("button", { name: "Add transaction" }).click();
-    const notice = page.getByRole("alertdialog");
-    await expect(notice).toContainText("Description is required.");
+    const notice = page.getByRole("alert").filter({ hasText: "Description is required." });
+    await expect(notice).toBeVisible();
     await expect(notice).toBeInViewport();
   });
 

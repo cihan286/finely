@@ -1,6 +1,10 @@
 import type { insights as en } from "../en/insights";
 
 export const insights: typeof en = {
+  done: {
+    hidden: "“{name}” artık düzenli ödeme sayılmıyor.",
+    shown: "“{name}” yeniden düzenli ödeme sayılıyor.",
+  },
   title: "İçgörüler",
   subtitle: "{company} şirketinin parasındaki eğilimler ve örüntüler.",
   printPeriod: "Son {months} ay, {date} itibarıyla.",

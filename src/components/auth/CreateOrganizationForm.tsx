@@ -21,6 +21,7 @@ import { Input } from "@/components/common/form/controls";
 import { useNotify } from "@/components/common/notice/Notice";
 import { authClient } from "@/lib/auth-client";
 import { authErrorText } from "@/i18n/auth-errors";
+import { fill } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import styles from "./AuthForm.module.css";
 
@@ -64,6 +65,7 @@ export default function CreateOrganizationForm() {
       setLoading(false);
       return;
     }
+    notify({ type: "success", text: fill(t.created, { company: name }) });
     router.push("/dashboard");
     router.refresh();
   };

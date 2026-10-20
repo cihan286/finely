@@ -1,5 +1,11 @@
 // The Bills page and its windows (add, edit, mark as paid, undo)
 export const bills = {
+  // Pop-up notices after a change
+  done: {
+    added: "“{name}” was added.",
+    saved: "“{name}” was saved.",
+    deleted: "“{name}” was deleted.",
+  },
   title: "Bills",
   subtitle: "What {company} has to pay, and when.",
   exportCsv: "Export CSV",

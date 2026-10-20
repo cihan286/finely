@@ -59,13 +59,18 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
   const run = (
     key: string,
     action: () => Promise<{ error: string | null; attachments?: Attachment[] }>,
+    success: string,
   ) => {
     setBusy(key);
     startTransition(async () => {
       const result = await action();
       setBusy(null);
-      if (result.error) showError(result.error);
-      else if (result.attachments) setAttachments(result.attachments);
+      if (result.error) {
+        showError(result.error);
+        return;
+      }
+      if (result.attachments) setAttachments(result.attachments);
+      notify({ type: "success", text: success });
     });
   };
 
@@ -85,12 +90,20 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     }
     const formData = new FormData();
     formData.set("file", file);
-    run("upload", () => uploadAttachment(transactionId, formData));
+    run(
+      "upload",
+      () => uploadAttachment(transactionId, formData),
+      fill(t.added, { name: file.name }),
+    );
   };
 
   const handleDelete = (attachment: Attachment) => {
     if (!window.confirm(fill(t.confirmDelete, { name: attachment.name }))) return;
-    run(attachment.id, () => removeAttachment(attachment.id));
+    run(
+      attachment.id,
+      () => removeAttachment(attachment.id),
+      fill(t.removed, { name: attachment.name }),
+    );
   };
 
   return (

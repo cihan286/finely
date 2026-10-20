@@ -33,7 +33,7 @@ export const common: typeof enCommon = {
     success: "Tamamlandı",
     error: "Bu işlem yapılamadı",
     info: "Bilginize",
-    ok: "Tamam",
+    label: "Mesajlar",
   },
 };
 

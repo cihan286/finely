@@ -60,6 +60,7 @@ export const auth = {
     set: "Set new password",
   },
   onboarding: {
+    created: "{company} is set up. Welcome to Finely!",
     title: "Set up your company",
     addTitle: "Add a company",
     addSubtitle:

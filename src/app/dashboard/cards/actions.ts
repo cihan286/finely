@@ -13,6 +13,9 @@
 
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { setFlashNotice } from "@/lib/flash-notice";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 import {
   createCard,
   deleteCard,
@@ -53,6 +56,18 @@ export async function submitCard(
   } catch (error) {
     return { error: await errorMessage(error) };
   }
+  const done = (await getMessages()).cards.done;
+  const said =
+    intent === "delete"
+      ? done.deleted
+      : intent === "archive"
+        ? done.archived
+        : intent === "restore"
+          ? done.restored
+          : id
+            ? done.saved
+            : done.added;
+  await setFlashNotice("success", fill(said, { name: formField(formData, "name").trim() }));
   // Outside the try: redirect() works by throwing
   redirect(LIST_PATH);
 }

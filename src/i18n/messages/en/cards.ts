@@ -1,5 +1,13 @@
 // The Cards page and its window
 export const cards = {
+  // Pop-up notices after a change
+  done: {
+    added: "“{name}” was added.",
+    saved: "“{name}” was saved.",
+    archived: "“{name}” was archived.",
+    restored: "“{name}” is back in use.",
+    deleted: "“{name}” was deleted.",
+  },
   title: "Cards",
   subtitle: "{company}'s payment cards, and what each spent in {month}.",
   add: "Add card",

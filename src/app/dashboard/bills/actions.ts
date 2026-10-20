@@ -14,6 +14,9 @@
 
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { setFlashNotice } from "@/lib/flash-notice";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 import {
   createBill,
   deleteBill,
@@ -53,6 +56,9 @@ export async function submitBill(
   } catch (error) {
     return { error: await errorMessage(error) };
   }
+  const done = (await getMessages()).bills.done;
+  const intent = formField(formData, "intent") === "delete" ? "deleted" : id ? "saved" : "added";
+  await setFlashNotice("success", fill(done[intent], { name: formField(formData, "name").trim() }));
   // Outside the try: redirect() works by throwing
   redirect(LIST_PATH);
 }

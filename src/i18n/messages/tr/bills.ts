@@ -1,6 +1,11 @@
 import type { bills as en } from "../en/bills";
 
 export const bills: typeof en = {
+  done: {
+    added: "“{name}” eklendi.",
+    saved: "“{name}” kaydedildi.",
+    deleted: "“{name}” silindi.",
+  },
   title: "Faturalar",
   subtitle: "{company} şirketinin ne zaman neyi ödemesi gerektiği.",
   exportCsv: "CSV olarak dışa aktar",

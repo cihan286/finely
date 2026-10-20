@@ -35,6 +35,7 @@ export const settings = {
     timezoneSaved: "The company's timezone is now {zone}.",
   },
   team: {
+    left: "You left {company}.",
     invite: "Invite someone",
     inviteHint:
       "They'll get a link to join. Admins can manage the team; members can use Finely but not change the team.",

@@ -17,10 +17,11 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
+import { setFlashNotice } from "@/lib/flash-notice";
 import { addAttachment, deleteAttachment } from "@/lib/data/attachments";
 import { saveCategoryRule } from "@/lib/data/category-rules";
 import { DataError, errorMessage } from "@/lib/data/common";
-import { plural } from "@/i18n/config";
+import { fill, plural } from "@/i18n/config";
 import { getMessages } from "@/i18n/server";
 import {
   ATTACHMENT_TYPES,
@@ -147,6 +148,9 @@ export async function submitTransaction(
   } catch (error) {
     return { error: await errorMessage(error) };
   }
+  const done = (await getMessages()).transactions.done;
+  const intent = formField(formData, "intent") === "delete" ? "deleted" : id ? "saved" : "added";
+  await setFlashNotice("success", fill(done[intent], { name: formField(formData, "name").trim() }));
   // The transaction is there; open it so the file can be added again
   if (withoutFile) redirect(`${LIST_PATH}?edit=${withoutFile}`);
   // Outside the try: redirect() works by throwing

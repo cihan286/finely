@@ -135,6 +135,8 @@ export default function TeamSettings({
       notify({ type: "error", text: authErrorText(error, i18n, m.common.somethingWentWrong) });
       return;
     }
+    // Still shown on the next page: the window lives above every page
+    notify({ type: "success", text: fill(t.left, { company: organization.name }) });
     // This login now has no company: /onboarding opens another one the
     // person belongs to, or offers to set one up
     router.push("/onboarding");

@@ -1,5 +1,10 @@
 // The Insights page
 export const insights = {
+  // Pop-up notices after a change
+  done: {
+    hidden: "“{name}” is no longer counted as a regular payment.",
+    shown: "“{name}” is counted as a regular payment again.",
+  },
   title: "Insights",
   subtitle: "Trends and patterns in {company}'s money.",
   printPeriod: "Last {months} months, as of {date}.",

@@ -65,6 +65,7 @@ export const auth: typeof enAuth = {
     set: "Yeni şifreyi kaydet",
   },
   onboarding: {
+    created: "{company} hazır. Finely'ye hoş geldiniz!",
     title: "Şirketinizi kurun",
     addTitle: "Şirket ekle",
     addSubtitle:

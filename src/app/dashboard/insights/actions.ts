@@ -15,15 +15,24 @@
 
 import { refresh } from "next/cache";
 import { formField } from "@/lib/action-state";
+import { setFlashNotice } from "@/lib/flash-notice";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 import { DataError } from "@/lib/data/common";
 import { hideRecurring, showRecurring } from "@/lib/data/recurring";
 
 /** Hides one regular payment, or shows it again (when the form says so). */
 export async function submitRecurringVisibility(formData: FormData) {
   const key = formField(formData, "key");
+  const showing = formField(formData, "intent") === "show";
   try {
-    if (formField(formData, "intent") === "show") await showRecurring(key);
+    if (showing) await showRecurring(key);
     else await hideRecurring(key, formField(formData, "name"));
+    const done = (await getMessages()).insights.done;
+    await setFlashNotice(
+      "success",
+      fill(showing ? done.shown : done.hidden, { name: formField(formData, "name") }),
+    );
   } catch (error) {
     // Something made up by hand: nothing to show, the page just reloads
     if (!(error instanceof DataError)) throw error;

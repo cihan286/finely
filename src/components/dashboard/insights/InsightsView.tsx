@@ -394,6 +394,7 @@ export default async function InsightsView({
                   <form key={h.key} action={submitRecurringVisibility} className={styles.hiddenItem}>
                     <input type="hidden" name="key" value={h.key} />
                     <input type="hidden" name="intent" value="show" />
+                    <input type="hidden" name="name" value={h.name} />
                     <span>
                       {h.name}
                       {h.key.startsWith("in:") && ` ${t.moneyInNote}`}

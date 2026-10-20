@@ -1,6 +1,13 @@
 import type { cards as en } from "../en/cards";
 
 export const cards: typeof en = {
+  done: {
+    added: "“{name}” eklendi.",
+    saved: "“{name}” kaydedildi.",
+    archived: "“{name}” arşivlendi.",
+    restored: "“{name}” yeniden kullanımda.",
+    deleted: "“{name}” silindi.",
+  },
   title: "Kartlar",
   subtitle: "{company} şirketinin ödeme kartları ve her birinin {month} ayındaki harcaması.",
   add: "Kart ekle",

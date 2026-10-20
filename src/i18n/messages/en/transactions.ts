@@ -1,5 +1,11 @@
 // The Transactions page, its windows (add, edit, import) and attachments
 export const transactions = {
+  // Pop-up notices after a change
+  done: {
+    added: "“{name}” was added.",
+    saved: "“{name}” was saved.",
+    deleted: "“{name}” was deleted.",
+  },
   title: "Transactions",
   subtitle: "Every payment in and out of {company}.",
   exportCsv: "Export CSV",
@@ -107,6 +113,8 @@ export const transactions = {
     saveChanges: "Save changes",
   },
   attachments: {
+    added: "{name} was attached.",
+    removed: "{name} was deleted.",
     label: "Receipts and attachments",
     title: "Receipts & attachments",
     add: "Add file",
