@@ -92,7 +92,14 @@ export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
         <p>© {currentYear} Finely, Inc. All rights reserved.</p>
         {/* Finely is a portfolio project: say so, and point to the code */}
         <p>
-          A portfolio project by cihan286.{" "}
+          A portfolio project by{" "}
+          <a
+            href="https://www.linkedin.com/in/cihan-i%C5%9F%C4%B1k-1490b33a7"
+            className={styles.sourceLink}
+          >
+            Cihan Işık
+          </a>
+          .{" "}
           <a href="https://github.com/cihan286/finely" className={styles.sourceLink}>
             Source code on GitHub
           </a>

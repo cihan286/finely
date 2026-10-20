@@ -173,6 +173,8 @@ is. What's missing at that level:
 
 ## Author
 
-Designed and built by **cihan286** ([GitHub](https://github.com/cihan286)).
+Designed and built by **Cihan Işık**
+([LinkedIn](https://www.linkedin.com/in/cihan-i%C5%9F%C4%B1k-1490b33a7),
+[GitHub](https://github.com/cihan286)).
 Questions or feedback are welcome through
 [GitHub issues](https://github.com/cihan286/finely/issues).
