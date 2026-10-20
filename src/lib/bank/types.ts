@@ -83,12 +83,22 @@ export interface BankProvider {
  * Something the bank or the service refused. `message` is written for the
  * person (and safe to show); `code` is the service's own word for it.
  */
+/** What a BankError tells the person: a sentence of i18n/messages/<language>/errors.ts */
+export type BankErrorKey =
+  | "bankLoginRequired"
+  | "bankDown"
+  | "bankRateLimited"
+  | "bankDataChanged"
+  | "bankNoAccess"
+  | "bankUnreachable"
+  | "bankGeneric";
+
 export class BankError extends Error {
   constructor(
-    message: string,
+    public readonly key: BankErrorKey,
     public readonly code: string,
   ) {
-    super(message);
+    super(`${key} (${code})`);
     this.name = "BankError";
   }
 }

@@ -36,6 +36,9 @@ import type {
   TransactionDetails,
 } from "@/types/finance";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { fill, plural } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
+import { getI18n } from "@/i18n/server";
 import BulkCategorize from "./BulkCategorize";
 import ImportDialog from "./ImportDialog";
 import TransactionDialog from "./TransactionDialog";
@@ -130,43 +133,28 @@ interface TransactionsViewProps {
 
 // "Imported 42 transactions. 3 were already there and were skipped. 2 bills
 // were marked as paid."
-function importMessage({
-  imported,
-  skipped,
-  billsPaid,
-  billsMerged,
-}: {
-  imported: number;
-  skipped: number;
-  billsPaid: number;
-  billsMerged: number;
-}) {
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  const was = (n: number) => (n === 1 ? "was" : "were");
-  const parts = [
-    imported === 0
-      ? "No new transactions were imported."
-      : `Imported ${plural(imported, "transaction")}.`,
-  ];
-  if (skipped > 0) {
-    parts.push(
-      `${plural(skipped, "transaction")} ${was(skipped)} already there and ${was(skipped)} skipped.`,
-    );
-  }
-  if (billsPaid > 0) {
-    parts.push(
-      `${plural(billsPaid, "bill")} ${was(billsPaid)} marked as paid: ${billsPaid === 1 ? "its payment was" : "their payments were"} among them.`,
-    );
-  }
-  if (billsMerged > 0) {
-    parts.push(
-      `${plural(billsMerged, "payment")} that ${was(billsMerged)} recorded when a bill was marked as paid arrived with this file, so the recorded ${billsMerged === 1 ? "one was" : "ones were"} removed.`,
-    );
-  }
+function importMessage(
+  {
+    imported,
+    skipped,
+    billsPaid,
+    billsMerged,
+  }: {
+    imported: number;
+    skipped: number;
+    billsPaid: number;
+    billsMerged: number;
+  },
+  t: Messages["transactions"],
+) {
+  const parts = [imported === 0 ? t.noneImported : plural(imported, t.imported)];
+  if (skipped > 0) parts.push(plural(skipped, t.skipped));
+  if (billsPaid > 0) parts.push(plural(billsPaid, t.billsPaid));
+  if (billsMerged > 0) parts.push(plural(billsMerged, t.billsMerged));
   return parts.join(" ");
 }
 
-export default function TransactionsView({
+export default async function TransactionsView({
   organizationName,
   currency,
   today,
@@ -184,6 +172,8 @@ export default function TransactionsView({
   ruleResult,
   dialog,
 }: TransactionsViewProps) {
+  const { locale, m } = await getI18n();
+  const t = m.transactions;
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
   const categoryColors = new Map(categories.map((c) => [c.id, c.color]));
   const isFiltered = Boolean(
@@ -200,10 +190,8 @@ export default function TransactionsView({
     <main className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Transactions</h1>
-          <p className={styles.subtitle}>
-            Every payment in and out of {organizationName}.
-          </p>
+          <h1 className={styles.title}>{t.title}</h1>
+          <p className={styles.subtitle}>{fill(t.subtitle, { company: organizationName })}</p>
         </div>
         {accounts.length > 0 && (
           <div className={styles.headerActions}>
@@ -214,7 +202,7 @@ export default function TransactionsView({
                 download
                 variant="outline"
                 size="sm"
-                text="Export CSV"
+                text={t.exportCsv}
                 icon={<Download size={16} />}
               />
             )}
@@ -222,14 +210,14 @@ export default function TransactionsView({
               href={hrefFor(query, { import: "1" })}
               variant="outline"
               size="sm"
-              text="Import CSV"
+              text={t.importCsv}
               icon={<FileUp size={16} />}
             />
             <Button
               href={hrefFor(query, { new: "1" })}
               variant="primary"
               size="sm"
-              text="Add transaction"
+              text={t.add}
               icon={<Plus size={16} />}
             />
           </div>
@@ -238,28 +226,25 @@ export default function TransactionsView({
 
       {importResult && (
         <Message type="success">
-          {importMessage(importResult)}
+          {importMessage(importResult, t)}
         </Message>
       )}
       {matchingBills > 0 && (
         <Message type="info">
-          {matchingBills === 1 ? "1 bill also matches" : `${matchingBills} bills also match`}{" "}
-          “{query.q}”.{" "}
+          {plural(matchingBills, t.billsMatch, { search: query.q })}{" "}
           <Link
             href={`/dashboard/bills?q=${encodeURIComponent(query.q)}`}
             className={styles.messageLink}
           >
-            See {matchingBills === 1 ? "it" : "them"}
+            {plural(matchingBills, t.seeBills)}
           </Link>
         </Message>
       )}
       {ruleResult !== null && (
         <Message type="success">
-          {ruleResult === 0
-            ? "The rule was saved. No other transactions without a category matched it."
-            : `The rule was saved and categorized ${ruleResult} other ${ruleResult === 1 ? "transaction" : "transactions"} that had no category.`}{" "}
+          {ruleResult === 0 ? t.ruleSavedNone : plural(ruleResult, t.ruleSaved)}{" "}
           <Link href="/dashboard/settings#rules" className={styles.messageLink}>
-            See all rules
+            {t.seeAllRules}
           </Link>
         </Message>
       )}
@@ -270,25 +255,19 @@ export default function TransactionsView({
           <div className={styles.emptyIcon}>
             <Landmark size={22} />
           </div>
-          <h2 className={styles.emptyTitle}>Add a bank account first</h2>
+          <h2 className={styles.emptyTitle}>{t.addAccountFirst}</h2>
           {canManage ? (
             <>
-              <p className={styles.emptyText}>
-                Every transaction belongs to one of your company&apos;s bank
-                accounts. Add one in Settings to start recording transactions.
-              </p>
+              <p className={styles.emptyText}>{t.addAccountText}</p>
               <Button
                 href="/dashboard/settings#accounts"
                 variant="primary"
                 size="sm"
-                text="Add a bank account"
+                text={t.addAccount}
               />
             </>
           ) : (
-            <p className={styles.emptyText}>
-              Every transaction belongs to one of your company&apos;s bank
-              accounts. Ask an owner or admin to add one in Settings.
-            </p>
+            <p className={styles.emptyText}>{t.addAccountMember}</p>
           )}
         </section>
       ) : (
@@ -300,8 +279,8 @@ export default function TransactionsView({
               <Input
                 name="q"
                 type="search"
-                placeholder="Description, notes, category, account or amount"
-                aria-label="Search transactions"
+                placeholder={t.filters.searchPlaceholder}
+                aria-label={t.filters.search}
                 // Show a search made from the top bar while this page is open
                 key={query.q}
                 defaultValue={query.q}
@@ -311,11 +290,11 @@ export default function TransactionsView({
             </div>
             <Select
               name="account"
-              aria-label="Account"
+              aria-label={t.filters.account}
               defaultValue={query.account}
               className={styles.filter}
             >
-              <option value="">All accounts</option>
+              <option value="">{t.filters.allAccounts}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -324,27 +303,27 @@ export default function TransactionsView({
             </Select>
             <Select
               name="category"
-              aria-label="Category"
+              aria-label={t.filters.category}
               defaultValue={query.category}
               className={styles.filter}
             >
-              <option value="">All categories</option>
+              <option value="">{t.filters.allCategories}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-              <option value="none">Uncategorized</option>
+              <option value="none">{t.uncategorized}</option>
             </Select>
             {/* Only once the company has cards */}
             {cards.length > 0 && (
               <Select
                 name="card"
-                aria-label="Card"
+                aria-label={t.filters.card}
                 defaultValue={query.card}
                 className={styles.filter}
               >
-                <option value="">All cards</option>
+                <option value="">{t.filters.allCards}</option>
                 {cards.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} •••• {c.last4}
@@ -353,7 +332,7 @@ export default function TransactionsView({
               </Select>
             )}
             <label className={styles.dateField}>
-              <span>From</span>
+              <span>{t.filters.from}</span>
               <Input
                 name="from"
                 type="date"
@@ -362,7 +341,7 @@ export default function TransactionsView({
               />
             </label>
             <label className={styles.dateField}>
-              <span>To</span>
+              <span>{t.filters.to}</span>
               <Input
                 name="to"
                 type="date"
@@ -371,10 +350,10 @@ export default function TransactionsView({
               />
             </label>
             <div className={styles.filterActions}>
-              <Button type="submit" variant="outline" size="sm" text="Apply" />
+              <Button type="submit" variant="outline" size="sm" text={t.filters.apply} />
               {isFiltered && (
                 <Link href={LIST_PATH} className={styles.clearLink}>
-                  Clear
+                  {t.filters.clear}
                 </Link>
               )}
             </div>
@@ -383,9 +362,7 @@ export default function TransactionsView({
           <section className={styles.card}>
             {transactions.length === 0 ? (
               <p className={styles.noResults}>
-                {isFiltered
-                  ? "No transactions match these filters."
-                  : "No transactions yet. Add your first one with “Add transaction”."}
+                {isFiltered ? t.noMatches : t.empty}
               </p>
             ) : (
               <>
@@ -401,24 +378,24 @@ export default function TransactionsView({
                           <input
                             type="checkbox"
                             name="all"
-                            aria-label="Select all transactions on this page"
+                            aria-label={t.table.selectAll}
                           />
                         </th>
-                        <th scope="col">Date</th>
+                        <th scope="col">{t.table.date}</th>
                         <th scope="col" className={styles.nameCell}>
-                          Description
+                          {t.table.description}
                         </th>
                         <th scope="col" className={styles.mediumUp}>
-                          Category
+                          {t.table.category}
                         </th>
                         <th scope="col" className={styles.wideOnly}>
-                          Account
+                          {t.table.account}
                         </th>
                         <th scope="col" className={styles.wideOnly}>
-                          Status
+                          {t.table.status}
                         </th>
                         <th scope="col" className={styles.amountCell}>
-                          Amount
+                          {t.table.amount}
                         </th>
                       </tr>
                     </thead>
@@ -430,10 +407,10 @@ export default function TransactionsView({
                               type="checkbox"
                               name="ids"
                               value={tx.id}
-                              aria-label={`Select ${tx.name}`}
+                              aria-label={fill(t.table.select, { name: tx.name })}
                             />
                           </td>
-                          <td className={styles.dateCell}>{formatDate(tx.day)}</td>
+                          <td className={styles.dateCell}>{formatDate(tx.day, locale)}</td>
                           <td className={styles.nameCell}>
                             {/* The link covers the whole row (see CSS) */}
                             <Link
@@ -447,7 +424,7 @@ export default function TransactionsView({
                               <Paperclip
                                 size={13}
                                 className={styles.clip}
-                                aria-label={`${tx.attachmentCount} ${tx.attachmentCount === 1 ? "file" : "files"} attached`}
+                                aria-label={plural(tx.attachmentCount, t.table.filesAttached)}
                               />
                             )}
                           </td>
@@ -472,13 +449,13 @@ export default function TransactionsView({
                             <span
                               className={`${styles.status} ${tx.status === "pending" ? styles.pending : ""}`}
                             >
-                              {tx.status === "pending" ? "Pending" : "Completed"}
+                              {tx.status === "pending" ? t.status.pending : t.status.completed}
                             </span>
                           </td>
                           <td
                             className={`${styles.amountCell} ${tx.amount > 0 ? styles.income : ""}`}
                           >
-                            {formatCurrency(tx.amount, { signed: true, currency: currency })}
+                            {formatCurrency(tx.amount, { signed: true, currency }, locale)}
                           </td>
                         </tr>
                       ))}
@@ -490,7 +467,7 @@ export default function TransactionsView({
                 {/* Paging */}
                 <div className={styles.pagination}>
                   <span className={styles.pageInfo}>
-                    Showing {firstShown}–{lastShown} of {total}
+                    {fill(t.showing, { first: firstShown, last: lastShown, total })}
                   </span>
                   <div className={styles.pageLinks}>
                     {query.page > 1 && (
@@ -498,7 +475,7 @@ export default function TransactionsView({
                         href={hrefFor(query, { page: query.page - 1 })}
                         className={styles.pageLink}
                       >
-                        <ChevronLeft size={16} /> Previous
+                        <ChevronLeft size={16} /> {t.previous}
                       </Link>
                     )}
                     {hasNextPage && (
@@ -506,7 +483,7 @@ export default function TransactionsView({
                         href={hrefFor(query, { page: query.page + 1 })}
                         className={styles.pageLink}
                       >
-                        Next <ChevronRight size={16} />
+                        {t.next} <ChevronRight size={16} />
                       </Link>
                     )}
                   </div>

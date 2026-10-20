@@ -11,6 +11,7 @@
 // logged in to /login.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import { getCompanyLocale } from "@/lib/data/common";
 import { getInsights } from "@/lib/data/insights";
 import { getRecurring } from "@/lib/data/recurring";
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     getCompanyLocale(organization.id),
   ]);
 
-  return new Response(insightsCsv(organization.name, insights, payments, currency), {
+  return new Response(insightsCsv(organization.name, insights, payments, currency, await getMessages()), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName(`insights-${period}-months`, insights.today)}"`,

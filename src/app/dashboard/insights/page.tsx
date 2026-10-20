@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
+import { getMessages } from "@/i18n/server";
 import InsightsView from "@/components/dashboard/insights/InsightsView";
 import { listAccounts } from "@/lib/data/accounts";
 import { getCompanyLocale } from "@/lib/data/common";
@@ -20,9 +21,9 @@ import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 
 // Browser tab title: "Insights | Finely"
-export const metadata: Metadata = {
-  title: "Insights",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).insights.title };
+}
 
 export default async function InsightsPage({
   searchParams,

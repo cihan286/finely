@@ -26,6 +26,8 @@ import { initialActionState } from "@/lib/action-state";
 import { amountInputProps } from "@/lib/format";
 import type { Card } from "@/types/finance";
 // The windows of the dashboard share how their fields are arranged
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import forms from "../transactions/forms.module.css";
 import styles from "../bills/BillDialog.module.css";
 import layout from "./CardsView.module.css";
@@ -42,10 +44,11 @@ interface CardDialogProps {
 }
 
 export default function CardDialog(props: CardDialogProps) {
+  const t = useI18n().m.cards;
   const [state, dispatch, pending] = useActionState(submitCard, initialActionState);
   return (
     <Dialog
-      title={props.card ? "Edit card" : "Add card"}
+      title={props.card ? t.dialog.editTitle : t.add}
       closeHref={props.closeHref}
       busy={pending}
     >
@@ -75,6 +78,9 @@ function CardForm({
   submit,
 }: CardFormProps) {
   const close = useCloseDialog();
+  const { m } = useI18n();
+  const words = m.cards;
+  const t = words.dialog;
   const isNew = card === null;
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
@@ -82,9 +88,7 @@ function CardForm({
     const submitter = e.nativeEvent.submitter;
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm(
-        "Delete this card? The transactions paid with it stay, without a card. This can't be undone.",
-      )
+      !window.confirm(t.confirmDelete)
     ) {
       return;
     }
@@ -99,11 +103,11 @@ function CardForm({
       <input type="hidden" name="id" value={card?.id ?? ""} />
 
       <div className={forms.grid}>
-        <Field label="Name">
+        <Field label={t.name}>
           <Input
             name="name"
             type="text"
-            placeholder="e.g. Marketing card"
+            placeholder={t.namePlaceholder}
             defaultValue={card?.name ?? ""}
             maxLength={60}
             required
@@ -111,8 +115,8 @@ function CardForm({
           />
         </Field>
         <Field
-          label="Last four digits"
-          hint="Finely never asks for the full number. Bank statements name a card by these, which is how its payments are recognized."
+          label={t.lastFour}
+          hint={t.lastFourHint}
         >
           <Input
             name="last4"
@@ -120,7 +124,7 @@ function CardForm({
             pattern="\d{4}"
             maxLength={4}
             placeholder="4821"
-            title="Exactly 4 digits"
+            title={t.exactlyFour}
             defaultValue={card?.last4 ?? ""}
             required
           />
@@ -128,26 +132,26 @@ function CardForm({
       </div>
 
       <div className={forms.grid}>
-        <Field label="Carried by">
+        <Field label={t.carriedBy}>
           <Select name="holderId" defaultValue={card?.holderId ?? ""}>
-            <option value="">Shared (nobody in particular)</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
+            <option value="">{t.sharedNobody}</option>
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name}
               </option>
             ))}
           </Select>
         </Field>
         <Field
-          label={`Monthly limit (${currency})`}
+          label={fill(t.limit, { currency })}
           optional
-          hint="Finely warns when it's reached; it can't stop the card."
+          hint={t.limitHint}
         >
           <Input
             name="monthlyLimit"
             type="number"
             {...amountInputProps(currency)}
-            placeholder="No limit"
+            placeholder={words.noLimit}
             defaultValue={card?.monthlyLimit ?? ""}
           />
         </Field>
@@ -166,7 +170,7 @@ function CardForm({
               disabled={pending}
             >
               <Trash2 size={16} />
-              Delete
+              {m.common.delete}
             </button>
             <button
               type="submit"
@@ -177,7 +181,7 @@ function CardForm({
               disabled={pending}
             >
               {card.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
-              {card.archived ? "Use again" : "Archive"}
+              {card.archived ? t.useAgain : t.archive}
             </button>
           </div>
         )}
@@ -185,7 +189,7 @@ function CardForm({
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -194,7 +198,7 @@ function CardForm({
             variant="primary"
             size="sm"
             loading={pending}
-            text={pending ? "Saving" : isNew ? "Add card" : "Save changes"}
+            text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
             disabled={pending}
           />
         </div>

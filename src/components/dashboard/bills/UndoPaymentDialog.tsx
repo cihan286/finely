@@ -24,6 +24,8 @@ import { initialActionState } from "@/lib/action-state";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Bill } from "@/types/finance";
 // The windows of the dashboard share how their fields are arranged
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import forms from "../transactions/forms.module.css";
 import styles from "./BillDialog.module.css";
 
@@ -37,12 +39,13 @@ interface UndoPaymentDialogProps {
 }
 
 export default function UndoPaymentDialog(props: UndoPaymentDialogProps) {
+  const t = useI18n().m.bills.undoDialog;
   const [state, dispatch, pending] = useActionState(
     submitUndoBillPayment,
     initialActionState,
   );
   return (
-    <Dialog title="Undo payment" closeHref={props.closeHref} busy={pending}>
+    <Dialog title={t.title} closeHref={props.closeHref} busy={pending}>
       <UndoPaymentForm
         {...props}
         error={state.error}
@@ -68,6 +71,9 @@ function UndoPaymentForm({
   submit,
 }: UndoPaymentFormProps) {
   const close = useCloseDialog();
+  const { locale, m } = useI18n();
+  const t = m.bills.undoDialog;
+  const due = formatDate(bill.dueDate, locale);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -84,23 +90,19 @@ function UndoPaymentForm({
       <div className={styles.summary}>
         <span className={styles.summaryName}>{bill.name}</span>
         <span className={styles.summaryAmount}>
-          {formatCurrency(bill.amount, { currency: currency })}
+          {formatCurrency(bill.amount, { currency }, locale)}
         </span>
         <span className={styles.summaryNote}>
-          {bill.paidDay && `Paid ${formatDate(bill.paidDay)} · `}Due{" "}
-          {formatDate(bill.dueDate)}
+          {bill.paidDay
+            ? fill(t.paidDue, { paid: formatDate(bill.paidDay, locale), due })
+            : fill(t.due, { due })}
         </span>
       </div>
 
       <p className={styles.note}>
-        The bill goes back to what&apos;s still owed.{" "}
-        {!bill.transactionId
-          ? "Its payment is no longer among the transactions, so nothing else changes."
-          : bill.paymentLinked
-            ? "Its payment was already among the transactions before the bill was marked as paid, so that transaction stays."
-            : "The payment that was recorded for it is deleted from the transactions, with any files attached to it."}
-        {bill.repeat !== "none" &&
-          " The next bill that was added for it is removed, unless it was changed or paid since."}
+        {t.backToOwed}{" "}
+        {!bill.transactionId ? t.noPayment : bill.paymentLinked ? t.linked : t.recorded}
+        {bill.repeat !== "none" && ` ${t.nextRemoved}`}
       </p>
 
       <div className={forms.footer}>
@@ -108,7 +110,7 @@ function UndoPaymentForm({
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -117,7 +119,7 @@ function UndoPaymentForm({
             variant="primary"
             size="sm"
             loading={pending}
-            text={pending ? "Undoing" : "Undo payment"}
+            text={pending ? t.undoing : t.title}
             disabled={pending}
           />
         </div>

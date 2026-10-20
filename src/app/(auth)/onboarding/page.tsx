@@ -21,10 +21,12 @@ import CreateOrganizationForm from "@/components/auth/CreateOrganizationForm";
 import styles from "@/components/auth/AuthForm.module.css";
 import { auth } from "@/lib/auth";
 import { getActiveOrganization, requireUser } from "@/lib/session";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Set up your company",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).auth.onboarding.title };
+}
 
 export default async function OnboardingPage({
   searchParams,
@@ -33,24 +35,22 @@ export default async function OnboardingPage({
 }) {
   const user = await requireUser();
   const current = await getActiveOrganization();
+  const t = (await getMessages()).auth.onboarding;
 
   // Adding another company next to the one they're working in
   if (current && (await searchParams).new) {
     return (
       <>
         <div className={styles.header}>
-          <h1 className={styles.title}>Add a company</h1>
-          <p className={styles.subtitle}>
-            You&apos;ll be its owner. It starts empty, with its own team,
-            accounts and transactions.
-          </p>
+          <h1 className={styles.title}>{t.addTitle}</h1>
+          <p className={styles.subtitle}>{t.addSubtitle}</p>
         </div>
 
         <CreateOrganizationForm />
 
         <p className={styles.footer}>
           <Link href="/dashboard" className={styles.link}>
-            Back to {current.name}
+            {fill(t.backTo, { name: current.name })}
           </Link>
         </p>
       </>
@@ -71,22 +71,17 @@ export default async function OnboardingPage({
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Set up your company</h1>
-        <p className={styles.subtitle}>
-          Welcome, {user.name.split(" ")[0]}! What&apos;s your company called?
-        </p>
+        <h1 className={styles.title}>{t.title}</h1>
+        <p className={styles.subtitle}>{fill(t.welcome, { name: user.name.split(" ")[0] })}</p>
       </div>
 
       <CreateOrganizationForm />
 
-      <p className={styles.legal}>
-        Joining a company that already uses Finely? Ask someone there to invite{" "}
-        {user.email}.
-      </p>
+      <p className={styles.legal}>{fill(t.joining, { email: user.email })}</p>
       {/* Without a company there is no Settings page to do this from */}
       <p className={styles.footer}>
         <Link href="/your-account" className={styles.link}>
-          Your name, your data and deleting your account
+          {t.yourAccount}
         </Link>
       </p>
     </>

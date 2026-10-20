@@ -15,16 +15,13 @@
 
 export type Role = "owner" | "admin" | "member";
 
-// Names shown on screen for each role
-export const ROLE_LABELS: Record<Role, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  member: "Member",
-};
-
-/** "owner" -> "Owner"; unknown roles are shown as they are */
-export function roleLabel(role: string): string {
-  return ROLE_LABELS[role as Role] ?? role;
+/**
+ * A role's name from the page's words (m.roles, or m.rolesInSentence inside
+ * a sentence): "owner" -> "Owner", in Turkish "Sahip". Unknown roles are
+ * shown as they are.
+ */
+export function roleLabel(role: string, labels: Record<Role, string>): string {
+  return labels[role as Role] ?? role;
 }
 
 /** Whether this role may invite and remove people */

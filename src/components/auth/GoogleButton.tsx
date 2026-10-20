@@ -15,6 +15,8 @@
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./AuthForm.module.css";
 
@@ -30,6 +32,8 @@ export default function GoogleButton({
   onError,
   callbackURL = "/dashboard",
 }: GoogleButtonProps) {
+  const i18n = useI18n();
+  const t = i18n.m.auth.google;
   // True while we're sending the visitor to Google (disables the button)
   const [loading, setLoading] = useState(false);
 
@@ -41,7 +45,7 @@ export default function GoogleButton({
       callbackURL,
     });
     if (error) {
-      onError(error.message ?? "Could not connect to Google. Please try again.");
+      onError(authErrorText(error, i18n, t.failed));
       setLoading(false);
     }
   };
@@ -55,7 +59,7 @@ export default function GoogleButton({
       aria-busy={loading || undefined}
     >
       {loading ? <Spinner size={18} /> : <FcGoogle size={20} aria-hidden="true" />}
-      {loading ? "Redirecting to Google" : label}
+      {loading ? t.redirecting : label}
     </button>
   );
 }

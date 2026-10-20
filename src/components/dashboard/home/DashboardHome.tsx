@@ -38,18 +38,17 @@ import {
   monthStart,
   type BudgetProgress,
 } from "@/lib/finance/budgets";
-import {
-  FORECAST_DAYS,
-  FORECAST_SOURCE_LABELS,
-  type Forecast,
-} from "@/lib/finance/forecast";
+import { FORECAST_DAYS, type Forecast } from "@/lib/finance/forecast";
 import {
   formatCurrency,
   formatDate,
   formatNumber,
   formatRelativeDate,
   getMetricChange,
+  todayWord,
 } from "@/lib/format";
+import { fill, type Locale } from "@/i18n/config";
+import { getI18n } from "@/i18n/server";
 
 // Which icon belongs to which summary tile
 const metricIcons = {
@@ -57,13 +56,6 @@ const metricIcons = {
   income: TrendingUp,
   expenses: TrendingDown,
   net: ArrowRightLeft,
-};
-
-// Names shown for each kind of account
-const ACCOUNT_TYPES = {
-  checking: "Checking",
-  savings: "Savings",
-  reserve: "Reserve",
 };
 
 interface DashboardHomeProps {
@@ -84,13 +76,18 @@ interface DashboardHomeProps {
 const FORECAST_EVENTS_SHOWN = 6;
 
 // "$120.50 over", "$20.00 left"
-function budgetNote(budget: BudgetProgress, currency: string): string {
+function budgetNote(
+  budget: BudgetProgress,
+  currency: string,
+  locale: Locale,
+  t: { budgetOver: string; budgetLeft: string },
+): string {
   return budget.remaining < 0
-    ? `${formatCurrency(-budget.remaining, { currency: currency })} over`
-    : `${formatCurrency(budget.remaining, { currency: currency })} left`;
+    ? fill(t.budgetOver, { amount: formatCurrency(-budget.remaining, { currency }, locale) })
+    : fill(t.budgetLeft, { amount: formatCurrency(budget.remaining, { currency }, locale) });
 }
 
-export default function DashboardHome({
+export default async function DashboardHome({
   firstName,
   organizationName,
   currency,
@@ -107,16 +104,18 @@ export default function DashboardHome({
     recentTransactions,
     accounts,
   } = summary;
+  const { locale, m } = await getI18n();
+  const t = m.dashboard;
+  const money = (value: number, signed = false) => formatCurrency(value, { signed, currency }, locale);
 
   return (
     <main className={styles.contentArea}>
       {/* Page title, welcome line and action buttons */}
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Dashboard Overview</h1>
+          <h1 className={styles.title}>{t.heading}</h1>
           <p className={styles.subtitle}>
-            Welcome back, {firstName}. Here is what is happening at{" "}
-            {organizationName}.
+            {fill(t.welcome, { name: firstName, company: organizationName })}
           </p>
         </div>
         {accounts.length > 0 && (
@@ -125,14 +124,14 @@ export default function DashboardHome({
               href="/dashboard/transactions?import=1"
               variant="outline"
               size="sm"
-              text="Import CSV"
+              text={t.importCsv}
               icon={<FileUp size={16} />}
             />
             <Button
               href="/dashboard/transactions?new=1"
               variant="primary"
               size="sm"
-              text="Add transaction"
+              text={t.addTransaction}
               icon={<Plus size={16} />}
             />
           </div>
@@ -142,29 +141,21 @@ export default function DashboardHome({
       {accounts.length === 0 ? (
         // A new company: explain the first steps instead of showing zeros
         <section className={`${styles.card} ${styles.gettingStarted}`}>
-          <h2 className={styles.cardTitle}>Get started with Finely</h2>
+          <h2 className={styles.cardTitle}>{t.gettingStarted.title}</h2>
           <ol className={styles.steps}>
             <li>
-              <strong>Add a bank account</strong>
+              <strong>{t.gettingStarted.addAccount}</strong>
               <span>
-                {canManage
-                  ? "Add each account your company keeps money in, with its current balance."
-                  : "An owner or admin of your company adds its bank accounts in Settings."}
+                {canManage ? t.gettingStarted.addAccountText : t.gettingStarted.addAccountMember}
               </span>
             </li>
             <li>
-              <strong>Bring in your transactions</strong>
-              <span>
-                Import a CSV statement from your bank, or add transactions one
-                by one.
-              </span>
+              <strong>{t.gettingStarted.bringIn}</strong>
+              <span>{t.gettingStarted.bringInText}</span>
             </li>
             <li>
-              <strong>Watch your cash flow</strong>
-              <span>
-                This page then shows your balances, income, spending and where
-                your money goes.
-              </span>
+              <strong>{t.gettingStarted.watch}</strong>
+              <span>{t.gettingStarted.watchText}</span>
             </li>
           </ol>
           {canManage && (
@@ -173,7 +164,7 @@ export default function DashboardHome({
                 href="/dashboard/settings#accounts"
                 variant="primary"
                 size="sm"
-                text="Add a bank account"
+                text={t.gettingStarted.addAccount}
                 icon={<Landmark size={16} />}
               />
             </div>
@@ -185,7 +176,7 @@ export default function DashboardHome({
           <div className={styles.metricsGrid}>
             {metrics.map((metric) => {
               const Icon = metricIcons[metric.iconKey];
-              const change = getMetricChange(metric);
+              const change = getMetricChange(metric, locale);
               return (
                 <div key={metric.id} className={styles.metricCard}>
                   <div className={styles.metricHeader}>
@@ -197,8 +188,8 @@ export default function DashboardHome({
                   <div className={styles.metricBody}>
                     <span className={styles.metricValue}>
                       {metric.format === "currency"
-                        ? formatCurrency(metric.value, { currency: currency })
-                        : formatNumber(metric.value)}
+                        ? money(metric.value)
+                        : formatNumber(metric.value, locale)}
                     </span>
                     <span
                       className={`${styles.metricChange} ${change.isPositive ? styles.positive : styles.negative}`}
@@ -217,12 +208,10 @@ export default function DashboardHome({
 
             <div className={styles.card}>
               <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Spending (30 days)</h2>
+                <h2 className={styles.cardTitle}>{t.spending}</h2>
               </div>
               {expenseCategories.length === 0 ? (
-                <p className={styles.emptyText}>
-                  No spending in the last 30 days.
-                </p>
+                <p className={styles.emptyText}>{t.noSpending}</p>
               ) : (
                 <div className={styles.expenseList}>
                   {expenseCategories.map((expense) => {
@@ -247,7 +236,7 @@ export default function DashboardHome({
                             </span>
                           </div>
                           <span className={styles.expenseAmount}>
-                            {formatCurrency(expense.amount, { currency: currency })}
+                            {money(expense.amount)}
                           </span>
                         </div>
                         <div className={styles.progressBarBg}>
@@ -270,7 +259,7 @@ export default function DashboardHome({
                   href="/dashboard/settings#categories"
                   className={`${styles.viewAllBtn} ${styles.budgetHint}`}
                 >
-                  Set monthly budgets
+                  {t.setBudgets}
                 </Link>
               )}
             </div>
@@ -281,7 +270,7 @@ export default function DashboardHome({
             <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <h2 className={styles.cardTitle}>
-                  Budgets ({monthName(summary.today)})
+                  {fill(t.budgetsIn, { month: monthName(summary.today, locale) })}
                 </h2>
                 <div className={styles.cardLinks}>
                   {/* A plain link: it answers with a file, not a page */}
@@ -290,14 +279,14 @@ export default function DashboardHome({
                     download
                     className={styles.viewAllBtn}
                   >
-                    Export CSV
+                    {t.exportCsv}
                   </a>
                   {canManage && (
                     <Link
                       href="/dashboard/settings#categories"
                       className={styles.viewAllBtn}
                     >
-                      Manage
+                      {t.manage}
                     </Link>
                   )}
                 </div>
@@ -328,13 +317,13 @@ export default function DashboardHome({
                         <span
                           className={`${styles.budgetNote} ${styles[`budget_${budget.status}`]}`}
                         >
-                          {budgetNote(budget, currency)}
+                          {budgetNote(budget, currency, locale, t)}
                         </span>
                       </div>
                       <div
                         className={styles.progressBarBg}
                         role="progressbar"
-                        aria-label={`${budget.name} budget used`}
+                        aria-label={fill(t.budgetUsed, { name: budget.name })}
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={Math.min(Math.round(budget.ratio * 100), 100)}
@@ -345,8 +334,7 @@ export default function DashboardHome({
                         />
                       </div>
                       <span className={styles.budgetAmounts}>
-                        {formatCurrency(budget.spent, { currency: currency })} of{" "}
-                        {formatCurrency(budget.budget, { currency: currency })}
+                        {fill(t.amountOf, { spent: money(budget.spent), budget: money(budget.budget) })}
                       </span>
                     </Link>
                   );
@@ -359,57 +347,52 @@ export default function DashboardHome({
           <div className={styles.card} id="forecast">
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>
-                Forecast (next {FORECAST_DAYS} days)
+                {fill(t.forecast.title, { days: FORECAST_DAYS })}
               </h2>
               <Link href="/dashboard/insights#recurring" className={styles.viewAllBtn}>
-                Regular payments
+                {t.forecast.regularPayments}
               </Link>
             </div>
             {forecast.events.length === 0 ? (
-              <p className={styles.emptyText}>
-                Nothing is expected in the next {FORECAST_DAYS} days. Add your
-                bills, or keep importing statements: once a payment comes back
-                regularly, Finely expects it here.
-              </p>
+              <p className={styles.emptyText}>{fill(t.forecast.empty, { days: FORECAST_DAYS })}</p>
             ) : (
               <div className={styles.forecast}>
                 <div className={styles.forecastFigures}>
                   <div className={styles.forecastFigure}>
                     <span className={styles.forecastLabel}>
-                      Expected on {formatDate(forecast.until)}
+                      {fill(t.forecast.expectedOn, { date: formatDate(forecast.until, locale) })}
                     </span>
                     <span
                       className={`${styles.forecastValue} ${forecast.endBalance < 0 ? styles.negative : ""}`}
                     >
-                      {formatCurrency(forecast.endBalance, { currency: currency })}
+                      {money(forecast.endBalance)}
                     </span>
                     <span className={styles.forecastNote}>
-                      {formatCurrency(forecast.endBalance - forecast.startBalance, { signed: true, currency: currency })}{" "}
-                      from today&apos;s {formatCurrency(forecast.startBalance, { currency: currency })}
+                      {fill(t.forecast.fromToday, {
+                        change: money(forecast.endBalance - forecast.startBalance, true),
+                        balance: money(forecast.startBalance),
+                      })}
                     </span>
                   </div>
                   <div className={styles.forecastFigure}>
-                    <span className={styles.forecastLabel}>Lowest point</span>
+                    <span className={styles.forecastLabel}>{t.forecast.lowest}</span>
                     <span
                       className={`${styles.forecastValue} ${forecast.lowest.balance < 0 ? styles.negative : ""}`}
                     >
-                      {formatCurrency(forecast.lowest.balance, { currency: currency })}
+                      {money(forecast.lowest.balance)}
                     </span>
                     <span className={styles.forecastNote}>
                       {forecast.lowest.day === forecast.today
-                        ? "Today"
-                        : `On ${formatDate(forecast.lowest.day)}`}
+                        ? todayWord(locale)
+                        : fill(t.forecast.onDay, { date: formatDate(forecast.lowest.day, locale) })}
                     </span>
                   </div>
                   <div className={styles.forecastFigure}>
-                    <span className={styles.forecastLabel}>Expected in / out</span>
+                    <span className={styles.forecastLabel}>{t.forecast.inOut}</span>
                     <span className={styles.forecastValue}>
-                      {formatCurrency(forecast.moneyIn, { currency: currency })} /{" "}
-                      {formatCurrency(forecast.moneyOut, { currency: currency })}
+                      {money(forecast.moneyIn)} / {money(forecast.moneyOut)}
                     </span>
-                    <span className={styles.forecastNote}>
-                      Unpaid bills, pending and regular payments only
-                    </span>
+                    <span className={styles.forecastNote}>{t.forecast.inOutNote}</span>
                   </div>
                 </div>
                 <div className={styles.transactionList}>
@@ -418,8 +401,8 @@ export default function DashboardHome({
                       <div className={styles.txDetails}>
                         <span className={styles.txName}>{event.name}</span>
                         <span className={styles.txDate}>
-                          {formatRelativeDate(event.day, forecast.today)} ·{" "}
-                          {FORECAST_SOURCE_LABELS[event.source]}
+                          {formatRelativeDate(event.day, forecast.today, locale)} ·{" "}
+                          {t.forecastSources[event.source]}
                         </span>
                       </div>
                       <span
@@ -427,13 +410,13 @@ export default function DashboardHome({
                       >
                         {/* "~" when the amount changes from time to time */}
                         {event.estimated && "~"}
-                        {formatCurrency(event.amount, { signed: true, currency: currency })}
+                        {money(event.amount, true)}
                       </span>
                     </div>
                   ))}
                   {forecast.events.length > FORECAST_EVENTS_SHOWN && (
                     <span className={styles.forecastNote}>
-                      and {forecast.events.length - FORECAST_EVENTS_SHOWN} more
+                      {fill(t.forecast.andMore, { count: forecast.events.length - FORECAST_EVENTS_SHOWN })}
                     </span>
                   )}
                 </div>
@@ -445,16 +428,13 @@ export default function DashboardHome({
             {/* Latest transactions: green arrow up = money in, grey arrow down = money out */}
             <div className={styles.card}>
               <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Recent Activity</h2>
+                <h2 className={styles.cardTitle}>{t.recentActivity}</h2>
                 <Link href="/dashboard/transactions" className={styles.viewAllBtn}>
-                  View all
+                  {t.viewAll}
                 </Link>
               </div>
               {recentTransactions.length === 0 ? (
-                <p className={styles.emptyText}>
-                  No transactions yet. Import a statement or add one to see it
-                  here.
-                </p>
+                <p className={styles.emptyText}>{t.noTransactions}</p>
               ) : (
                 <div className={styles.transactionList}>
                   {recentTransactions.map((tx) => {
@@ -478,14 +458,14 @@ export default function DashboardHome({
                           <div className={styles.txDetails}>
                             <span className={styles.txName}>{tx.name}</span>
                             <span className={styles.txDate}>
-                              {formatRelativeDate(tx.day, summary.today)} · {tx.category}
+                              {formatRelativeDate(tx.day, summary.today, locale)} · {tx.category}
                             </span>
                           </div>
                         </div>
                         <span
                           className={`${styles.txAmount} ${isIncome ? styles.positiveAmount : ""}`}
                         >
-                          {formatCurrency(tx.amount, { signed: true, currency: currency })}
+                          {money(tx.amount, true)}
                         </span>
                       </Link>
                     );
@@ -497,12 +477,12 @@ export default function DashboardHome({
             {/* Each bank account and what's in it */}
             <div className={styles.card}>
               <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Bank Accounts</h2>
+                <h2 className={styles.cardTitle}>{t.bankAccounts}</h2>
                 <Link
                   href="/dashboard/settings#accounts"
                   className={styles.viewAllBtn}
                 >
-                  Manage
+                  {t.manage}
                 </Link>
               </div>
               <div className={styles.accountList}>
@@ -515,13 +495,13 @@ export default function DashboardHome({
                       <div className={styles.accountDetails}>
                         <span className={styles.accountName}>{account.name}</span>
                         <span className={styles.accountType}>
-                          {ACCOUNT_TYPES[account.type]}
+                          {t.accountTypes[account.type]}
                           {account.last4 && ` ••${account.last4}`}
                         </span>
                       </div>
                     </div>
                     <span className={styles.accountBalance}>
-                      {formatCurrency(account.balance, { currency: currency })}
+                      {money(account.balance)}
                     </span>
                   </div>
                 ))}

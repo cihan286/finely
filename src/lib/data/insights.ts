@@ -25,6 +25,7 @@ import {
   type Insights,
 } from "@/lib/finance/insights";
 import { getFinanceContext } from "./common";
+import { getLocale } from "@/i18n/server";
 
 export async function getInsights(period: InsightPeriod): Promise<Insights> {
   const { organizationId, timeZone } = await getFinanceContext();
@@ -93,5 +94,13 @@ export async function getInsights(period: InsightPeriod): Promise<Insights> {
       .where(and(completedBetween(historyStart, end), lt(transaction.amount, 0))),
   ]);
 
-  return buildInsights({ today, period, monthly, categorySpending, vendors, expenses });
+  return buildInsights({
+    today,
+    period,
+    monthly,
+    categorySpending,
+    vendors,
+    expenses,
+    locale: await getLocale(),
+  });
 }

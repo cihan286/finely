@@ -9,6 +9,7 @@
 
 import type { ReactNode } from "react";
 import styles from "./PhoneMockup.module.css";
+import { useI18n } from "@/i18n/client";
 import {
   Home,
   CreditCard,
@@ -20,12 +21,13 @@ import {
 } from "lucide-react";
 
 export default function PhoneMockup() {
+  const t = useI18n().m.home.phone;
   return (
     // One picture to screen readers: its made-up figures aren't content
     <div
       className={styles.frame}
       role="img"
-      aria-label="A phone showing Finely: the total balance, a small chart and recent payments"
+      aria-label={t.label}
     >
       {/* The phone's side buttons */}
       <span className={styles.buttonVolumeUp} />
@@ -45,7 +47,7 @@ export default function PhoneMockup() {
 
         <div className={styles.appHeader}>
           <div>
-            <p className={styles.greeting}>Good afternoon</p>
+            <p className={styles.greeting}>{t.greeting}</p>
             <p className={styles.name}>Maya Carter</p>
           </div>
           <div className={styles.avatar}>MC</div>
@@ -53,11 +55,11 @@ export default function PhoneMockup() {
 
         {/* Balance card with a small line chart */}
         <div className={styles.balanceCard}>
-          <p className={styles.balanceLabel}>Total balance</p>
-          <p className={styles.balanceValue}>$128,942.50</p>
+          <p className={styles.balanceLabel}>{t.totalBalance}</p>
+          <p className={styles.balanceValue}>{t.balance}</p>
           <div className={styles.balanceDelta}>
             <TrendingUp size={13} />
-            <span>12.4% this month</span>
+            <span>{t.thisMonth}</span>
           </div>
           <svg
             className={styles.sparkline}
@@ -76,38 +78,38 @@ export default function PhoneMockup() {
         </div>
 
         <div className={styles.sectionHeader}>
-          <span>Recent activity</span>
-          <span className={styles.sectionLink}>See all</span>
+          <span>{t.recentActivity}</span>
+          <span className={styles.sectionLink}>{t.seeAll}</span>
         </div>
 
         <div className={styles.transactionList}>
           <Transaction
             icon={<ArrowUpRight size={15} />}
-            name="Stripe payout"
-            time="Today, 2:41 PM"
-            amount="+$2,400.00"
+            name={t.stripePayout}
+            time={t.todayAt241}
+            amount={t.payout}
             positive
           />
           <Transaction
             icon={<ArrowDownRight size={15} />}
             name="AWS"
-            time="Today, 9:02 AM"
-            amount="-$340.12"
+            time={t.todayAt902}
+            amount={t.aws}
           />
           <Transaction
             icon={<ArrowDownRight size={15} />}
-            name="Payroll"
-            time="Yesterday"
-            amount="-$8,204.00"
+            name={t.payroll}
+            time={t.yesterday}
+            amount={t.payrollAmount}
           />
         </div>
 
         {/* App menu at the bottom of the screen */}
         <div className={styles.tabBar}>
-          <Tab icon={<Home size={19} />} label="Home" active />
-          <Tab icon={<CreditCard size={19} />} label="Cards" />
-          <Tab icon={<PieChart size={19} />} label="Insights" />
-          <Tab icon={<User size={19} />} label="Profile" />
+          <Tab icon={<Home size={19} />} label={t.tabHome} active />
+          <Tab icon={<CreditCard size={19} />} label={t.tabCards} />
+          <Tab icon={<PieChart size={19} />} label={t.tabInsights} />
+          <Tab icon={<User size={19} />} label={t.tabProfile} />
         </div>
       </div>
     </div>

@@ -15,10 +15,14 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import styles from "./AuthForm.module.css";
 
 export default function InvitationActions({ invitationId }: { invitationId: string }) {
   const router = useRouter();
+  const i18n = useI18n();
+  const t = i18n.m.auth.invitation;
   const [error, setError] = useState<string | null>(null);
   // Which button is working: "accept", "decline" or none
   const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
@@ -31,7 +35,7 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
         ? await authClient.organization.acceptInvitation({ invitationId })
         : await authClient.organization.rejectInvitation({ invitationId });
     if (error) {
-      setError(error.message ?? "Something went wrong. Please try again.");
+      setError(authErrorText(error, i18n, i18n.m.common.somethingWentWrong));
       setBusy(null);
       return;
     }
@@ -51,7 +55,7 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
       <div className={styles.submit}>
         <Button
           loading={busy === "accept"}
-          text={busy === "accept" ? "Joining" : "Accept invitation"}
+          text={busy === "accept" ? t.joining : t.accept}
           size="sm"
           fullWidth
           disabled={busy !== null}
@@ -61,7 +65,7 @@ export default function InvitationActions({ invitationId }: { invitationId: stri
       <div className={styles.submit}>
         <Button
           loading={busy === "decline"}
-          text={busy === "decline" ? "Declining" : "Decline"}
+          text={busy === "decline" ? t.declining : t.decline}
           variant="outline"
           size="sm"
           fullWidth

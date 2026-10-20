@@ -148,6 +148,20 @@
       "when": 1792315321116,
       "tag": "0020_complex_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792491869515,
+      "tag": "0021_user_locale",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792493404838,
+      "tag": "0022_audit_log_details",
+      "breakpoints": true
     }
   ]
 }

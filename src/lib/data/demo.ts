@@ -18,6 +18,7 @@
 // and by the daily bank-sync job (deleteExpiredDemos()).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { and, eq, inArray, isNotNull, like, lt, notExists } from "drizzle-orm";
@@ -60,7 +61,7 @@ const randomId = (bytes = 12) => randomBytes(bytes).toString("base64url");
  */
 export async function startDemo(timeZone: unknown) {
   if (!(await withinRateLimit(`demo:${await clientIp()}`, DEMOS_PER_HOUR, 60 * 60))) {
-    throw new DataError("You've started a lot of demos in a row. Try again in an hour.");
+    throw new DataError("tooManyDemos");
   }
   // Tidy up first, so old demos never pile up
   await deleteExpiredDemos();
@@ -93,7 +94,9 @@ async function fillDemoCompany(
   sessionToken: string,
 ) {
   const today = todayIn(timeZone);
-  const data = generateDemoData(today, Number.parseInt(tag.slice(0, 6), 36) || 1);
+  // Its names and notes in the visitor's language
+  const { samples } = await getMessages();
+  const data = generateDemoData(today, Number.parseInt(tag.slice(0, 6), 36) || 1, samples.demo);
   const now = new Date();
   const organizationId = `org_demo_${tag}`;
   const teammateId = `user_demo_${tag}`;
@@ -134,8 +137,9 @@ async function fillDemoCompany(
       demoExpiresAt: new Date(now.getTime() + DEMO_LIFETIME_HOURS * 60 * 60 * 1000),
     }),
     db.insert(category).values(
-      DEFAULT_CATEGORIES.map((c) => ({
+      DEFAULT_CATEGORIES.map(({ key, ...c }) => ({
         ...c,
+        name: samples.categories[key],
         id: categoryIds.get(c.name)!,
         organizationId,
         monthlyBudget: data.budgets[c.name as keyof typeof data.budgets] ?? null,

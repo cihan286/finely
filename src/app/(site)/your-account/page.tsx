@@ -16,16 +16,21 @@ import Link from "next/link";
 import PersonSettings from "@/components/dashboard/settings/PersonSettings";
 import { hasPassword, listOwnedCompanies } from "@/lib/data/person";
 import { requireUser } from "@/lib/session";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 import styles from "../site.module.css";
 
-export const metadata: Metadata = {
-  title: "Your account",
-  // Personal: nothing for a search engine
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: (await getMessages()).site.yourAccount.title,
+    // Personal: nothing for a search engine
+    robots: { index: false },
+  };
+}
 
 export default async function YourAccountPage() {
   const user = await requireUser();
+  const t = (await getMessages()).site.yourAccount;
   const [ownedCompanies, passwordSet] = await Promise.all([
     listOwnedCompanies(),
     hasPassword(),
@@ -33,12 +38,12 @@ export default async function YourAccountPage() {
 
   return (
     <>
-      <span className={styles.label}>Your account</span>
+      <span className={styles.label}>{t.title}</span>
       <h1 className={styles.title}>{user.name}</h1>
       <p className={styles.intro}>
-        Signed in as {user.email}.{" "}
+        {fill(t.signedInAs, { email: user.email })}{" "}
         <Link href="/dashboard" className={styles.inlineLink}>
-          Back to Finely
+          {t.backToFinely}
         </Link>
       </p>
 

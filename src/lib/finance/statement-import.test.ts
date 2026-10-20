@@ -73,9 +73,9 @@ describe("detectDateFormat", () => {
 });
 
 test("columnLetter", () => {
-  expect(columnLetter(0)).toBe("Column A");
-  expect(columnLetter(25)).toBe("Column Z");
-  expect(columnLetter(26)).toBe("Column AA");
+  expect(columnLetter(0)).toBe("A");
+  expect(columnLetter(25)).toBe("Z");
+  expect(columnLetter(26)).toBe("AA");
 });
 
 describe("guessMapping + interpretRows", () => {
@@ -105,8 +105,8 @@ describe("guessMapping + interpretRows", () => {
       { date: "2026-09-30", name: "GUSTO PAYROLL, INC", amount: -8204, category: null },
     ]);
     expect(result.problems).toEqual([
-      { line: 4, message: "The amount is zero." },
-      { line: 5, message: "“13/45/2026” isn't a date in the chosen format." },
+      { line: 4, problem: "zero" },
+      { line: 5, problem: "notADate", value: "13/45/2026" },
     ]);
   });
 

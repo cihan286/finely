@@ -34,7 +34,6 @@ import { decryptToken, encryptToken } from "@/lib/bank/crypto";
 import { bankEncryptionKey, getBankProvider } from "@/lib/bank/provider";
 import { BankError, type BankChanges, type BankProvider } from "@/lib/bank/types";
 import { zonedTime } from "@/lib/dates";
-import { countOf } from "@/lib/finance/audit";
 import { finelyAccountType, last4From, planSync } from "@/lib/finance/bank-sync";
 import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
@@ -78,13 +77,13 @@ const MAX_PAGES = 40;
 // The service that talks to banks; an error for the person if it isn't set up
 function requireProvider(): BankProvider {
   const provider = getBankProvider();
-  if (!provider) throw new DataError("Connecting a bank isn't set up yet.");
+  if (!provider) throw new DataError("bankNotSetUp");
   return provider;
 }
 
 // Bank problems become messages for the person; anything else is a bug
 function asDataError(error: unknown): never {
-  if (error instanceof BankError) throw new DataError(error.message);
+  if (error instanceof BankError) throw new DataError(error.key);
   throw error;
 }
 
@@ -131,7 +130,7 @@ export async function connectBank(
   const actor = await getFinanceContext({ manage: true });
   await refuseInDemo(actor.organizationId);
   const provider = requireProvider();
-  const token = requiredText(publicToken, "Bank link", 500);
+  const token = requiredText(publicToken, "bankLink", 500);
   // Shown on screen later; whatever the browser sent, kept short
   const name = (typeof institutionName === "string" && institutionName.trim()
     ? institutionName.trim()
@@ -153,14 +152,15 @@ export async function connectBank(
       })
       .returning();
   } catch (error) {
-    if (isUniqueViolation(error)) throw new DataError("This bank is already connected.");
+    if (isUniqueViolation(error)) throw new DataError("bankAlreadyConnected");
     asDataError(error);
   }
   await recordAudit(actor, {
     area: "bank",
     action: "connected",
     entityId: connection.id,
-    summary: `Connected the bank ${name}`,
+    key: "bankConnected",
+    values: { bank: name },
   });
 
   // The link is made; a first sync that fails is tried again later
@@ -181,7 +181,7 @@ export async function syncBankConnection(id: string): Promise<SyncResult> {
     .where(
       and(eq(bankConnection.id, id), eq(bankConnection.organizationId, actor.organizationId)),
     );
-  if (!connection) throw new DataError("Bank connection not found.");
+  if (!connection) throw new DataError("bankNotFound");
   try {
     return await syncConnection(connection, requireProvider(), actor);
   } catch (error) {
@@ -200,7 +200,7 @@ export async function disconnectBank(id: string) {
     eq(bankConnection.organizationId, actor.organizationId),
   );
   const [connection] = await db.select().from(bankConnection).where(own);
-  if (!connection) throw new DataError("Bank connection not found.");
+  if (!connection) throw new DataError("bankNotFound");
 
   // Tell the service the key is no longer wanted. If that fails (the bank
   // already ended it, the service is down), the link is forgotten here anyway.
@@ -217,7 +217,8 @@ export async function disconnectBank(id: string) {
     area: "bank",
     action: "disconnected",
     entityId: id,
-    summary: `Disconnected the bank ${connection.institutionName}`,
+    key: "bankDisconnected",
+    values: { bank: connection.institutionName },
   });
 }
 
@@ -291,10 +292,8 @@ async function syncConnection(
     await db
       .update(bankConnection)
       .set({
-        lastError:
-          error instanceof BankError
-            ? error.message
-            : "The bank connection didn't work. Try again later.",
+        // A sentence of i18n/messages/<language>/errors.ts, shown in Settings
+        lastError: error instanceof BankError ? error.key : "bankGeneric",
       })
       .where(ownConnection);
     throw error;
@@ -467,17 +466,12 @@ async function syncConnection(
     newAccounts,
   };
   if (result.added + result.updated + result.removed + newAccounts > 0) {
-    const parts = [
-      newAccounts > 0 && countOf(newAccounts, "new account"),
-      result.added > 0 && `${countOf(result.added, "transaction")} added`,
-      result.updated > 0 && `${result.updated} updated`,
-      result.removed > 0 && `${result.removed} removed`,
-    ].filter(Boolean);
     await recordAudit(actor, {
       area: "bank",
       action: "synced",
       entityId: connection.id,
-      summary: `Synced ${connection.institutionName}: ${parts.join(", ")}`,
+      key: "bankSynced",
+      values: { bank: connection.institutionName, sync: { sync: result } },
     });
   }
 

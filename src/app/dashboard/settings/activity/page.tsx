@@ -21,16 +21,18 @@ import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { listAuditLog } from "@/lib/data/audit";
 import { getCompanyTimeZone } from "@/lib/data/common";
-import { AUDIT_AREAS, type AuditArea } from "@/lib/finance/audit";
+import { AUDIT_AREAS, isAuditArea } from "@/lib/finance/audit";
+import { fill } from "@/i18n/config";
+import { getI18n } from "@/i18n/server";
 import { formatDateTime } from "@/lib/format";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import styles from "./page.module.css";
 
 // Browser tab title: "Activity log | Finely"
-export const metadata: Metadata = {
-  title: "Activity log",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).m.audit.title };
+}
 
 const PAGE_SIZE = 50;
 const PATH = "/dashboard/settings/activity";
@@ -60,19 +62,20 @@ export default async function ActivityPage({
   const { organization, role } = await requireOrganization();
   const params = await searchParams;
   const requested = single(params.area);
-  const area = requested in AUDIT_AREAS ? requested : "";
+  const area = isAuditArea(requested) ? requested : "";
+  const { locale, m } = await getI18n();
+  const t = m.audit;
+  const areas: Record<string, string> = t.areas;
   const q = single(params.q).trim().slice(0, 100);
   const page = Math.max(Math.trunc(Number(single(params.page))) || 1, 1);
 
   const header = (
     <div>
       <Link href="/dashboard/settings" className={styles.back}>
-        <ChevronLeft size={16} /> Settings
+        <ChevronLeft size={16} /> {t.back}
       </Link>
-      <h1 className={styles.title}>Activity log</h1>
-      <p className={styles.subtitle}>
-        Who changed what in {organization.name}, newest first.
-      </p>
+      <h1 className={styles.title}>{t.title}</h1>
+      <p className={styles.subtitle}>{fill(t.subtitle, { company: organization.name })}</p>
     </div>
   );
 
@@ -80,7 +83,7 @@ export default async function ActivityPage({
     return (
       <main className={styles.page}>
         {header}
-        <Message type="info">Only owners and admins can read the activity log.</Message>
+        <Message type="info">{t.onlyManagers}</Message>
       </main>
     );
   }
@@ -102,22 +105,22 @@ export default async function ActivityPage({
       {header}
 
       {/* One kind of thing, or everything */}
-      <nav className={styles.filters} aria-label="Show">
+      <nav className={styles.filters} aria-label={t.show}>
         <Link
           href={hrefFor("", q, 1)}
           className={`${styles.filter} ${area === "" ? styles.filterActive : ""}`}
           aria-current={area === "" ? "page" : undefined}
         >
-          Everything
+          {t.everything}
         </Link>
-        {(Object.keys(AUDIT_AREAS) as AuditArea[]).map((key) => (
+        {AUDIT_AREAS.map((key) => (
           <Link
             key={key}
             href={hrefFor(key, q, 1)}
             className={`${styles.filter} ${area === key ? styles.filterActive : ""}`}
             aria-current={area === key ? "page" : undefined}
           >
-            {AUDIT_AREAS[key]}
+            {areas[key]}
           </Link>
         ))}
       </nav>
@@ -132,8 +135,8 @@ export default async function ActivityPage({
             name="q"
             defaultValue={q}
             maxLength={100}
-            placeholder="Search what happened or who did it"
-            aria-label="Search the activity log"
+            placeholder={t.searchPlaceholder}
+            aria-label={t.search}
             className={styles.search}
           />
         </form>
@@ -143,7 +146,7 @@ export default async function ActivityPage({
             download
             variant="outline"
             size="sm"
-            text="Export CSV"
+            text={t.exportCsv}
             icon={<Download size={16} />}
           />
         )}
@@ -152,13 +155,7 @@ export default async function ActivityPage({
       <section className={styles.card}>
         {entries.length === 0 ? (
           <p className={styles.empty}>
-            {page > 1
-              ? "There's nothing on this page."
-              : q
-                ? "Nothing matches your search."
-                : area
-                ? "Nothing has been recorded here yet."
-                : "Nothing has been recorded yet. Changes made from now on will show up here."}
+            {page > 1 ? t.emptyPage : q ? t.noMatches : area ? t.nothingHere : t.nothingYet}
           </p>
         ) : (
           <>
@@ -168,11 +165,11 @@ export default async function ActivityPage({
                   <div className={styles.what}>
                     <span className={styles.summary}>{entry.summary}</span>
                     <span className={styles.meta}>
-                      {entry.actor} · {AUDIT_AREAS[entry.area] ?? entry.area}
+                      {entry.actor} · {areas[entry.area] ?? entry.area}
                     </span>
                   </div>
                   <time className={styles.when} dateTime={entry.at.toISOString()}>
-                    {formatDateTime(entry.at, timeZone)}
+                    {formatDateTime(entry.at, timeZone, locale)}
                   </time>
                 </li>
               ))}
@@ -181,17 +178,17 @@ export default async function ActivityPage({
             {/* Paging */}
             <div className={styles.pagination}>
               <span className={styles.pageInfo}>
-                Showing {firstShown}–{lastShown} of {total}
+                {fill(t.showing, { first: firstShown, last: lastShown, total })}
               </span>
               <div className={styles.pageLinks}>
                 {page > 1 && (
                   <Link href={hrefFor(area, q, page - 1)} className={styles.pageLink}>
-                    <ChevronLeft size={16} /> Newer
+                    <ChevronLeft size={16} /> {t.newer}
                   </Link>
                 )}
                 {lastShown < total && (
                   <Link href={hrefFor(area, q, page + 1)} className={styles.pageLink}>
-                    Older <ChevronRight size={16} />
+                    {t.older} <ChevronRight size={16} />
                   </Link>
                 )}
               </div>

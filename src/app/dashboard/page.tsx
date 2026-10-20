@@ -15,11 +15,12 @@ import { getDashboardSummary } from "@/lib/data/dashboard";
 import { getForecast } from "@/lib/data/recurring";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
+import { getMessages } from "@/i18n/server";
 
 // Browser tab title: "Dashboard | Finely"
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).dashboard.title };
+}
 
 export default async function DashboardPage() {
   // Protects the page: visitors who aren't logged in are sent to /login, and

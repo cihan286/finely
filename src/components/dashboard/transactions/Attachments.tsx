@@ -31,6 +31,8 @@ import {
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from "@/lib/finance/attachments";
 import type { Attachment } from "@/types/finance";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./Attachments.module.css";
 
 const FILE_PATH = "/dashboard/transactions/attachments";
@@ -42,6 +44,8 @@ interface AttachmentsProps {
 }
 
 export default function Attachments({ transactionId, initial }: AttachmentsProps) {
+  const { locale, m } = useI18n();
+  const t = m.transactions.attachments;
   const [attachments, setAttachments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   // What is being saved: "upload", or the ID of the file being deleted
@@ -72,7 +76,10 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     if (!file) return;
     if (file.size > MAX_ATTACHMENT_BYTES) {
       setError(
-        `A file can be at most ${formatFileSize(MAX_ATTACHMENT_BYTES)}. This one is ${formatFileSize(file.size)}.`,
+        fill(t.tooLarge, {
+          max: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+          size: formatFileSize(file.size, locale),
+        }),
       );
       return;
     }
@@ -82,14 +89,14 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
   };
 
   const handleDelete = (attachment: Attachment) => {
-    if (!window.confirm(`Delete ${attachment.name}? This can't be undone.`)) return;
+    if (!window.confirm(fill(t.confirmDelete, { name: attachment.name }))) return;
     run(attachment.id, () => removeAttachment(attachment.id));
   };
 
   return (
-    <section className={styles.section} aria-label="Receipts and attachments">
+    <section className={styles.section} aria-label={t.label}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Receipts &amp; attachments</h3>
+        <h3 className={styles.title}>{t.title}</h3>
         <button
           type="button"
           className={styles.addButton}
@@ -97,7 +104,7 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
           disabled={busy !== null || full}
         >
           {busy === "upload" ? <Spinner size={14} /> : <Paperclip size={14} />}
-          {busy === "upload" ? "Uploading" : "Add file"}
+          {busy === "upload" ? t.uploading : t.add}
         </button>
         <input
           ref={inputRef}
@@ -105,7 +112,7 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
           accept={ATTACHMENT_ACCEPT}
           className={styles.fileInput}
           onChange={handleChoose}
-          aria-label="Choose a file to attach"
+          aria-label={t.choose}
           tabIndex={-1}
         />
       </div>
@@ -114,9 +121,10 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
 
       {attachments.length === 0 ? (
         <p className={styles.hint}>
-          Nothing attached. Add a receipt or invoice:{" "}
-          {Object.values(ATTACHMENT_TYPES).join(", ")}, up to{" "}
-          {formatFileSize(MAX_ATTACHMENT_BYTES)}.
+          {fill(t.nothing, {
+            types: Object.values(ATTACHMENT_TYPES).join(", "),
+            size: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+          })}
         </p>
       ) : (
         <ul className={styles.list}>
@@ -145,14 +153,14 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
               >
                 {attachment.name}
               </a>
-              <span className={styles.size}>{formatFileSize(attachment.size)}</span>
+              <span className={styles.size}>{formatFileSize(attachment.size, locale)}</span>
               {attachment.canDelete && (
                 <button
                   type="button"
                   className={styles.deleteButton}
                   onClick={() => handleDelete(attachment)}
                   disabled={busy !== null}
-                  aria-label={`Delete ${attachment.name}`}
+                  aria-label={fill(t.delete, { name: attachment.name })}
                 >
                   {busy === attachment.id ? <Spinner size={14} /> : <Trash2 size={14} />}
                 </button>
@@ -162,10 +170,7 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
         </ul>
       )}
       {full && (
-        <p className={styles.hint}>
-          That&apos;s the most files a transaction can have (
-          {MAX_ATTACHMENTS_PER_TRANSACTION}).
-        </p>
+        <p className={styles.hint}>{fill(t.full, { max: MAX_ATTACHMENTS_PER_TRANSACTION })}</p>
       )}
     </section>
   );

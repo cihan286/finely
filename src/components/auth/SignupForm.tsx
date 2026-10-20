@@ -18,6 +18,9 @@ import Field from "@/components/common/form/Field";
 import { Input, PasswordInput } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { fill } from "@/i18n/config";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
 import GoogleButton from "./GoogleButton";
 import styles from "./AuthForm.module.css";
@@ -33,6 +36,8 @@ export default function SignupForm({
   next = "/onboarding",
 }: SignupFormProps) {
   const router = useRouter();
+  const i18n = useI18n();
+  const t = i18n.m.auth;
   // The error message to show, if any
   const [error, setError] = useState<string | null>(null);
   // True while waiting for the server; the button shows "Creating account…"
@@ -55,7 +60,7 @@ export default function SignupForm({
     });
 
     if (error) {
-      setError(error.message ?? "Could not create your account. Please try again.");
+      setError(authErrorText(error, i18n, t.signup.failed));
       setLoading(false);
       return;
     }
@@ -71,11 +76,11 @@ export default function SignupForm({
       {googleEnabled && (
         <>
           <GoogleButton
-            label="Sign up with Google"
+            label={t.signup.withGoogle}
             onError={setError}
             callbackURL={next}
           />
-          <div className={styles.divider}>or</div>
+          <div className={styles.divider}>{t.or}</div>
         </>
       )}
 
@@ -88,28 +93,28 @@ export default function SignupForm({
           </Message>
         )}
 
-        <Field label="Full name">
+        <Field label={t.signup.fullName}>
           <Input
             size="lg"
             name="name"
             autoComplete="name"
-            placeholder="Maya Carter"
+            placeholder={t.signup.namePlaceholder}
             required
           />
         </Field>
-        <Field label="Work email">
+        <Field label={t.signup.workEmail}>
           <Input
             size="lg"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t.emailPlaceholder}
             required
           />
         </Field>
         <Field
-          label="Password"
-          hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+          label={t.passwordLabel}
+          hint={fill(t.atLeastCharacters, { min: MIN_PASSWORD_LENGTH })}
         >
           <PasswordInput
             size="lg"
@@ -125,7 +130,7 @@ export default function SignupForm({
           <Button
             type="submit"
             loading={loading}
-            text={loading ? "Creating account" : "Create account"}
+            text={loading ? t.signup.creating : t.signup.create}
             size="sm"
             fullWidth
             disabled={loading}

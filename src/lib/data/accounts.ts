@@ -61,15 +61,15 @@ export async function listAccounts(): Promise<Account[]> {
 
 // Checks and tidies what was typed into the account form
 function parseAccountInput(input: AccountInput, currency: string) {
-  const last4 = optionalText(input.last4, "Last four digits", 4);
+  const last4 = optionalText(input.last4, "lastFour", 4);
   if (last4 !== null && !/^\d{4}$/.test(last4)) {
-    throw new DataError("Last four digits must be exactly 4 digits.");
+    throw new DataError("lastFourDigits");
   }
   return {
-    name: requiredText(input.name, "Name"),
-    type: oneOf(input.type, ACCOUNT_TYPES, "Account type"),
+    name: requiredText(input.name, "name"),
+    type: oneOf(input.type, ACCOUNT_TYPES, "accountType"),
     last4,
-    openingBalance: money(input.openingBalance ?? 0, "Opening balance", currency),
+    openingBalance: money(input.openingBalance ?? 0, "openingBalance", currency),
   };
 }
 
@@ -85,7 +85,8 @@ export async function createAccount(input: AccountInput): Promise<string> {
     area: "account",
     action: "created",
     entityId: row.id,
-    summary: `Added the bank account “${row.name}”`,
+    key: "accountAdded",
+    values: { name: row.name },
   });
   return row.id;
 }
@@ -104,12 +105,13 @@ export async function updateAccount(id: string, input: AccountInput) {
       ),
     )
     .returning({ id: financialAccount.id, name: financialAccount.name });
-  if (updated.length === 0) throw new DataError("Account not found.");
+  if (updated.length === 0) throw new DataError("accountNotFound");
   await recordAudit(actor, {
     area: "account",
     action: "updated",
     entityId: id,
-    summary: `Changed the bank account “${updated[0].name}”`,
+    key: "accountChanged",
+    values: { name: updated[0].name },
   });
 }
 
@@ -125,9 +127,7 @@ export async function deleteAccount(id: string) {
     ),
   );
   if (transactionCount > 0) {
-    throw new DataError(
-      "This account still has transactions. Move or delete them first.",
-    );
+    throw new DataError("accountHasTransactions");
   }
   const deleted = await db
     .delete(financialAccount)
@@ -138,11 +138,12 @@ export async function deleteAccount(id: string) {
       ),
     )
     .returning({ id: financialAccount.id, name: financialAccount.name });
-  if (deleted.length === 0) throw new DataError("Account not found.");
+  if (deleted.length === 0) throw new DataError("accountNotFound");
   await recordAudit(actor, {
     area: "account",
     action: "deleted",
     entityId: id,
-    summary: `Removed the bank account “${deleted[0].name}”`,
+    key: "accountRemoved",
+    values: { name: deleted[0].name },
   });
 }

@@ -34,6 +34,9 @@ import { initialActionState } from "@/lib/action-state";
 import { roleLabel } from "@/lib/roles";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import { rich } from "@/i18n/rich";
 import styles from "./OwnerSettings.module.css";
 
 interface OwnerSettingsProps {
@@ -46,6 +49,8 @@ export default function OwnerSettings({
   organizationName,
   members,
 }: OwnerSettingsProps) {
+  const { m } = useI18n();
+  const t = m.settings.owner;
   const [transfer, dispatchTransfer, transferring] = useActionState(
     submitOwnershipTransfer,
     initialActionState,
@@ -64,9 +69,7 @@ export default function OwnerSettings({
     const member = members.find((m) => m.id === formData.get("memberId"));
     if (
       !member ||
-      !window.confirm(
-        `Make ${member.name} the owner of ${organizationName}? You'll become an admin, and only ${member.name} can hand it back.`,
-      )
+      !window.confirm(fill(t.confirmHandOver, { name: member.name, company: organizationName }))
     ) {
       return;
     }
@@ -87,28 +90,22 @@ export default function OwnerSettings({
 
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Hand over the company</h2>
-          <p className={shared.cardHint}>
-            Make someone else the owner. You become an admin, and can then
-            leave the company if you want.
-          </p>
+          <h2 className={shared.cardTitle}>{t.handOver}</h2>
+          <p className={shared.cardHint}>{t.handOverHint}</p>
         </div>
         {members.length === 0 ? (
-          <p className={styles.note}>
-            There&apos;s nobody to hand it over to yet. Invite the person
-            first; once they&apos;ve joined, you can choose them here.
-          </p>
+          <p className={styles.note}>{t.nobody}</p>
         ) : (
           <form className={styles.form} onSubmit={handleTransfer}>
             <Select
               name="memberId"
-              aria-label="New owner"
+              aria-label={t.newOwner}
               className={styles.grow}
               defaultValue={members[0].id}
             >
               {members.map((member) => (
                 <option key={member.id} value={member.id}>
-                  {member.name} ({member.email}), {roleLabel(member.role).toLowerCase()}
+                  {member.name} ({member.email}), {roleLabel(member.role, m.rolesInSentence)}
                 </option>
               ))}
             </Select>
@@ -117,7 +114,7 @@ export default function OwnerSettings({
               variant="outline"
               size="sm"
               loading={transferring}
-              text={transferring ? "Handing over" : "Make owner"}
+              text={transferring ? t.handingOver : t.makeOwner}
               disabled={transferring || deleting}
             />
           </form>
@@ -126,36 +123,32 @@ export default function OwnerSettings({
 
       <section className={`${shared.card} ${styles.danger}`}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Delete this company</h2>
-          <p className={shared.cardHint}>
-            Removes {organizationName} for everyone on the team, with all its
-            bank accounts, transactions, bills, categories and rules. This
-            can&apos;t be undone.
-          </p>
+          <h2 className={shared.cardTitle}>{t.delete}</h2>
+          <p className={shared.cardHint}>{fill(t.deleteHint, { company: organizationName })}</p>
         </div>
         {/* Plain links: they answer with files, not pages */}
         <p className={styles.note}>
-          Want to keep a copy? Download the{" "}
-          <a href="/dashboard/transactions/export" download className={styles.exportLink}>
-            transactions
-          </a>
-          , the{" "}
-          <a href="/dashboard/bills/export" download className={styles.exportLink}>
-            bills
-          </a>{" "}
-          and the{" "}
-          <a
-            href="/dashboard/settings/activity/export"
-            download
-            className={styles.exportLink}
-          >
-            activity log
-          </a>{" "}
-          first. Attached files aren&apos;t in them.
+          {rich(t.keepCopy, {
+            transactions: (text) => (
+              <a href="/dashboard/transactions/export" download className={styles.exportLink}>
+                {text}
+              </a>
+            ),
+            bills: (text) => (
+              <a href="/dashboard/bills/export" download className={styles.exportLink}>
+                {text}
+              </a>
+            ),
+            activity: (text) => (
+              <a href="/dashboard/settings/activity/export" download className={styles.exportLink}>
+                {text}
+              </a>
+            ),
+          })}
         </p>
         <form className={styles.form} onSubmit={handleDelete}>
           <Field
-            label={`Type “${organizationName}” to confirm`}
+            label={fill(t.typeToConfirm, { text: organizationName })}
             className={styles.grow}
           >
             <Input
@@ -171,7 +164,7 @@ export default function OwnerSettings({
             className={styles.deleteButton}
             disabled={!confirmed || deleting || transferring}
           >
-            {deleting ? "Deleting" : "Delete company"}
+            {deleting ? t.deleting : t.deleteButton}
           </button>
         </form>
       </section>

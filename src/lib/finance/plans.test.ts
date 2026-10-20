@@ -42,7 +42,7 @@ describe("canAddMember", () => {
 
 test("statusNote", () => {
   expect(statusNote("active", false)).toBeNull();
-  expect(statusNote("active", true)).toContain("Cancelled");
-  expect(statusNote("past_due", false)).toContain("payment failed");
+  expect(statusNote("active", true)).toBe("cancelled");
+  expect(statusNote("past_due", false)).toBe("pastDue");
   expect(statusNote("canceled", true)).toBeNull();
 });

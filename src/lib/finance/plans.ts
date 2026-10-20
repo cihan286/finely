@@ -61,13 +61,12 @@ export function canAddMember(plan: PlanKey, memberCount: number): boolean {
 }
 
 /** "Starter" plan words for a subscription's state, for the screen */
-export function statusNote(status: string, cancelAtPeriodEnd: boolean): string | null {
-  if (cancelAtPeriodEnd && ACTIVE_STATUSES.includes(status)) {
-    return "Cancelled: stays active until the end of the paid period.";
-  }
-  if (status === "past_due") {
-    return "The last payment failed. Update the payment method to keep the plan.";
-  }
-  if (status === "trialing") return "In its trial period.";
+export function statusNote(
+  status: string,
+  cancelAtPeriodEnd: boolean,
+): "cancelled" | "pastDue" | "trialing" | null {
+  if (cancelAtPeriodEnd && ACTIVE_STATUSES.includes(status)) return "cancelled";
+  if (status === "past_due") return "pastDue";
+  if (status === "trialing") return "trialing";
   return null;
 }

@@ -12,8 +12,12 @@
 import styles from "./Footer.module.css";
 import Link from "next/link";
 import Logo from "../logo/Logo";
+import { fill } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 
-export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
+export default async function Footer({ signedIn = false }: { signedIn?: boolean }) {
+  const { home, common } = await getMessages();
+  const t = home.footer;
   // Keeps the copyright year current automatically
   const currentYear = new Date().getFullYear();
 
@@ -24,62 +28,59 @@ export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
           <Link href="/" className={styles.brandLink}>
             <Logo />
           </Link>
-          <p className={styles.description}>
-            Expense tracking, cash flow and insights for growing businesses,
-            all in one place.
-          </p>
+          <p className={styles.description}>{t.description}</p>
         </div>
 
         {/* Four columns of links */}
         <div className={styles.linksGrid}>
           <div className={styles.linkColumn}>
-            <span className={styles.columnTitle}>Product</span>
+            <span className={styles.columnTitle}>{t.product}</span>
             <Link href="/#features" className={styles.link}>
-              Features
+              {home.nav.features}
             </Link>
             <Link href="/#pricing" className={styles.link}>
-              Pricing
+              {home.nav.pricing}
             </Link>
           </div>
 
           <div className={styles.linkColumn}>
-            <span className={styles.columnTitle}>Company</span>
+            <span className={styles.columnTitle}>{t.company}</span>
             <Link href="/about" className={styles.link}>
-              About
+              {home.nav.about}
             </Link>
             <Link href="/contact" className={styles.link}>
-              Contact
+              {home.nav.contact}
             </Link>
           </div>
 
           <div className={styles.linkColumn}>
-            <span className={styles.columnTitle}>Legal</span>
+            <span className={styles.columnTitle}>{t.legal}</span>
             <Link href="/terms" className={styles.link}>
-              Terms of service
+              {t.terms}
             </Link>
             <Link href="/privacy" className={styles.link}>
-              Privacy policy
+              {t.privacy}
             </Link>
           </div>
 
           <div className={styles.linkColumn}>
-            <span className={styles.columnTitle}>Account</span>
+            <span className={styles.columnTitle}>{t.account}</span>
             {signedIn ? (
               <>
                 <Link href="/dashboard" className={styles.link}>
-                  Your dashboard
+                  {t.yourDashboard}
                 </Link>
                 <Link href="/your-account" className={styles.link}>
-                  Your account
+                  {t.yourAccount}
                 </Link>
               </>
             ) : (
               <>
                 <Link href="/login" className={styles.link}>
-                  Log in
+                  {common.logIn}
                 </Link>
                 <Link href="/signup" className={styles.link}>
-                  Start for free
+                  {common.startForFree}
                 </Link>
               </>
             )}
@@ -89,10 +90,10 @@ export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
 
       {/* Copyright line */}
       <div className={styles.bottomSection}>
-        <p>© {currentYear} Finely, Inc. All rights reserved.</p>
+        <p>{fill(t.copyright, { year: currentYear })}</p>
         {/* Finely is a portfolio project: say so, and point to the code */}
         <p>
-          A portfolio project by{" "}
+          {t.portfolioBy}{" "}
           <a
             href="https://www.linkedin.com/in/cihan-i%C5%9F%C4%B1k-1490b33a7"
             className={styles.sourceLink}
@@ -101,7 +102,7 @@ export default function Footer({ signedIn = false }: { signedIn?: boolean }) {
           </a>
           .{" "}
           <a href="https://github.com/cihan286/finely" className={styles.sourceLink}>
-            Source code on GitHub
+            {t.sourceCode}
           </a>
         </p>
       </div>

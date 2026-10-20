@@ -17,12 +17,14 @@ import { AlertTriangle, Download, Landmark } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import { CATEGORY_ICONS } from "@/components/dashboard/categoryIcons";
 import type { RecurringPaymentDetails } from "@/lib/data/recurring";
-import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
 import { INSIGHT_PERIODS, type Insights } from "@/lib/finance/insights";
 import { formatCurrency, formatDate, formatRelativeDate } from "@/lib/format";
 import MonthlyChart from "./MonthlyChart";
 import { submitRecurringVisibility } from "@/app/dashboard/insights/actions";
 import PrintButton from "./PrintButton";
+import { fill, intlLocale, type Locale } from "@/i18n/config";
+import { bold, rich } from "@/i18n/rich";
+import { getI18n } from "@/i18n/server";
 import styles from "./InsightsView.module.css";
 
 // The Bills page with its "Add bill" window open and filled in from a
@@ -39,8 +41,13 @@ function billHref(payment: RecurringPaymentDetails): string {
   return `/dashboard/bills?${params}`;
 }
 
-// 0.4166 -> "41.7%"
-const percent = (share: number) => `${(share * 100).toFixed(1)}%`;
+// 0.4166 -> "41.7%", in Turkish "%41,7"
+const percent = (share: number, locale: Locale) =>
+  new Intl.NumberFormat(intlLocale(locale), {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(share);
 
 interface InsightsViewProps {
   organizationName: string;
@@ -55,7 +62,7 @@ interface InsightsViewProps {
   hiddenRecurring: { key: string; name: string }[];
 }
 
-export default function InsightsView({
+export default async function InsightsView({
   organizationName,
   currency,
   hasAccounts,
@@ -64,26 +71,27 @@ export default function InsightsView({
   recurring,
   hiddenRecurring,
 }: InsightsViewProps) {
+  const { locale, m } = await getI18n();
+  const t = m.insights;
+  const money = (value: number, signed = false) => formatCurrency(value, { signed, currency }, locale);
   // What the regular payments (money out) add up to per month
   const recurringPerMonth = recurring
     .filter((r) => r.direction === "out")
     .reduce((sum, r) => sum + r.monthlyAmount, 0);
   const { period, monthly, totals, categories, vendors, unusualCharges, today } =
     insights;
-  const hasActivity = monthly.some((m) => m.income > 0 || m.expenses > 0);
+  const hasActivity = monthly.some((month) => month.income > 0 || month.expenses > 0);
   const categoryTotal = categories.reduce((sum, c) => sum + c.amount, 0);
 
   return (
     <main className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Insights</h1>
-          <p className={styles.subtitle}>
-            Trends and patterns in {organizationName}&apos;s money.
-          </p>
+          <h1 className={styles.title}>{t.title}</h1>
+          <p className={styles.subtitle}>{fill(t.subtitle, { company: organizationName })}</p>
           {/* Only on paper: which period the printout covers */}
           <p className={styles.printOnly}>
-            Last {period} months, as of {formatDate(today)}.
+            {fill(t.printPeriod, { months: period, date: formatDate(today, locale) })}
           </p>
         </div>
         {hasActivity && (
@@ -93,7 +101,7 @@ export default function InsightsView({
               download
               variant="outline"
               size="sm"
-              text="Export CSV"
+              text={t.exportCsv}
               icon={<Download size={16} />}
             />
             <PrintButton />
@@ -102,7 +110,7 @@ export default function InsightsView({
       </div>
 
       {/* The period: one row above everything it applies to */}
-      <nav className={styles.periods} aria-label="Period">
+      <nav className={styles.periods} aria-label={t.period}>
         {INSIGHT_PERIODS.map((months) => (
           <Link
             key={months}
@@ -110,7 +118,7 @@ export default function InsightsView({
             className={`${styles.period} ${months === period ? styles.periodActive : ""}`}
             aria-current={months === period ? "page" : undefined}
           >
-            {months} months
+            {fill(t.months, { months })}
           </Link>
         ))}
       </nav>
@@ -120,20 +128,20 @@ export default function InsightsView({
           <div className={styles.emptyIcon}>
             <Landmark size={22} />
           </div>
-          <h2 className={styles.cardTitle}>Nothing to analyze yet</h2>
+          <h2 className={styles.cardTitle}>{t.nothingYet}</h2>
           <p className={styles.muted}>
             {hasAccounts
-              ? `There are no completed transactions in the last ${period} months. Import a bank statement or add transactions, and the trends will show up here.`
+              ? fill(t.noTransactions, { months: period })
               : canManage
-                ? "Add a bank account and its transactions, and the trends will show up here."
-                : "Once an owner or admin adds bank accounts and transactions, the trends will show up here."}
+                ? t.noAccounts
+                : t.noAccountsMember}
           </p>
           {hasAccounts ? (
             <Button
               href="/dashboard/transactions?import=1"
               variant="primary"
               size="sm"
-              text="Import a statement"
+              text={t.importStatement}
             />
           ) : (
             canManage && (
@@ -141,7 +149,7 @@ export default function InsightsView({
                 href="/dashboard/settings#accounts"
                 variant="primary"
                 size="sm"
-                text="Add a bank account"
+                text={t.addAccount}
               />
             )
           )}
@@ -150,59 +158,57 @@ export default function InsightsView({
         <>
           {/* Totals for the period */}
           <div className={styles.stats}>
-            <Stat label="Money in" value={formatCurrency(totals.income, { currency: currency })} />
-            <Stat label="Money out" value={formatCurrency(totals.expenses, { currency: currency })} />
+            <Stat label={t.moneyIn} value={money(totals.income)} />
+            <Stat label={t.moneyOut} value={money(totals.expenses)} />
             <Stat
-              label="Net"
-              value={formatCurrency(totals.net, { signed: true, currency: currency })}
+              label={t.net}
+              value={money(totals.net, true)}
               tone={totals.net >= 0 ? "positive" : "negative"}
             />
             <Stat
-              label="Savings rate"
-              value={totals.savingsRate === null ? "—" : percent(totals.savingsRate)}
-              hint="Share of money in that was kept"
+              label={t.savingsRate}
+              value={totals.savingsRate === null ? "—" : percent(totals.savingsRate, locale)}
+              hint={t.savingsRateHint}
             />
           </div>
 
           {/* Money in and out per month */}
           <section className={styles.card}>
             <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>Money in and out by month</h2>
+              <h2 className={styles.cardTitle}>{t.byMonth}</h2>
               <div className={styles.legend}>
                 <span>
                   <span className={`${styles.swatch} ${styles.incomeSwatch}`} />
-                  Money in
+                  {t.moneyIn}
                 </span>
                 <span>
                   <span className={`${styles.swatch} ${styles.expensesSwatch}`} />
-                  Money out
+                  {t.moneyOut}
                 </span>
               </div>
             </div>
             <MonthlyChart monthly={monthly} currency={currency} />
             <details className={styles.tableView}>
-              <summary>Show as a table</summary>
+              <summary>{t.asTable}</summary>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col">Month</th>
-                    <th scope="col" className={styles.number}>Money in</th>
-                    <th scope="col" className={styles.number}>Money out</th>
-                    <th scope="col" className={styles.number}>Net</th>
+                    <th scope="col">{t.month}</th>
+                    <th scope="col" className={styles.number}>{t.moneyIn}</th>
+                    <th scope="col" className={styles.number}>{t.moneyOut}</th>
+                    <th scope="col" className={styles.number}>{t.net}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {monthly.map((m) => (
-                    <tr key={m.month}>
+                  {monthly.map((month) => (
+                    <tr key={month.month}>
                       <td>
-                        {m.label} {m.month.slice(0, 4)}
-                        {m.partial && <span className={styles.muted}> (so far)</span>}
+                        {month.label} {month.month.slice(0, 4)}
+                        {month.partial && <span className={styles.muted}> {t.soFar}</span>}
                       </td>
-                      <td className={styles.number}>{formatCurrency(m.income, { currency: currency })}</td>
-                      <td className={styles.number}>{formatCurrency(m.expenses, { currency: currency })}</td>
-                      <td className={styles.number}>
-                        {formatCurrency(m.income - m.expenses, { signed: true, currency: currency })}
-                      </td>
+                      <td className={styles.number}>{money(month.income)}</td>
+                      <td className={styles.number}>{money(month.expenses)}</td>
+                      <td className={styles.number}>{money(month.income - month.expenses, true)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -214,10 +220,10 @@ export default function InsightsView({
             {/* Where the money went, by category */}
             <section className={styles.card}>
               <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Spending by category</h2>
+                <h2 className={styles.cardTitle}>{t.byCategory}</h2>
               </div>
               {categories.length === 0 ? (
-                <p className={styles.muted}>No spending in this period.</p>
+                <p className={styles.muted}>{t.noSpending}</p>
               ) : (
                 <ul className={styles.categoryList}>
                   {categories.map((c) => {
@@ -237,8 +243,8 @@ export default function InsightsView({
                             {c.category}
                           </span>
                           <span className={styles.categoryAmount}>
-                            {formatCurrency(c.amount, { currency: currency })}
-                            <span className={styles.muted}> · {percent(share)}</span>
+                            {money(c.amount)}
+                            <span className={styles.muted}> · {percent(share, locale)}</span>
                           </span>
                         </div>
                         <div className={styles.track}>
@@ -257,18 +263,18 @@ export default function InsightsView({
             {/* Where the money went, by vendor */}
             <section className={styles.card}>
               <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Top vendors</h2>
+                <h2 className={styles.cardTitle}>{t.topVendors}</h2>
               </div>
               {vendors.length === 0 ? (
-                <p className={styles.muted}>No spending in this period.</p>
+                <p className={styles.muted}>{t.noSpending}</p>
               ) : (
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th scope="col">Vendor</th>
-                      <th scope="col" className={styles.number}>Payments</th>
-                      <th scope="col" className={styles.number}>Spent</th>
-                      <th scope="col" className={styles.number}>Share</th>
+                      <th scope="col">{t.vendor}</th>
+                      <th scope="col" className={styles.number}>{t.payments}</th>
+                      <th scope="col" className={styles.number}>{t.spent}</th>
+                      <th scope="col" className={styles.number}>{t.share}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -282,9 +288,9 @@ export default function InsightsView({
                           </Link>
                         </td>
                         <td className={styles.number}>{v.count}</td>
-                        <td className={styles.number}>{formatCurrency(v.amount, { currency: currency })}</td>
+                        <td className={styles.number}>{money(v.amount)}</td>
                         <td className={`${styles.number} ${styles.muted}`}>
-                          {percent(v.share)}
+                          {percent(v.share, locale)}
                         </td>
                       </tr>
                     ))}
@@ -297,31 +303,27 @@ export default function InsightsView({
           {/* Subscriptions, payroll and other payments that keep coming back */}
           <section className={styles.card} id="recurring">
             <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>Regular payments</h2>
+              <h2 className={styles.cardTitle}>{t.regular}</h2>
               <p className={styles.muted}>
                 {recurring.length === 0
-                  ? "Spotted in the last 13 months (yearly ones: 26), whatever period is chosen above."
-                  : `About ${formatCurrency(recurringPerMonth, { currency: currency })} going out per month. Spotted in the last 13 months (yearly ones: 26).`}
+                  ? t.regularNote
+                  : fill(t.regularTotal, { amount: money(recurringPerMonth) })}
               </p>
             </div>
             {recurring.length === 0 ? (
-              <p className={styles.muted}>
-                Nothing regular yet. A payment shows up here once the same
-                vendor was paid at least three times in a steady rhythm: every
-                week, every 2 weeks, every month or every 3 months.
-              </p>
+              <p className={styles.muted}>{t.nothingRegular}</p>
             ) : (
               <div className={styles.tableScroll}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th scope="col">Payment</th>
-                      <th scope="col">How often</th>
-                      <th scope="col" className={styles.number}>Usually</th>
-                      <th scope="col" className={styles.number}>Per month</th>
-                      <th scope="col">Next expected</th>
+                      <th scope="col">{t.payment}</th>
+                      <th scope="col">{t.howOften}</th>
+                      <th scope="col" className={styles.number}>{t.usually}</th>
+                      <th scope="col" className={styles.number}>{t.perMonth}</th>
+                      <th scope="col">{t.nextExpected}</th>
                       <th scope="col">
-                        <span className={styles.srOnly}>Bill</span>
+                        <span className={styles.srOnly}>{t.bill}</span>
                       </th>
                     </tr>
                   </thead>
@@ -335,33 +337,33 @@ export default function InsightsView({
                             {r.name}
                           </Link>
                           <span className={styles.recurringNote}>
-                            {r.direction === "in" ? "Money in" : (r.category ?? "Uncategorized")}
+                            {r.direction === "in" ? t.moneyIn : (r.category ?? t.uncategorized)}
                           </span>
                         </td>
-                        <td>{BILL_REPEAT_LABELS[r.cadence]}</td>
+                        <td>{m.bills.repeats[r.cadence]}</td>
                         <td
                           className={`${styles.number} ${r.direction === "in" ? styles.positive : ""}`}
                         >
                           {/* "~" when the amount changes from time to time */}
                           {r.variable && "~"}
-                          {formatCurrency(r.direction === "in" ? r.amount : -r.amount, { signed: true, currency: currency })}
+                          {money(r.direction === "in" ? r.amount : -r.amount, true)}
                         </td>
                         <td className={`${styles.number} ${styles.muted}`}>
-                          {formatCurrency(r.monthlyAmount, { currency: currency })}
+                          {money(r.monthlyAmount)}
                         </td>
-                        <td>{formatDate(r.nextDay)}</td>
+                        <td>{formatDate(r.nextDay, locale)}</td>
                         <td className={styles.number}>
                           <span className={styles.rowActions}>
                             {r.direction === "out" &&
                               (r.billed ? (
-                                <span className={styles.muted}>Tracked as a bill</span>
+                                <span className={styles.muted}>{t.trackedAsBill}</span>
                               ) : (
                                 <Link
                                   href={billHref(r)}
                                   className={styles.addBill}
-                                  aria-label={`Add ${r.name} as a bill`}
+                                  aria-label={fill(t.addAsBillLabel, { name: r.name })}
                                 >
-                                  Add as bill
+                                  {t.addAsBill}
                                 </Link>
                               ))}
                             {/* Leaves it out of this list and the forecast */}
@@ -371,9 +373,9 @@ export default function InsightsView({
                               <button
                                 type="submit"
                                 className={styles.hideButton}
-                                aria-label={`${r.name} is not a regular payment`}
+                                aria-label={fill(t.notRegularLabel, { name: r.name })}
                               >
-                                Not regular
+                                {t.notRegular}
                               </button>
                             </form>
                           </span>
@@ -387,21 +389,21 @@ export default function InsightsView({
             {/* The ones marked "Not regular", to bring back */}
             {hiddenRecurring.length > 0 && (
               <div className={styles.hiddenList}>
-                <span className={styles.muted}>Not counted as regular:</span>
+                <span className={styles.muted}>{t.notCounted}</span>
                 {hiddenRecurring.map((h) => (
                   <form key={h.key} action={submitRecurringVisibility} className={styles.hiddenItem}>
                     <input type="hidden" name="key" value={h.key} />
                     <input type="hidden" name="intent" value="show" />
                     <span>
                       {h.name}
-                      {h.key.startsWith("in:") && " (money in)"}
+                      {h.key.startsWith("in:") && ` ${t.moneyInNote}`}
                     </span>
                     <button
                       type="submit"
                       className={styles.hideButton}
-                      aria-label={`Count ${h.name} as a regular payment again`}
+                      aria-label={fill(t.showAgainLabel, { name: h.name })}
                     >
-                      Show again
+                      {t.showAgain}
                     </button>
                   </form>
                 ))}
@@ -412,14 +414,11 @@ export default function InsightsView({
           {/* Recent charges that are much higher than usual */}
           <section className={styles.card}>
             <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>Unusual charges</h2>
-              <p className={styles.muted}>
-                Last 30 days, at least 50% above the vendor&apos;s average for
-                the six months before.
-              </p>
+              <h2 className={styles.cardTitle}>{t.unusual}</h2>
+              <p className={styles.muted}>{t.unusualNote}</p>
             </div>
             {unusualCharges.length === 0 ? (
-              <p className={styles.muted}>Nothing unusual in the last 30 days.</p>
+              <p className={styles.muted}>{t.nothingUnusual}</p>
             ) : (
               <ul className={styles.alertList}>
                 {unusualCharges.map((u) => (
@@ -429,15 +428,21 @@ export default function InsightsView({
                       className={styles.alert}
                     >
                       <span className={styles.alertIcon}>
-                        <AlertTriangle size={16} aria-label="Warning" />
+                        <AlertTriangle size={16} aria-label={t.warning} />
                       </span>
                       <span className={styles.alertText}>
-                        <strong>{u.name}</strong> charged{" "}
-                        <strong>{formatCurrency(u.amount, { currency: currency })}</strong>,{" "}
-                        {u.percentAbove}% more than usual ({formatCurrency(u.usual, { currency: currency })})
+                        {rich(
+                          fill(t.charged, {
+                            name: u.name,
+                            amount: money(u.amount),
+                            percent: u.percentAbove,
+                            usual: money(u.usual),
+                          }),
+                          bold,
+                        )}
                       </span>
                       <span className={styles.muted}>
-                        {formatRelativeDate(u.day, today)}
+                        {formatRelativeDate(u.day, today, locale)}
                       </span>
                     </Link>
                   </li>

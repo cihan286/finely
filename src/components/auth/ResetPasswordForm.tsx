@@ -19,11 +19,16 @@ import Field from "@/components/common/form/Field";
 import { PasswordInput } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { fill } from "@/i18n/config";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules";
 import styles from "./AuthForm.module.css";
 
 export default function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
+  const i18n = useI18n();
+  const { auth: t, common } = i18n.m;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +39,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
     // Catch typos: both boxes must contain the same password
     if (password !== String(data.get("confirm"))) {
-      setError("The passwords don't match.");
+      setError(t.reset.mismatch);
       return;
     }
 
@@ -46,10 +51,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     });
 
     if (error) {
-      setError(
-        error.message ??
-          "This reset link is invalid or has expired. Please request a new one.",
-      );
+      setError(authErrorText(error, i18n, t.reset.invalid));
       setLoading(false);
       return;
     }
@@ -68,8 +70,8 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       )}
 
       <Field
-        label="New password"
-        hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+        label={t.reset.newPassword}
+        hint={fill(t.atLeastCharacters, { min: MIN_PASSWORD_LENGTH })}
       >
         <PasswordInput
           size="lg"
@@ -80,7 +82,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
           required
         />
       </Field>
-      <Field label="Confirm new password">
+      <Field label={t.reset.confirm}>
         <PasswordInput
           size="lg"
           name="confirm"
@@ -93,7 +95,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
         <Button
           type="submit"
           loading={loading}
-          text={loading ? "Saving" : "Set new password"}
+          text={loading ? common.saving : t.reset.set}
           size="sm"
           fullWidth
           disabled={loading}

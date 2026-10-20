@@ -41,6 +41,8 @@ import type { Category, CategoryRule } from "@/types/finance";
 // use the same form and row buttons as categories
 import shared from "./TeamSettings.module.css";
 import forms from "./CategorySettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./CategoryRuleSettings.module.css";
 
 interface CategoryRuleSettingsProps {
@@ -55,6 +57,8 @@ export default function CategoryRuleSettings({
   rules,
   categories,
 }: CategoryRuleSettingsProps) {
+  const { m } = useI18n();
+  const t = m.settings.rules;
   const addFormRef = useRef<HTMLFormElement>(null);
   // The rule being edited, if any
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,9 +80,7 @@ export default function CategoryRuleSettings({
     const formData = new FormData(e.currentTarget, e.nativeEvent.submitter);
     if (
       formData.get("intent") === "delete" &&
-      !window.confirm(
-        `Delete the rule for “${formData.get("matchText")}”? Transactions it categorized keep their category.`,
-      )
+      !window.confirm(fill(t.confirmDelete, { text: String(formData.get("matchText")) }))
     ) {
       return;
     }
@@ -99,17 +101,11 @@ export default function CategoryRuleSettings({
       {canManage && (
         <section className={shared.card}>
           <div className={shared.cardHeader}>
-            <h2 className={shared.cardTitle}>Add a category rule</h2>
-            <p className={shared.cardHint}>
-              Transactions without a category get one when their description
-              contains a rule&apos;s text: new and imported ones, and the
-              ones already here when you add or change a rule. Upper and
-              lower case don&apos;t matter; when several rules fit, the
-              longest text wins.
-            </p>
+            <h2 className={shared.cardTitle}>{t.add}</h2>
+            <p className={shared.cardHint}>{t.addHint}</p>
           </div>
           {categories.length === 0 ? (
-            <p className={forms.none}>Add a category first.</p>
+            <p className={forms.none}>{t.categoryFirst}</p>
           ) : (
             <form ref={addFormRef} className={forms.form} onSubmit={submit}>
               <input type="hidden" name="intent" value="add" />
@@ -119,7 +115,7 @@ export default function CategoryRuleSettings({
                 variant="primary"
                 size="sm"
                 loading={pending}
-                text={pending ? "Saving" : "Add rule"}
+                text={pending ? m.common.saving : t.addButton}
                 icon={<Plus size={16} />}
                 disabled={pending}
               />
@@ -131,13 +127,11 @@ export default function CategoryRuleSettings({
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>
-            Category rules <span className={shared.count}>{rules.length}</span>
+            {t.title} <span className={shared.count}>{rules.length}</span>
           </h2>
         </div>
         {rules.length === 0 ? (
-          <p className={forms.none}>
-            No rules yet. Transactions without a category stay uncategorized.
-          </p>
+          <p className={forms.none}>{t.empty}</p>
         ) : (
           <ul className={shared.list}>
             {rules.map((rule) =>
@@ -151,7 +145,7 @@ export default function CategoryRuleSettings({
                       <Button
                         variant="outline"
                         size="sm"
-                        text="Cancel"
+                        text={m.common.cancel}
                         action={() => setEditingId(null)}
                         disabled={pending}
                       />
@@ -160,7 +154,7 @@ export default function CategoryRuleSettings({
                         variant="primary"
                         size="sm"
                         loading={pending}
-                        text={pending ? "Saving" : "Save"}
+                        text={pending ? m.common.saving : m.common.save}
                         disabled={pending}
                       />
                     </div>
@@ -202,11 +196,12 @@ function RuleRow({
   onEdit: () => void;
   onDelete: (e: SubmitEvent<HTMLFormElement>) => void;
 }) {
+  const { m } = useI18n();
   return (
     <li className={shared.row}>
       <div className={styles.rule}>
         <span className={styles.text}>{rule.matchText}</span>
-        <ArrowRight size={14} className={styles.arrow} aria-label="gets" />
+        <ArrowRight size={14} className={styles.arrow} aria-label={m.settings.rules.gets} />
         <span className={styles.category}>
           <span
             className={styles.dot}
@@ -224,14 +219,14 @@ function RuleRow({
             onClick={onEdit}
             disabled={pending}
           >
-            Edit
+            {m.common.edit}
           </button>
           <form onSubmit={onDelete}>
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="id" value={rule.id} />
             <input type="hidden" name="matchText" value={rule.matchText} />
             <button type="submit" className={shared.rowAction} disabled={pending}>
-              Delete
+              {m.common.delete}
             </button>
           </form>
         </div>
@@ -248,24 +243,26 @@ function RuleFields({
   rule?: CategoryRule;
   categories: Category[];
 }) {
+  const { m } = useI18n();
+  const t = m.settings.rules;
   const incomeCategories = categories.filter((c) => c.kind === "income");
   const expenseCategories = categories.filter((c) => c.kind === "expense");
   return (
     <>
-      <Field label="Description contains" className={forms.nameField}>
+      <Field label={t.contains} className={forms.nameField}>
         <Input
           name="matchText"
           defaultValue={rule?.matchText}
-          placeholder="e.g. AWS"
+          placeholder={t.containsPlaceholder}
           minLength={MIN_RULE_TEXT_LENGTH}
           maxLength={MAX_RULE_TEXT_LENGTH}
           required
         />
       </Field>
-      <Field label="Category" className={styles.categoryField}>
+      <Field label={t.category} className={styles.categoryField}>
         <Select name="categoryId" defaultValue={rule?.categoryId} required>
           {incomeCategories.length > 0 && (
-            <optgroup label="Money in">
+            <optgroup label={m.transactions.moneyIn}>
               {incomeCategories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -274,7 +271,7 @@ function RuleFields({
             </optgroup>
           )}
           {expenseCategories.length > 0 && (
-            <optgroup label="Money out">
+            <optgroup label={m.transactions.moneyOut}>
               {expenseCategories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

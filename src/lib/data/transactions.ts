@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
+import { getMessages } from "@/i18n/server";
 import {
   and,
   count,
@@ -45,7 +46,7 @@ import {
 } from "@/db/finance";
 import { afterResponse } from "@/lib/after-response";
 import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
-import { countOf, describeChanges } from "@/lib/finance/audit";
+import { hasChanges, type AuditChange } from "@/lib/finance/audit";
 import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import type { TransactionExportRow } from "@/lib/finance/export";
@@ -63,7 +64,6 @@ import {
   type TransactionDetails,
   type TransactionStatus,
 } from "@/types/finance";
-import { formatCurrency, formatDate } from "@/lib/format";
 import { recordAudit } from "./audit";
 import { settleBillsWith } from "./bills";
 import { selectActiveCards } from "./cards";
@@ -157,10 +157,12 @@ type TransactionRow = Awaited<ReturnType<typeof selectTransactions>>[number];
 function toTransactionDetails(
   { categoryName, occurredAt, ...row }: TransactionRow,
   timeZone: string,
+  /** "Uncategorized" in the page's language */
+  uncategorized: string,
 ): TransactionDetails {
   return {
     ...row,
-    category: categoryName ?? "Uncategorized",
+    category: categoryName ?? uncategorized,
     date: occurredAt.toISOString(),
     day: localDay(occurredAt, timeZone),
     status: row.status as TransactionStatus,
@@ -174,7 +176,7 @@ function matching(
   timeZone: string,
 ) {
   const conditions: SQL[] = [eq(transaction.organizationId, organizationId)];
-  const search = optionalText(filters.search, "Search", 100);
+  const search = optionalText(filters.search, "search", 100);
   if (search) {
     const pattern = `%${escapeLike(search)}%`;
     const amount = amountFromSearch(search);
@@ -222,11 +224,11 @@ function matching(
   }
   // From the start of the first day to the end of the last, over there
   if (filters.from) {
-    const from = isoDay(filters.from, "Start date");
+    const from = isoDay(filters.from, "startDate");
     conditions.push(gte(transaction.occurredAt, startOfDay(from, timeZone)));
   }
   if (filters.to) {
-    const to = isoDay(filters.to, "End date");
+    const to = isoDay(filters.to, "endDate");
     conditions.push(lt(transaction.occurredAt, startOfDay(addDays(to, 1), timeZone)));
   }
   return and(...conditions);
@@ -241,6 +243,7 @@ export async function listTransactions(
 ): Promise<{ transactions: TransactionDetails[]; total: number }> {
   const { organizationId, timeZone } = await getFinanceContext();
   const where = matching(filters, organizationId, timeZone);
+  const { uncategorized } = (await getMessages()).transactions;
 
   const limit = Math.min(Math.max(Math.trunc(filters.limit ?? 50), 1), 200);
   const offset = Math.max(Math.trunc(filters.offset ?? 0), 0);
@@ -256,7 +259,7 @@ export async function listTransactions(
   ]);
 
   return {
-    transactions: rows.map((row) => toTransactionDetails(row, timeZone)),
+    transactions: rows.map((row) => toTransactionDetails(row, timeZone, uncategorized)),
     total,
   };
 }
@@ -310,7 +313,7 @@ export async function getTransaction(
   const [row] = await selectTransactions().where(
     and(eq(transaction.id, id), eq(transaction.organizationId, organizationId)),
   );
-  return row ? toTransactionDetails(row, timeZone) : null;
+  return row ? toTransactionDetails(row, timeZone, (await getMessages()).transactions.uncategorized) : null;
 }
 
 // Checks what was typed into the transaction form, including that the chosen
@@ -323,9 +326,9 @@ async function parseTransactionInput(
   /** When editing: the card it has now, which may stay even if archived */
   currentCardId: string | null = null,
 ) {
-  const accountId = requiredText(input.accountId, "Account");
-  const categoryId = optionalText(input.categoryId, "Category", 120);
-  const cardId = optionalText(input.cardId, "Card", 120);
+  const accountId = requiredText(input.accountId, "account");
+  const categoryId = optionalText(input.categoryId, "category", 120);
+  const cardId = optionalText(input.cardId, "card", 120);
 
   const [accountMatches, categoryMatches, [chosenCard]] = await Promise.all([
     db.$count(
@@ -348,19 +351,19 @@ async function parseTransactionInput(
           .where(and(eq(card.id, cardId), eq(card.organizationId, organizationId)))
       : Promise.resolve([]),
   ]);
-  if (accountMatches === 0) throw new DataError("Account not found.");
-  if (categoryMatches === 0) throw new DataError("Category not found.");
-  if (cardId && !chosenCard) throw new DataError("Card not found.");
+  if (accountMatches === 0) throw new DataError("accountNotFound");
+  if (categoryMatches === 0) throw new DataError("categoryNotFound");
+  if (cardId && !chosenCard) throw new DataError("cardNotFound");
   if (chosenCard?.archivedAt && cardId !== currentCardId) {
-    throw new DataError("This card is archived. Take it back into use on the Cards page first.");
+    throw new DataError("cardArchived");
   }
 
-  const amount = money(input.amount, "Amount", currency);
-  if (amount === 0) throw new DataError("Amount can't be zero.");
+  const amount = money(input.amount, "amount", currency);
+  if (amount === 0) throw new DataError("amountZero");
 
   // Keep the exact moment when the day didn't change; otherwise noon that day
-  const day = isoDay(input.date, "Date");
-  const original = input.originalDate ? dateTime(input.originalDate, "Date") : null;
+  const day = isoDay(input.date, "date");
+  const original = input.originalDate ? dateTime(input.originalDate, "date") : null;
   const occurredAt =
     original && localDay(original, timeZone) === day
       ? original
@@ -370,11 +373,11 @@ async function parseTransactionInput(
     accountId,
     categoryId,
     cardId,
-    name: requiredText(input.name, "Description"),
+    name: requiredText(input.name, "description"),
     amount,
     occurredAt,
-    status: oneOf(input.status, TRANSACTION_STATUSES, "Status"),
-    notes: optionalText(input.notes, "Notes"),
+    status: oneOf(input.status, TRANSACTION_STATUSES, "status"),
+    notes: optionalText(input.notes, "notes"),
   };
 }
 
@@ -414,7 +417,11 @@ export async function createTransaction(
     area: "transaction",
     action: "created",
     entityId: row.id,
-    summary: `Added the transaction “${values.name}” (${formatCurrency(values.amount, { signed: true, currency: actor.currency })})`,
+    key: "transactionAdded",
+    values: {
+      name: values.name,
+      amount: { money: values.amount, currency: actor.currency, signed: true },
+    },
   });
   // The payment of a bill that's still owed? Then that bill is paid
   if (values.amount < 0) await settleBillsWith(actor, [row.id], { merge: false });
@@ -450,11 +457,11 @@ export async function updateTransaction(id: string, input: TransactionInput) {
     .set(values)
     .where(own)
     .returning({ id: transaction.id });
-  if (updated.length === 0) throw new DataError("Transaction not found.");
+  if (updated.length === 0) throw new DataError("transactionNotFound");
 
   const [after] = await selectTransactions().where(own);
   if (before && after) {
-    const status = (value: string) => (value === "pending" ? "pending" : "completed");
+    const status = (value: string) => ({ status: value === "pending" ? "pending" : "completed" });
     // The cards' names, if the card changed
     const cardNames = new Map<string, string>();
     if (before.cardId !== after.cardId) {
@@ -467,31 +474,29 @@ export async function updateTransaction(id: string, input: TransactionInput) {
     }
     const cardName = (cardId: string | null) =>
       cardId ? (cardNames.get(cardId) ?? null) : null;
-    const changes = describeChanges([
-      { label: "description", before: before.name, after: after.name },
+    const money = (amount: number) => ({ money: amount, currency: actor.currency, signed: true });
+    const changes: (AuditChange | { moved: true })[] = [
+      { field: "description", before: before.name, after: after.name },
+      { field: "amount", before: money(before.amount), after: money(after.amount) },
       {
-        label: "amount",
-        before: formatCurrency(before.amount, { signed: true, currency: actor.currency }),
-        after: formatCurrency(after.amount, { signed: true, currency: actor.currency }),
+        field: "date",
+        before: { day: localDay(before.occurredAt, timeZone) },
+        after: { day: localDay(after.occurredAt, timeZone) },
       },
-      {
-        label: "date",
-        before: formatDate(localDay(before.occurredAt, timeZone)),
-        after: formatDate(localDay(after.occurredAt, timeZone)),
-      },
-      { label: "category", before: before.categoryName, after: after.categoryName },
-      { label: "card", before: cardName(before.cardId), after: cardName(after.cardId) },
-      { label: "status", before: status(before.status), after: status(after.status) },
-      { label: "notes", before: before.notes, after: after.notes },
-    ]);
-    const moved = before.account !== after.account;
+      { field: "category", before: before.categoryName, after: after.categoryName },
+      { field: "card", before: cardName(before.cardId), after: cardName(after.cardId) },
+      { field: "status", before: status(before.status), after: status(after.status) },
+      { field: "notes", before: before.notes, after: after.notes },
+    ];
+    if (before.account !== after.account) changes.push({ moved: true });
     // Saved without changing anything: nothing to record
-    if (changes || moved) {
+    if (hasChanges(changes)) {
       await recordAudit(actor, {
         area: "transaction",
         action: "updated",
         entityId: id,
-        summary: `Changed the transaction “${after.name}”: ${[changes, moved && "moved to another account"].filter(Boolean).join(", ")}`,
+        key: "transactionChanged",
+        values: { name: after.name, changes: { changes } },
       });
     }
   }
@@ -512,13 +517,18 @@ export async function deleteTransaction(id: string) {
       amount: transaction.amount,
       occurredAt: transaction.occurredAt,
     });
-  if (deleted.length === 0) throw new DataError("Transaction not found.");
+  if (deleted.length === 0) throw new DataError("transactionNotFound");
   const [gone] = deleted;
   await recordAudit(actor, {
     area: "transaction",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the transaction “${gone.name}” (${formatCurrency(gone.amount, { signed: true, currency: actor.currency })}, ${formatDate(localDay(gone.occurredAt, timeZone))})`,
+    key: "transactionDeleted",
+    values: {
+      name: gone.name,
+      amount: { money: gone.amount, currency: actor.currency, signed: true },
+      day: { day: localDay(gone.occurredAt, timeZone) },
+    },
   });
 }
 
@@ -537,23 +547,21 @@ export async function setTransactionsCategory(
   const { organizationId } = actor;
 
   if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || !id)) {
-    throw new DataError("Transactions are invalid.");
+    throw new DataError("transactionsInvalid");
   }
-  if (ids.length === 0) throw new DataError("Select at least one transaction.");
+  if (ids.length === 0) throw new DataError("selectOne");
   if (ids.length > MAX_BULK_TRANSACTIONS) {
-    throw new DataError(
-      `At most ${MAX_BULK_TRANSACTIONS} transactions can be changed at once.`,
-    );
+    throw new DataError("tooManyAtOnce", { max: MAX_BULK_TRANSACTIONS });
   }
 
-  const chosen = optionalText(categoryId, "Category", 120);
+  const chosen = optionalText(categoryId, "category", 120);
   let chosenName: string | null = null;
   if (chosen) {
     const [match] = await db
       .select({ name: category.name })
       .from(category)
       .where(and(eq(category.id, chosen), eq(category.organizationId, organizationId)));
-    if (!match) throw new DataError("Category not found.");
+    if (!match) throw new DataError("categoryNotFound");
     chosenName = match.name;
   }
 
@@ -571,9 +579,15 @@ export async function setTransactionsCategory(
     await recordAudit(actor, {
       area: "transaction",
       action: "categorized",
-      summary: chosenName
-        ? `Gave ${countOf(updated.length, "transaction")} the category “${chosenName}”`
-        : `Removed the category of ${countOf(updated.length, "transaction")}`,
+      ...(chosenName
+        ? {
+            key: "categorized" as const,
+            values: { count: { count: updated.length, of: "transaction" }, category: chosenName },
+          }
+        : {
+            key: "uncategorized" as const,
+            values: { count: { count: updated.length, of: "transaction" } },
+          }),
     });
   }
   return updated.length;
@@ -608,12 +622,10 @@ export async function importTransactions(
   const { organizationId, userId, timeZone } = actor;
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    throw new DataError("There's nothing to import.");
+    throw new DataError("nothingToImport");
   }
   if (rows.length > MAX_IMPORT_ROWS) {
-    throw new DataError(
-      `A file can have at most ${MAX_IMPORT_ROWS} transactions. Split it into smaller files.`,
-    );
+    throw new DataError("tooManyRows", { max: MAX_IMPORT_ROWS });
   }
 
   const [accountMatches, categories, rules, cards] = await Promise.all([
@@ -631,18 +643,19 @@ export async function importTransactions(
     selectRules(organizationId),
     selectActiveCards(organizationId),
   ]);
-  if (accountMatches === 0) throw new DataError("Account not found.");
+  if (accountMatches === 0) throw new DataError("accountNotFound");
   const categoryIds = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
 
   // Check every line again: the browser's preview can't be trusted
   const parsed = rows.map((row, index) => {
-    const line = (message: string) => new DataError(`Row ${index + 1}: ${message}`);
+    const line = (problem: DataError) =>
+      new DataError("importRow", { row: index + 1, message: (locale) => problem.in(locale) });
     try {
-      const day = isoDay(row?.date, "Date");
-      const amount = money(row.amount, "Amount", actor.currency);
-      if (amount === 0) throw new DataError("Amount can't be zero.");
-      const categoryName = optionalText(row.category, "Category", 120);
-      const name = requiredText(row.name, "Description");
+      const day = isoDay(row?.date, "date");
+      const amount = money(row.amount, "amount", actor.currency);
+      if (amount === 0) throw new DataError("amountZero");
+      const categoryName = optionalText(row.category, "category", 120);
+      const name = requiredText(row.name, "description");
       return {
         day,
         name,
@@ -657,7 +670,7 @@ export async function importTransactions(
         cardId: amount < 0 ? cardFromDescription(name, cards) : null,
       };
     } catch (error) {
-      if (error instanceof DataError) throw line(error.message);
+      if (error instanceof DataError) throw line(error);
       throw error;
     }
   });
@@ -710,7 +723,8 @@ export async function importTransactions(
       area: "transaction",
       action: "imported",
       entityId: accountId,
-      summary: `Imported ${countOf(toInsert.length, "transaction")} from a bank statement`,
+      key: "imported",
+      values: { count: { count: toInsert.length, of: "transaction" } },
     });
     // Any of them far above what its vendor usually charges? One email
     // about all of them, without making the person wait

@@ -25,7 +25,8 @@ import Message from "@/components/common/form/Message";
 import { submitBill } from "@/app/dashboard/bills/actions";
 import { amountInputProps } from "@/lib/format";
 import { initialActionState } from "@/lib/action-state";
-import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import {
   BILL_REPEATS,
   type Bill,
@@ -62,10 +63,11 @@ interface BillDialogProps {
 }
 
 export default function BillDialog(props: BillDialogProps) {
+  const t = useI18n().m.bills;
   const [state, dispatch, pending] = useActionState(submitBill, initialActionState);
   return (
     <Dialog
-      title={props.bill ? "Edit bill" : "Add bill"}
+      title={props.bill ? t.dialog.editTitle : t.add}
       closeHref={props.closeHref}
       busy={pending}
     >
@@ -98,6 +100,9 @@ function BillForm({
   submit,
 }: BillFormProps) {
   const close = useCloseDialog();
+  const { m } = useI18n();
+  const words = m.bills;
+  const t = words.dialog;
   const isNew = bill === null;
   // Bills are money going out
   const expenseCategories = categories.filter((c) => c.kind === "expense");
@@ -107,7 +112,7 @@ function BillForm({
     const submitter = e.nativeEvent.submitter;
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm("Delete this bill? This can't be undone.")
+      !window.confirm(t.confirmDelete)
     ) {
       return;
     }
@@ -121,11 +126,11 @@ function BillForm({
 
       <input type="hidden" name="id" value={bill?.id ?? ""} />
 
-      <Field label="Bill">
+      <Field label={t.bill}>
         <Input
           name="name"
           type="text"
-          placeholder="e.g. Office rent, Google Workspace"
+          placeholder={t.placeholder}
           defaultValue={bill?.name ?? prefill?.name ?? ""}
           maxLength={120}
           required
@@ -134,7 +139,7 @@ function BillForm({
       </Field>
 
       <div className={forms.grid}>
-        <Field label={`Amount (${currency})`}>
+        <Field label={fill(t.amountIn, { currency })}>
           <Input
             name="amount"
             type="number"
@@ -143,7 +148,7 @@ function BillForm({
             required
           />
         </Field>
-        <Field label="Due date">
+        <Field label={t.dueDate}>
           <Input
             name="dueDate"
             type="date"
@@ -154,21 +159,21 @@ function BillForm({
       </div>
 
       <div className={forms.grid}>
-        <Field label="Repeats">
+        <Field label={t.repeats}>
           <Select name="repeat" defaultValue={bill?.repeat ?? prefill?.repeat ?? "none"}>
             {BILL_REPEATS.map((repeat) => (
               <option key={repeat} value={repeat}>
-                {BILL_REPEAT_LABELS[repeat]}
+                {words.repeats[repeat]}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Category">
+        <Field label={t.category}>
           <Select
             name="categoryId"
             defaultValue={bill?.categoryId ?? prefill?.categoryId ?? ""}
           >
-            <option value="">Uncategorized</option>
+            <option value="">{words.uncategorized}</option>
             {expenseCategories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -179,9 +184,9 @@ function BillForm({
       </div>
 
       <Field
-        label="Notes"
+        label={t.notes}
         optional
-        hint="A repeating bill's next one is added when you mark this one as paid."
+        hint={t.notesHint}
       >
         <Textarea
           name="notes"
@@ -203,14 +208,14 @@ function BillForm({
             disabled={pending}
           >
             <Trash2 size={16} />
-            Delete
+            {m.common.delete}
           </button>
         )}
         <div className={forms.footerRight}>
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -219,7 +224,7 @@ function BillForm({
             variant="primary"
             size="sm"
             loading={pending}
-            text={pending ? "Saving" : isNew ? "Add bill" : "Save changes"}
+            text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
             disabled={pending}
           />
         </div>

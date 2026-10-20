@@ -27,28 +27,23 @@ import {
 import styles from "./DashboardHome.module.css";
 import type { Cashflow, CashflowRange } from "@/types/finance";
 import { formatCurrency, formatCompactCurrency } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
 
-// The time ranges in the dropdown, and the text shown for each
-const RANGES: Record<CashflowRange, string> = {
-  last30Days: "Last 30 Days",
-  thisYear: "This Year",
-};
+// The time ranges in the dropdown
+const RANGES: CashflowRange[] = ["last30Days", "thisYear"];
 // Colors come from the design tokens in globals.css. CSS `style` values can use
 // var() directly; SVG attributes can't, so the chart paths use currentColor and
 // get their color from the series className instead.
 type SeriesKey = "income" | "expenses";
 
-const SERIES: Record<
-  SeriesKey,
-  { label: string; color: string; className: string }
-> = {
+// Each line's color (its label is in the page's words: chart.income…)
+const SERIES: Record<SeriesKey, { color: string; className: string }> = {
   income: {
-    label: "Income",
     color: "var(--series-income)",
     className: styles.incomeSeries,
   },
   expenses: {
-    label: "Expenses",
     color: "var(--series-expenses)",
     className: styles.expensesSeries,
   },
@@ -60,7 +55,9 @@ function ChartTooltip({
   payload,
   label,
   currency,
-}: TooltipContentProps & { currency: string }) {
+  locale,
+  labels,
+}: TooltipContentProps & { currency: string; locale: Locale; labels: Record<SeriesKey, string> }) {
   if (!active || !payload?.length) return null;
   return (
     <div className={styles.tooltip}>
@@ -73,8 +70,8 @@ function ChartTooltip({
               className={styles.legendDot}
               style={{ backgroundColor: series.color }}
             />
-            <span>{series.label}</span>
-            <strong>{formatCurrency(Number(item.value), { currency: currency })}</strong>
+            <span>{labels[item.dataKey as SeriesKey]}</span>
+            <strong>{formatCurrency(Number(item.value), { currency }, locale)}</strong>
           </div>
         );
       })}
@@ -90,6 +87,9 @@ export default function CashFlowChart({
   /** The company's currency, e.g. "USD" */
   currency: string;
 }) {
+  const { locale, m } = useI18n();
+  const t = m.dashboard.chart;
+  const labels = { income: t.income, expenses: t.expenses };
   // Which time range is selected, and that range's data points
   const [range, setRange] = useState<CashflowRange>("last30Days");
   const data = cashflow[range];
@@ -106,16 +106,16 @@ export default function CashFlowChart({
   return (
     <div className={`${styles.card} ${styles.chartCard}`}>
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Cash Flow</h2>
+        <h2 className={styles.cardTitle}>{t.title}</h2>
         <select
           className={styles.dropdown}
           value={range}
           onChange={(e) => setRange(e.target.value as CashflowRange)}
-          aria-label="Cash flow period"
+          aria-label={t.period}
         >
-          {Object.entries(RANGES).map(([value, label]) => (
+          {RANGES.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {t[value]}
             </option>
           ))}
         </select>
@@ -124,11 +124,11 @@ export default function CashFlowChart({
       {/* Net cash flow (in minus out), total income and total expenses */}
       <div className={styles.chartStats}>
         <div className={styles.chartStat}>
-          <span className={styles.chartStatLabel}>Net cash flow</span>
+          <span className={styles.chartStatLabel}>{t.net}</span>
           <span
             className={`${styles.chartStatValue} ${totals.net >= 0 ? styles.positive : styles.negative}`}
           >
-            {formatCurrency(totals.net, { signed: true, currency: currency })}
+            {formatCurrency(totals.net, { signed: true, currency }, locale)}
           </span>
         </div>
         {(Object.keys(SERIES) as SeriesKey[]).map((key) => (
@@ -138,10 +138,10 @@ export default function CashFlowChart({
                 className={styles.legendDot}
                 style={{ backgroundColor: SERIES[key].color }}
               />
-              {SERIES[key].label}
+              {labels[key]}
             </span>
             <span className={styles.chartStatValue}>
-              {formatCurrency(totals[key], { currency: currency })}
+              {formatCurrency(totals[key], { currency }, locale)}
             </span>
           </div>
         ))}
@@ -196,12 +196,12 @@ export default function CashFlowChart({
               axisLine={false}
               tick={axisTick}
               width={44}
-              tickFormatter={(value: number) => formatCompactCurrency(value, currency)}
+              tickFormatter={(value: number) => formatCompactCurrency(value, currency, locale)}
             />
             {/* Show the hover box (ChartTooltip above) and a vertical guide line */}
             <Tooltip
               content={(props: TooltipContentProps) => (
-                <ChartTooltip {...props} currency={currency} />
+                <ChartTooltip {...props} currency={currency} locale={locale} labels={labels} />
               )}
               cursor={{ stroke: "currentColor", strokeOpacity: 0.25 }}
             />

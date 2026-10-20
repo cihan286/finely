@@ -10,12 +10,13 @@
 // aren't logged in to /login, like every data function.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import { exportBills } from "@/lib/data/bills";
 import { billsCsv, exportFileName } from "@/lib/finance/export";
 
 export async function GET() {
   const { bills, today } = await exportBills();
-  return new Response(billsCsv(bills), {
+  return new Response(billsCsv(bills, await getMessages()), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName("bills", today)}"`,

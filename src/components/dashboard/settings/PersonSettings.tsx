@@ -43,6 +43,10 @@ import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import { authErrorText } from "@/i18n/auth-errors";
+import LanguageSwitcher from "@/components/common/language-switcher/LanguageSwitcher";
 import styles from "./OwnerSettings.module.css";
 
 interface PersonSettingsProps {
@@ -63,6 +67,9 @@ export default function PersonSettings({
   ownedCompanies,
 }: PersonSettingsProps) {
   const router = useRouter();
+  const i18n = useI18n();
+  const { m } = i18n;
+  const t = m.settings.person;
   const [renaming, setRenaming] = useState(false);
   const [renamed, setRenamed] = useState<{
     type: "success" | "error";
@@ -103,7 +110,7 @@ export default function PersonSettings({
     if (error) {
       setRenamed({
         type: "error",
-        text: error.message ?? "Could not change your email address. Please try again.",
+        text: authErrorText(error, i18n, t.emailFailed),
       });
       return;
     }
@@ -112,7 +119,7 @@ export default function PersonSettings({
     // used to find out who has a Finely account
     setRenamed({
       type: "success",
-      text: `We sent a link to ${newEmail}. Your address changes once you open it; until then you keep logging in with ${email}.`,
+      text: fill(t.emailSent, { email: newEmail, current: email }),
     });
   };
 
@@ -134,15 +141,15 @@ export default function PersonSettings({
         type: "error",
         text:
           error.code === "INVALID_PASSWORD"
-            ? "The current password isn't right."
-            : (error.message ?? "Could not change your password. Please try again."),
+            ? t.wrongPassword
+            : authErrorText(error, i18n, t.passwordFailed),
       });
       return;
     }
     form.reset();
     setRenamed({
       type: "success",
-      text: "Your password was changed. Other devices were logged out.",
+      text: t.passwordChanged,
     });
   };
 
@@ -157,11 +164,11 @@ export default function PersonSettings({
     if (error) {
       setRenamed({
         type: "error",
-        text: error.message ?? "Could not save your name. Please try again.",
+        text: authErrorText(error, i18n, t.nameFailed),
       });
       return;
     }
-    setRenamed({ type: "success", text: "Your name was saved." });
+    setRenamed({ type: "success", text: t.nameSaved });
     // The name is also shown in the top bar and in the team list
     router.refresh();
   };
@@ -171,18 +178,26 @@ export default function PersonSettings({
       {renamed && <Message type={renamed.type}>{renamed.text}</Message>}
       {deletion.error && <Message type="error">{deletion.error}</Message>}
 
+      {/* The only place to switch on phones, where the top bar has no room */}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Your name</h2>
-          <p className={shared.cardHint}>
-            How your teammates see you, in every company you&apos;re in. What
-            the activity logs already recorded keeps the name you had then.
-          </p>
+          <h2 className={shared.cardTitle}>{t.language}</h2>
+          <p className={shared.cardHint}>{t.languageHint}</p>
+        </div>
+        <div>
+          <LanguageSwitcher />
+        </div>
+      </section>
+
+      <section className={shared.card}>
+        <div className={shared.cardHeader}>
+          <h2 className={shared.cardTitle}>{t.name}</h2>
+          <p className={shared.cardHint}>{t.nameHint}</p>
         </div>
         <form className={styles.form} onSubmit={handleRename}>
           <Input
             name="name"
-            aria-label="Your name"
+            aria-label={t.name}
             // Show the saved name after it changes
             key={name}
             defaultValue={name}
@@ -196,7 +211,7 @@ export default function PersonSettings({
             variant="primary"
             size="sm"
             loading={renaming}
-            text={renaming ? "Saving" : "Save"}
+            text={renaming ? m.common.saving : m.common.save}
             disabled={renaming}
           />
         </form>
@@ -204,18 +219,15 @@ export default function PersonSettings({
 
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Your email address</h2>
-          <p className={shared.cardHint}>
-            You log in with {email}, and Finely&apos;s emails go there. To
-            change it, we send a link to the new address first.
-          </p>
+          <h2 className={shared.cardTitle}>{t.email}</h2>
+          <p className={shared.cardHint}>{fill(t.emailHint, { email })}</p>
         </div>
         <form className={styles.form} onSubmit={handleEmail}>
           <Input
             name="newEmail"
             type="email"
-            aria-label="New email address"
-            placeholder="New email address"
+            aria-label={t.newEmail}
+            placeholder={t.newEmail}
             autoComplete="email"
             maxLength={254}
             className={styles.grow}
@@ -226,7 +238,7 @@ export default function PersonSettings({
             variant="primary"
             size="sm"
             loading={moving}
-            text={moving ? "Sending" : "Send link"}
+            text={moving ? t.sending : t.sendLink}
             disabled={moving}
           />
         </form>
@@ -236,13 +248,11 @@ export default function PersonSettings({
       {hasPassword && (
         <section className={shared.card}>
           <div className={shared.cardHeader}>
-            <h2 className={shared.cardTitle}>Your password</h2>
-            <p className={shared.cardHint}>
-              Changing it logs you out on every other device.
-            </p>
+            <h2 className={shared.cardTitle}>{t.password}</h2>
+            <p className={shared.cardHint}>{t.passwordHint}</p>
           </div>
           <form className={styles.form} onSubmit={handlePassword}>
-            <Field label="Current password" className={styles.grow}>
+            <Field label={t.currentPassword} className={styles.grow}>
               <PasswordInput
                 name="currentPassword"
                 autoComplete="current-password"
@@ -251,8 +261,8 @@ export default function PersonSettings({
               />
             </Field>
             <Field
-              label="New password"
-              hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
+              label={t.newPassword}
+              hint={fill(m.auth.atLeastCharacters, { min: MIN_PASSWORD_LENGTH })}
               className={styles.grow}
             >
               <PasswordInput
@@ -268,7 +278,7 @@ export default function PersonSettings({
               variant="primary"
               size="sm"
               loading={changing}
-              text={changing ? "Changing" : "Change"}
+              text={changing ? t.changing : t.change}
               disabled={changing}
             />
           </form>
@@ -277,14 +287,8 @@ export default function PersonSettings({
 
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Your data</h2>
-          <p className={shared.cardHint}>
-            A file with what Finely holds about you: your profile, how you
-            sign in, where you&apos;re logged in, your companies and email
-            choices, and what the activity logs say you did. A company&apos;s
-            transactions and bills belong to the company and aren&apos;t in
-            it.
-          </p>
+          <h2 className={shared.cardTitle}>{t.data}</h2>
+          <p className={shared.cardHint}>{t.dataHint}</p>
         </div>
         <div>
           <Button
@@ -292,7 +296,7 @@ export default function PersonSettings({
             download
             variant="outline"
             size="sm"
-            text="Download my data"
+            text={t.download}
             icon={<Download size={16} />}
           />
         </div>
@@ -300,25 +304,18 @@ export default function PersonSettings({
 
       <section className={`${shared.card} ${styles.danger}`}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Delete my account</h2>
-          <p className={shared.cardHint}>
-            Removes you from Finely and from every company you&apos;re in.
-            What you entered there stays with the company, without your name
-            on it; its activity log keeps your name next to what you did.
-            This can&apos;t be undone.
-          </p>
+          <h2 className={shared.cardTitle}>{t.delete}</h2>
+          <p className={shared.cardHint}>{t.deleteHint}</p>
         </div>
         {blocked ? (
           <p className={styles.note}>
-            You still own {ownedCompanies.join(", ")}. A company needs its
-            owner: hand {ownedCompanies.length === 1 ? "it" : "each"} over to
-            someone else or delete {ownedCompanies.length === 1 ? "it" : "them"}{" "}
-            first (at the bottom of that company&apos;s Settings), then come
-            back here.
+            {fill(ownedCompanies.length === 1 ? t.stillOwnsOne : t.stillOwnsMany, {
+              companies: ownedCompanies.join(", "),
+            })}
           </p>
         ) : (
           <form className={styles.form} onSubmit={handleDelete}>
-            <Field label={`Type “${email}” to confirm`} className={styles.grow}>
+            <Field label={fill(m.settings.owner.typeToConfirm, { text: email })} className={styles.grow}>
               <Input
                 name="confirmation"
                 value={typed}
@@ -332,7 +329,7 @@ export default function PersonSettings({
               className={styles.deleteButton}
               disabled={!confirmed || deleting}
             >
-              {deleting ? "Deleting" : "Delete my account"}
+              {deleting ? t.deleting : t.delete}
             </button>
           </form>
         )}

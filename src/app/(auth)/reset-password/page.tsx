@@ -10,10 +10,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import styles from "@/components/auth/AuthForm.module.css";
+import { getMessages } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Choose a new password",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).auth.reset.title };
+}
 
 // The emailed link lands here with ?token=…, or with ?error=INVALID_TOKEN
 // when the token is wrong or expired.
@@ -23,21 +24,19 @@ export default async function ResetPasswordPage({
   searchParams: Promise<{ token?: string; error?: string }>;
 }) {
   const { token, error } = await searchParams;
+  const t = (await getMessages()).auth.reset;
 
   // No usable link: show the "Link expired" message instead of the form
   if (!token || error) {
     return (
       <>
         <div className={styles.header}>
-          <h1 className={styles.title}>Link expired</h1>
-          <p className={styles.subtitle}>
-            This password reset link is invalid or has expired. Reset links
-            work once and expire after one hour.
-          </p>
+          <h1 className={styles.title}>{t.expiredTitle}</h1>
+          <p className={styles.subtitle}>{t.expiredText}</p>
         </div>
         <p className={styles.footer}>
           <Link href="/forgot-password" className={styles.link}>
-            Request a new link
+            {t.requestNew}
           </Link>
         </p>
       </>
@@ -47,10 +46,8 @@ export default async function ResetPasswordPage({
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Choose a new password</h1>
-        <p className={styles.subtitle}>
-          You&apos;ll use it to log in from now on.
-        </p>
+        <h1 className={styles.title}>{t.title}</h1>
+        <p className={styles.subtitle}>{t.subtitle}</p>
       </div>
 
       <ResetPasswordForm token={token} />

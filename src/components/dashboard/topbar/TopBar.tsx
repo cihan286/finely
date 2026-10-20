@@ -24,6 +24,9 @@ import { useRouter } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { markAllNotificationsRead } from "@/app/dashboard/actions";
 import CompanySwitcher from "@/components/dashboard/company-switcher/CompanySwitcher";
+import LanguageSwitcher from "@/components/common/language-switcher/LanguageSwitcher";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./TopBar.module.css";
 import { formatRelativeDate, getInitials } from "@/lib/format";
 import { useDismiss } from "@/lib/use-dismiss";
@@ -56,6 +59,8 @@ export default function TopBar({
   notifications,
   today,
 }: TopBarProps) {
+  const { locale, m } = useI18n();
+  const t = m.shell.topBar;
   // Whether the panel is open, the notifications marked as read here since
   // the page loaded, and a reference to the bell area so we can tell clicks
   // inside it from outside
@@ -108,8 +113,8 @@ export default function TopBar({
           name="q"
           type="search"
           className={styles.searchInput}
-          placeholder="Search by description, notes, category, account or amount…"
-          aria-label="Search transactions"
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchLabel}
           maxLength={100}
         />
       </Form>
@@ -118,12 +123,15 @@ export default function TopBar({
         {/* The company you're working in, and a way to switch */}
         <CompanySwitcher current={organization} companies={organizations} />
 
+        {/* EN / TR (on phones it's in Settings → Your account) */}
+        <LanguageSwitcher className={styles.language} />
+
         {/* Bell button and its notifications panel */}
         <div className={styles.bellWrap} ref={wrapRef}>
           <button
             className={styles.iconBtn}
             onClick={() => setOpen((o) => !o)}
-            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+            aria-label={unreadCount ? fill(t.notificationsUnread, { count: unreadCount }) : t.notifications}
             aria-expanded={open}
           >
             <Bell size={18} />
@@ -136,20 +144,18 @@ export default function TopBar({
             <div
               className={styles.panel}
               role="dialog"
-              aria-label="Notifications"
+              aria-label={t.notifications}
             >
               <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>Notifications</h2>
+                <h2 className={styles.panelTitle}>{t.notifications}</h2>
                 {unreadCount > 0 && (
                   <button className={styles.linkBtn} onClick={markAllRead}>
-                    Mark all as read
+                    {t.markAllRead}
                   </button>
                 )}
               </div>
               {items.length === 0 ? (
-                <p className={styles.empty}>
-                  Nothing needs your attention right now.
-                </p>
+                <p className={styles.empty}>{t.nothing}</p>
               ) : (
                 <ul className={styles.notifList}>
                   {items.map((n) => (
@@ -171,7 +177,7 @@ export default function TopBar({
                           <span className={styles.notifTitle}>{n.title}</span>
                           <span className={styles.notifDesc}>{n.description}</span>
                           <span className={styles.notifTime}>
-                            {formatRelativeDate(n.day, today)}
+                            {formatRelativeDate(n.day, today, locale)}
                           </span>
                         </span>
                       </Link>

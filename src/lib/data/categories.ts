@@ -18,8 +18,7 @@ import {
   CATEGORY_KINDS,
   type Category,
 } from "@/types/finance";
-import { describeChanges } from "@/lib/finance/audit";
-import { formatCurrency } from "@/lib/format";
+import { hasChanges, type AuditChange } from "@/lib/finance/audit";
 import { recordAudit } from "./audit";
 import {
   DataError,
@@ -62,29 +61,27 @@ export async function listCategories(): Promise<Category[]> {
 // Checks and tidies what was typed into the category form
 function parseCategoryInput(input: CategoryInput, currency: string) {
   if (typeof input.color !== "string" || !/^#[0-9a-f]{6}$/i.test(input.color)) {
-    throw new DataError("Color is invalid.");
+    throw new DataError("colorInvalid");
   }
-  const kind = oneOf(input.kind, CATEGORY_KINDS, "Category type");
+  const kind = oneOf(input.kind, CATEGORY_KINDS, "categoryType");
   const budget =
     input.budget === null || input.budget === undefined
       ? null
-      : money(input.budget, "Monthly budget", currency);
+      : money(input.budget, "monthlyBudget", currency);
   if (budget !== null && budget <= 0) {
-    throw new DataError("Monthly budget must be more than zero. Leave it empty for no budget.");
+    throw new DataError("budgetAboveZero");
   }
   if (budget !== null && kind !== "expense") {
-    throw new DataError("Only “Money out” categories can have a budget.");
+    throw new DataError("budgetMoneyOutOnly");
   }
   return {
-    name: requiredText(input.name, "Name", 60),
+    name: requiredText(input.name, "name", 60),
     kind,
     color: input.color.toLowerCase(),
-    iconKey: oneOf(input.iconKey, CATEGORY_ICON_KEYS, "Icon"),
+    iconKey: oneOf(input.iconKey, CATEGORY_ICON_KEYS, "icon"),
     monthlyBudget: budget,
   };
 }
-
-const DUPLICATE_NAME = "There is already a category with this name.";
 
 /** Adds a category (owners and admins only) and returns its ID. */
 export async function createCategory(input: CategoryInput): Promise<string> {
@@ -103,11 +100,16 @@ export async function createCategory(input: CategoryInput): Promise<string> {
       area: "category",
       action: "created",
       entityId: row.id,
-      summary: `Added the category “${row.name}”${row.budget === null ? "" : ` with a budget of ${formatCurrency(row.budget, { currency: actor.currency })} a month`}`,
+      ...(row.budget === null
+        ? { key: "categoryAdded" as const, values: { name: row.name } }
+        : {
+            key: "categoryAddedBudget" as const,
+            values: { name: row.name, budget: { perMonth: row.budget, currency: actor.currency } },
+          }),
     });
     return row.id;
   } catch (error) {
-    if (isUniqueViolation(error)) throw new DataError(DUPLICATE_NAME);
+    if (isUniqueViolation(error)) throw new DataError("duplicateCategory");
     throw error;
   }
 }
@@ -125,24 +127,30 @@ export async function updateCategory(id: string, input: CategoryInput) {
       .set(parseCategoryInput(input, actor.currency))
       .where(own)
       .returning(categoryColumns);
-    if (updated.length === 0) throw new DataError("Category not found.");
+    if (updated.length === 0) throw new DataError("categoryNotFound");
     const [after] = updated;
-    const kinds = { income: "Money in", expense: "Money out" } as Record<string, string>;
     const budget = (amount: number | null) =>
-      amount === null ? null : `${formatCurrency(amount, { currency: actor.currency })} a month`;
-    const changes = describeChanges([
-      { label: "name", before: before?.name ?? null, after: after.name },
-      { label: "type", before: kinds[before?.kind ?? ""] ?? null, after: kinds[after.kind] },
-      { label: "budget", before: budget(before?.budget ?? null), after: budget(after.budget) },
-    ]);
+      amount === null ? null : { perMonth: amount, currency: actor.currency };
+    const changes: AuditChange[] = [
+      { field: "name", before: before?.name ?? null, after: after.name },
+      {
+        field: "type",
+        before: before ? { kind: before.kind } : null,
+        after: { kind: after.kind },
+      },
+      { field: "budget", before: budget(before?.budget ?? null), after: budget(after.budget) },
+    ];
     await recordAudit(actor, {
       area: "category",
       action: "updated",
       entityId: id,
-      summary: `Changed the category “${after.name}”${changes ? `: ${changes}` : " (color or icon)"}`,
+      // Nothing listed changed: it was the color or the icon
+      ...(hasChanges(changes)
+        ? { key: "categoryChanged" as const, values: { name: after.name, changes: { changes } } }
+        : { key: "categoryRestyled" as const, values: { name: after.name } }),
     });
   } catch (error) {
-    if (isUniqueViolation(error)) throw new DataError(DUPLICATE_NAME);
+    if (isUniqueViolation(error)) throw new DataError("duplicateCategory");
     throw error;
   }
 }
@@ -163,8 +171,9 @@ export async function deleteCategory(id: string) {
       area: "category",
       action: "deleted",
       entityId: id,
-      summary: `Deleted the category “${deleted[0].name}”`,
+      key: "categoryDeleted",
+      values: { name: deleted[0].name },
     });
   }
-  if (deleted.length === 0) throw new DataError("Category not found.");
+  if (deleted.length === 0) throw new DataError("categoryNotFound");
 }

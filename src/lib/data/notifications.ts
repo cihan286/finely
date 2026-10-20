@@ -13,6 +13,7 @@
 // getFinanceContext().
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getLocale } from "@/i18n/server";
 import "server-only";
 import { and, eq, gte, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -256,6 +257,7 @@ export async function listNotifications(): Promise<Notification[]> {
     timeZone,
     today,
     currency,
+    await getLocale(),
   );
 }
 

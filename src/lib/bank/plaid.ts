@@ -15,7 +15,7 @@
 // only logged, never shown or sent on. Docs: https://plaid.com/docs/api/
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { BankError, type BankProvider, type BankTransaction } from "./types";
+import { BankError, type BankErrorKey, type BankProvider, type BankTransaction } from "./types";
 
 const HOSTS: Record<string, string> = {
   sandbox: "https://sandbox.plaid.com",
@@ -23,18 +23,16 @@ const HOSTS: Record<string, string> = {
 };
 const baseUrl = HOSTS[process.env.PLAID_ENV ?? "sandbox"] ?? HOSTS.sandbox;
 
-// What to tell the person for the failures they can do something about
-const MESSAGES: Record<string, string> = {
-  ITEM_LOGIN_REQUIRED:
-    "The bank asks you to log in again. Disconnect it and connect it again.",
-  INSTITUTION_DOWN: "The bank isn't answering right now. Try again later.",
-  INSTITUTION_NOT_RESPONDING: "The bank isn't answering right now. Try again later.",
-  RATE_LIMIT_EXCEEDED: "Too many requests to the bank just now. Try again in a few minutes.",
-  TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION:
-    "The bank's data changed while we were reading it. Try again in a moment.",
-  ACCESS_NOT_GRANTED: "The bank didn't give access to its transactions.",
+// What to tell the person for the failures they can do something about: a
+// sentence of i18n/messages/<language>/errors.ts, so it's shown in their language
+const MESSAGES: Record<string, BankErrorKey> = {
+  ITEM_LOGIN_REQUIRED: "bankLoginRequired",
+  INSTITUTION_DOWN: "bankDown",
+  INSTITUTION_NOT_RESPONDING: "bankDown",
+  RATE_LIMIT_EXCEEDED: "bankRateLimited",
+  TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION: "bankDataChanged",
+  ACCESS_NOT_GRANTED: "bankNoAccess",
 };
-const GENERIC = "The bank connection didn't work. Try again later.";
 
 // One call to Plaid's API
 async function plaid<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -51,14 +49,14 @@ async function plaid<T>(path: string, body: Record<string, unknown>): Promise<T>
       cache: "no-store",
     });
   } catch {
-    throw new BankError("We couldn't reach the bank service. Try again later.", "NETWORK");
+    throw new BankError("bankUnreachable", "NETWORK");
   }
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) {
     const code = typeof data?.error_code === "string" ? data.error_code : `HTTP_${response.status}`;
     // For us: which call failed and why. Never the request (it has secrets).
     console.error(`[plaid] ${path} failed: ${code} (${data?.error_type ?? "no error type"})`);
-    throw new BankError(MESSAGES[code] ?? GENERIC, code);
+    throw new BankError(MESSAGES[code] ?? "bankGeneric", code);
   }
   return data as T;
 }

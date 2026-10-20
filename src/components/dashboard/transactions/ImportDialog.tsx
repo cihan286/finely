@@ -38,7 +38,10 @@ import {
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import type { Account, Category, CategoryRule } from "@/types/finance";
 import { parseCsv } from "@/lib/finance/csv";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
+import { fill, plural } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import { rich } from "@/i18n/rich";
 import forms from "./forms.module.css";
 import styles from "./ImportDialog.module.css";
 
@@ -58,10 +61,11 @@ interface ImportDialogProps {
 }
 
 export default function ImportDialog(props: ImportDialogProps) {
+  const t = useI18n().m.transactions.import;
   const [pending, startImport] = useTransition();
   return (
     <Dialog
-      title="Import a bank statement"
+      title={t.title}
       closeHref={props.closeHref}
       busy={pending}
       size="lg"
@@ -86,6 +90,10 @@ function ImportForm({
   startImport,
 }: ImportFormProps) {
   const close = useCloseDialog();
+  const { locale, m } = useI18n();
+  const words = m.transactions;
+  const t = words.import;
+  const money = (value: number) => formatCurrency(value, { signed: true, currency }, locale);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   // The chosen file's name and its lines, split into cells
   const [file, setFile] = useState<{ name: string; rows: string[][] } | null>(null);
@@ -98,18 +106,16 @@ function ImportForm({
     if (!chosen) return;
     setError(null);
     if (chosen.size > MAX_FILE_BYTES) {
-      setError("This file is too large for a bank statement (over 5 MB).");
+      setError(t.tooLarge);
       return;
     }
     const rows = parseCsv(await chosen.text());
     if (rows.length === 0) {
-      setError("This file is empty.");
+      setError(t.empty);
       return;
     }
     if (rows.length > MAX_IMPORT_ROWS + 1) {
-      setError(
-        `This file has more than ${MAX_IMPORT_ROWS} lines. Split it into smaller files.`,
-      );
+      setError(fill(t.tooManyLines, { max: MAX_IMPORT_ROWS }));
       return;
     }
     setFile({ name: chosen.name, rows });
@@ -120,11 +126,7 @@ function ImportForm({
   if (!file || !mapping) {
     return (
       <div className={forms.form}>
-        <p className={styles.intro}>
-          Download your transactions from your bank&apos;s website as a CSV
-          file, then choose it here. You&apos;ll see a preview before anything
-          is imported.
-        </p>
+        <p className={styles.intro}>{t.intro}</p>
         {error && (
           <Message type="error">
             {error}
@@ -133,9 +135,9 @@ function ImportForm({
         <AccountSelect accounts={accounts} value={accountId} onChange={setAccountId} />
         <label className={styles.dropZone}>
           <FileUp size={24} />
-          <span className={styles.dropTitle}>Choose a CSV file</span>
+          <span className={styles.dropTitle}>{t.chooseFile}</span>
           <span className={styles.dropHint}>
-            Up to {MAX_IMPORT_ROWS.toLocaleString("en-US")} transactions
+            {fill(t.upTo, { max: formatNumber(MAX_IMPORT_ROWS, locale) })}
           </span>
           <input
             type="file"
@@ -146,7 +148,7 @@ function ImportForm({
         </label>
         <div className={forms.footer}>
           <div className={forms.footerRight}>
-            <Button variant="outline" size="sm" text="Cancel" action={close} />
+            <Button variant="outline" size="sm" text={m.common.cancel} action={close} />
           </div>
         </div>
       </div>
@@ -162,9 +164,11 @@ function ImportForm({
   const columnCount = Math.max(...file.rows.slice(0, 20).map((r) => r.length));
   // "Amount (e.g. -8204.00)" or "Column C (e.g. -8204.00)"
   const columns = Array.from({ length: columnCount }, (_, i) => {
-    const name = header[i] || columnLetter(i);
-    const example = firstLine[i] ? ` (e.g. ${firstLine[i].slice(0, 24)})` : "";
-    return { value: i, label: name + example };
+    const name = header[i] || fill(t.column, { letters: columnLetter(i) });
+    const label = firstLine[i]
+      ? fill(t.example, { column: name, value: firstLine[i].slice(0, 24) })
+      : name;
+    return { value: i, label };
   });
 
   const { rows, problems } = interpretRows(file.rows, mapping);
@@ -206,7 +210,7 @@ function ImportForm({
           }}
           disabled={pending}
         >
-          Choose another file
+          {t.chooseAnother}
         </button>
       </div>
 
@@ -220,61 +224,61 @@ function ImportForm({
 
       {/* Which column holds what */}
       <fieldset className={styles.mapping} disabled={pending}>
-        <legend>Columns</legend>
+        <legend>{t.columns}</legend>
         <label className={forms.checkbox}>
           <input
             type="checkbox"
             checked={mapping.hasHeader}
             onChange={(e) => update({ hasHeader: e.target.checked })}
           />
-          The first line has column names
+          {t.hasHeader}
         </label>
         <div className={forms.grid}>
           <ColumnSelect
-            label="Date"
+            label={t.date}
             columns={columns}
             value={mapping.date}
             onChange={(date) => update({ date })}
           />
-          <Field label="Date format">
+          <Field label={t.dateFormat}>
             <Select
               value={mapping.dateFormat}
               onChange={(e) => update({ dateFormat: e.target.value as DateFormat })}
             >
-              {Object.entries(DATE_FORMATS).map(([value, example]) => (
+              {(Object.keys(DATE_FORMATS) as DateFormat[]).map((value) => (
                 <option key={value} value={value}>
-                  {example}
+                  {t.dateFormats[value]}
                 </option>
               ))}
             </Select>
           </Field>
           <ColumnSelect
-            label="Description"
+            label={t.description}
             columns={columns}
             value={mapping.name}
             onChange={(name) => update({ name })}
           />
           <ColumnSelect
-            label="Category"
+            label={t.category}
             optional
             columns={columns}
             value={mapping.category}
             onChange={(category) => update({ category })}
           />
-          <Field label="Amounts">
+          <Field label={t.amounts}>
             <Select
               value={mapping.amountMode}
               onChange={(e) =>
                 update({ amountMode: e.target.value as ColumnMapping["amountMode"] })
               }
             >
-              <option value="single">One column (minus = money out)</option>
-              <option value="split">Separate money in and out columns</option>
+              <option value="single">{t.oneColumn}</option>
+              <option value="split">{t.twoColumns}</option>
             </Select>
           </Field>
           {mapping.amountMode === "single" ? (
             <ColumnSelect
-              label="Amount"
+              label={t.amount}
               columns={columns}
               value={mapping.amount}
               onChange={(amount) => update({ amount })}
@@ -282,13 +286,13 @@ function ImportForm({
           ) : (
             <div className={styles.pair}>
               <ColumnSelect
-                label="Money in"
+                label={t.moneyIn}
                 columns={columns}
                 value={mapping.moneyIn}
                 onChange={(moneyIn) => update({ moneyIn })}
               />
               <ColumnSelect
-                label="Money out"
+                label={t.moneyOut}
                 columns={columns}
                 value={mapping.moneyOut}
                 onChange={(moneyOut) => update({ moneyOut })}
@@ -302,21 +306,19 @@ function ImportForm({
             checked={mapping.flipSign}
             onChange={(e) => update({ flipSign: e.target.checked })}
           />
-          Money out is shown as positive numbers (common for credit cards)
+          {t.flipSign}
         </label>
       </fieldset>
 
       {/* What will be imported */}
       <div className={styles.summary}>
-        <strong>
-          {rows.length} {rows.length === 1 ? "transaction" : "transactions"} ready
-        </strong>
+        <strong>{plural(rows.length, t.ready)}</strong>
         {rows.length > 0 && (
           <span>
-            <span className={styles.income}>{formatCurrency(totalIn, { signed: true, currency: currency })}</span>
-            {" in · "}
-            {formatCurrency(totalOut, { signed: true, currency: currency })} out
-            {uncategorized > 0 && ` · ${uncategorized} uncategorized`}
+            {rich(fill(t.totals, { in: money(totalIn), out: money(totalOut) }), {
+              income: (text) => <span className={styles.income}>{text}</span>,
+            })}
+            {uncategorized > 0 && ` · ${fill(t.uncategorized, { count: uncategorized })}`}
           </span>
         )}
       </div>
@@ -326,31 +328,31 @@ function ImportForm({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Description</th>
-                <th scope="col">Category</th>
+                <th scope="col">{t.date}</th>
+                <th scope="col">{t.description}</th>
+                <th scope="col">{t.category}</th>
                 <th scope="col" className={styles.amount}>
-                  Amount
+                  {t.amount}
                 </th>
               </tr>
             </thead>
             <tbody>
               {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
                 <tr key={i}>
-                  <td>{formatDate(row.date)}</td>
+                  <td>{formatDate(row.date, locale)}</td>
                   <td className={styles.name}>{row.name}</td>
                   <td className={styles.muted}>
-                    {categoryOf(row) ?? "Uncategorized"}
+                    {categoryOf(row) ?? words.uncategorized}
                   </td>
                   <td className={`${styles.amount} ${row.amount > 0 ? styles.income : ""}`}>
-                    {formatCurrency(row.amount, { signed: true, currency: currency })}
+                    {money(row.amount)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {rows.length > PREVIEW_ROWS && (
-            <p className={styles.more}>…and {rows.length - PREVIEW_ROWS} more</p>
+            <p className={styles.more}>{fill(t.andMore, { count: rows.length - PREVIEW_ROWS })}</p>
           )}
         </div>
       )}
@@ -358,32 +360,29 @@ function ImportForm({
       {/* Lines that will be left out, and why */}
       {problems.length > 0 && (
         <div className={styles.problems}>
-          <strong>
-            {problems.length} {problems.length === 1 ? "line" : "lines"} will be
-            skipped
-          </strong>
+          <strong>{plural(problems.length, t.skippedLines)}</strong>
           <ul>
             {problems.slice(0, 5).map((p) => (
               <li key={p.line}>
-                Line {p.line}: {p.message}
+                {fill(t.line, {
+                  line: p.line,
+                  message: fill(t.problems[p.problem], { value: p.value ?? "" }),
+                })}
               </li>
             ))}
-            {problems.length > 5 && <li>…and {problems.length - 5} more</li>}
+            {problems.length > 5 && <li>{fill(t.andMore, { count: problems.length - 5 })}</li>}
           </ul>
         </div>
       )}
 
-      <p className={styles.note}>
-        Transactions already in this account (same date, amount and
-        description) will be skipped.
-      </p>
+      <p className={styles.note}>{t.duplicatesNote}</p>
 
       <div className={forms.footer}>
         <div className={forms.footerRight}>
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -392,9 +391,7 @@ function ImportForm({
             size="sm"
             loading={pending}
             text={
-              pending
-                ? "Importing"
-                : `Import ${rows.length} ${rows.length === 1 ? "transaction" : "transactions"}`
+              pending ? t.importing : plural(rows.length, t.importCount)
             }
             action={handleImport}
             disabled={pending || rows.length === 0 || !accountId}
@@ -415,8 +412,9 @@ function AccountSelect({
   value: string;
   onChange: (accountId: string) => void;
 }) {
+  const t = useI18n().m.transactions.import;
   return (
-    <Field label="Import into">
+    <Field label={t.importInto}>
       <Select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -446,10 +444,11 @@ function ColumnSelect({
   onChange: (column: number) => void;
   optional?: boolean;
 }) {
+  const t = useI18n().m.transactions.import;
   return (
     <Field label={label} optional={optional}>
       <Select value={value} onChange={(e) => onChange(Number(e.target.value))}>
-        <option value={-1}>{optional ? "None" : "Choose a column"}</option>
+        <option value={-1}>{optional ? t.none : t.chooseColumn}</option>
         {columns.map((c) => (
           <option key={c.value} value={c.value}>
             {c.label}

@@ -10,14 +10,16 @@
 // so the blocks are hidden from screen readers, which hear "Loading" once.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import styles from "./PageSkeleton.module.css";
 
 const block = (...names: string[]) =>
   [styles.block, ...names].join(" ");
 
-export default function PageSkeleton() {
+export default async function PageSkeleton() {
+  const { common } = await getMessages();
   return (
-    <div className={styles.page} role="status" aria-label="Loading">
+    <div className={styles.page} role="status" aria-label={common.loading}>
       <div className={styles.header} aria-hidden="true">
         <div className={block(styles.title)} />
         <div className={block(styles.subtitle)} />

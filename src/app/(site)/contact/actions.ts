@@ -18,33 +18,33 @@ import { parseContactMessage } from "@/lib/contact";
 import { sendEmail } from "@/lib/email/send";
 import { contactMessageEmail } from "@/lib/email/templates";
 import { clientIp, withinRateLimit } from "@/lib/rate-limit";
+import { getI18n } from "@/i18n/server";
 
 // At most this many messages per visitor (IP address) per hour
 const MAX_MESSAGES = 5;
 const WINDOW_SECONDS = 60 * 60;
 
-const SENT = "Thanks! Your message is on its way. We'll reply by email.";
-
 export async function submitContactMessage(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const t = (await getI18n()).m.site.contact;
   // People never see this box; only bots fill it in
-  if (formField(formData, "website")) return { error: null, success: SENT };
+  if (formField(formData, "website")) return { error: null, success: t.sent };
 
   const parsed = parseContactMessage({
     name: formField(formData, "name"),
     email: formField(formData, "email"),
     company: formField(formData, "company"),
     message: formField(formData, "message"),
-  });
+  }, t);
   if ("error" in parsed) return { error: parsed.error };
 
   // Counted only for messages that would be sent, so typing mistakes don't
   // use up the allowance
   if (!(await withinRateLimit(`contact:${await clientIp()}`, MAX_MESSAGES, WINDOW_SECONDS))) {
     return {
-      error: "You've sent several messages in a short time. Please try again in an hour.",
+      error: t.tooMany,
     };
   }
 
@@ -52,13 +52,13 @@ export async function submitContactMessage(
   // Emails are really sent (Resend is set up) but we have nowhere to send to
   if (!to && process.env.RESEND_API_KEY) {
     console.error("[contact] CONTACT_EMAIL is not set, so a contact message was not sent.");
-    return { error: "We couldn't send your message. Please try again later." };
+    return { error: t.notSent };
   }
 
   const sent = await sendEmail(
     contactMessageEmail(to ?? "CONTACT_EMAIL (not set)", parsed.message),
   );
   return sent
-    ? { error: null, success: SENT }
-    : { error: "We couldn't send your message. Please try again later." };
+    ? { error: null, success: t.sent }
+    : { error: t.notSent };
 }

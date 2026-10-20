@@ -72,7 +72,7 @@ export interface Billing {
   memberLimit: number | null;
   memberCount: number;
   /** A note about the subscription's state, e.g. a failed payment */
-  note: string | null;
+  note: ReturnType<typeof statusNote>;
   /** When the paid period ends or renews; null without a subscription */
   currentPeriodEnd: Date | null;
   /** Whether Stripe knows this company (it can open "Manage billing") */
@@ -173,9 +173,9 @@ export async function getBilling(): Promise<Billing> {
 async function requireBillingOwner() {
   const context = await requireOrganization();
   if (context.role !== "owner") {
-    throw new DataError("Only the company's owner can change its plan.");
+    throw new DataError("ownerOnlyPlan");
   }
-  if (!isBillingEnabled) throw new DataError("Paying for a plan isn't set up yet.");
+  if (!isBillingEnabled) throw new DataError("billingNotSetUp");
   await refuseInDemo(context.organization.id);
   return context;
 }
@@ -192,7 +192,7 @@ export async function startCheckout(
 ): Promise<string> {
   const { user, organization: company } = await requireBillingOwner();
   if (!["starter", "growth"].includes(plan) || !["monthly", "yearly"].includes(interval)) {
-    throw new DataError("Choose a plan.");
+    throw new DataError("choosePlan");
   }
   try {
     // The page opened before, if any: paid in the meantime (the plan is
@@ -202,7 +202,7 @@ export async function startCheckout(
     // Already subscribed: changing plan happens in Stripe's portal, so the
     // company never ends up with two subscriptions
     if (effectivePlan(row) !== "free") {
-      throw new DataError("This company already has a plan. Use “Manage billing” to change it.");
+      throw new DataError("alreadyHasPlan");
     }
     if (open) {
       if (open.priceId === priceIdFor(plan, interval)) return open.url;
@@ -233,7 +233,7 @@ export async function startCheckout(
     return session.url;
   } catch (error) {
     if (error instanceof StripeError) {
-      throw new DataError("We couldn't open the payment page. Please try again.");
+      throw new DataError("checkoutFailed");
     }
     throw error;
   }
@@ -246,12 +246,12 @@ export async function startCheckout(
 export async function openBillingPortal(): Promise<string> {
   const { organization: company } = await requireBillingOwner();
   const row = await selectSubscription(company.id);
-  if (!row?.stripeCustomerId) throw new DataError("This company has no subscription yet.");
+  if (!row?.stripeCustomerId) throw new DataError("noSubscription");
   try {
     return await createPortalSession(row.stripeCustomerId, `${SETTINGS_URL}#billing`);
   } catch (error) {
     if (error instanceof StripeError) {
-      throw new DataError("We couldn't open the billing page. Please try again.");
+      throw new DataError("portalFailed");
     }
     throw error;
   }
@@ -345,7 +345,8 @@ async function saveSubscription(
       {
         area: "settings",
         action: "plan-changed",
-        summary: `The company's plan changed from ${PLANS[before].name} to ${PLANS[after].name}`,
+        key: "planChanged",
+        values: { from: PLANS[before].name, to: PLANS[after].name },
       },
     );
   }
@@ -358,7 +359,12 @@ async function saveSubscription(
 async function notifyOwner(organizationId: string, about: "payment-failed" | string) {
   try {
     const [owner] = await db
-      .select({ name: user.name, email: user.email, company: organization.name })
+      .select({
+        name: user.name,
+        email: user.email,
+        locale: user.locale,
+        company: organization.name,
+      })
       .from(member)
       .innerJoin(user, eq(member.userId, user.id))
       .innerJoin(organization, eq(member.organizationId, organization.id))
@@ -405,9 +411,7 @@ export async function cancelSubscriptionFor(organizationId: string) {
     if (open) await expireCheckoutSession(open.id);
   } catch (error) {
     if (!(error instanceof StripeError)) throw error;
-    throw new DataError(
-      "We couldn't close this company's open payment page. Please try again in a minute.",
-    );
+    throw new DataError("checkoutNotClosed");
   }
   const row = await selectSubscription(organizationId);
   if (!row?.stripeSubscriptionId || effectivePlan(row) === "free") return;
@@ -416,8 +420,6 @@ export async function cancelSubscriptionFor(organizationId: string) {
   } catch (error) {
     // Already gone at Stripe: nothing left to cancel
     if (error instanceof StripeError && error.code === "resource_missing") return;
-    throw new DataError(
-      "We couldn't cancel this company's subscription. Cancel it under “Manage billing” first, then delete the company.",
-    );
+    throw new DataError("subscriptionNotCancelled");
   }
 }

@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addDays } from "@/lib/dates";
+import { DEFAULT_LOCALE, intlLocale, type Locale } from "@/i18n/config";
 import { topCategories, type CategorySpending } from "@/lib/finance/dashboard-summary";
 import { vendorKey, vendorName } from "@/lib/finance/vendors";
 import type { ExpenseCategory, ISODate } from "@/types/finance";
@@ -85,7 +86,11 @@ export interface Insights {
   unusualCharges: UnusualCharge[];
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "Oct", in Turkish "Eki"
+const monthLabel = (month: string, locale: Locale) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { month: "short", timeZone: "UTC" }).format(
+    new Date(`${month}-01T00:00:00Z`),
+  );
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Unusual charges: recent = the last 30 days, compared with the half year
@@ -138,6 +143,7 @@ export function buildInsights({
   categorySpending,
   vendors,
   expenses,
+  locale = DEFAULT_LOCALE,
 }: {
   today: ISODate;
   period: InsightPeriod;
@@ -145,12 +151,13 @@ export function buildInsights({
   categorySpending: CategorySpending[];
   vendors: VendorSpending[];
   expenses: ExpenseLine[];
+  locale?: Locale;
 }): Insights {
   const { months } = insightRange(today, period);
   const byMonth = new Map(monthly.map((m) => [m.month, m]));
   const points = months.map((month) => ({
     month,
-    label: MONTHS[Number(month.slice(5, 7)) - 1],
+    label: monthLabel(month, locale),
     income: round2(byMonth.get(month)?.income ?? 0),
     expenses: round2(byMonth.get(month)?.expenses ?? 0),
     partial: month === today.slice(0, 7),
@@ -173,7 +180,7 @@ export function buildInsights({
       savingsRate: income > 0 ? net / income : null,
     },
     // Up to seven categories; the rest together
-    categories: topCategories(categorySpending, 6),
+    categories: topCategories(categorySpending, 6, locale),
     vendors: merged
       .sort((a, b) => b.amount - a.amount)
       .slice(0, TOP_VENDORS)

@@ -167,9 +167,17 @@ src/
 │   ├── contact.ts          Checking a message from the Contact page (tested)
 │   ├── demo.ts             Telling the demo's pretend people apart
 │   ├── dates.ts            Calendar days in a company's timezone
-│   ├── format.ts           Currency, number and date formatting
+│   ├── format.ts           Currency, number and date formatting, in either language
 │   ├── monitoring.ts       Sentry settings (what is and isn't sent)
 │   └── redirect.ts         Safe "return here after logging in" addresses
+├── i18n/                   English and Turkish (see Languages below)
+│   ├── config.ts           The languages, fill() and plural()
+│   ├── server.ts           getI18n(): the language of the request and its words
+│   ├── client.tsx          useI18n(): the same, in client components
+│   ├── actions.ts          setLocale(): what the EN / TR switch calls
+│   ├── rich.tsx            Links and bold words inside a translated sentence
+│   ├── auth-errors.ts      Better Auth's errors in the page's language
+│   └── messages/           Every sentence: en/ and tr/, one file per area
 ├── types/finance.ts        Types for accounts, categories, transactions, …
 ├── proxy.ts                Redirects logged-out visitors away from /dashboard
 ├── instrumentation.ts      Starts Sentry on the server
@@ -209,6 +217,29 @@ such as an export) and `action` for a click handler.
 style used in the dashboard. While its action runs, pass `loading` and a text
 like "Saving" (no "…"): the button shows a spinner and can't be clicked again.
 Other buttons use `components/common/spinner/Spinner` for the same look.
+
+<a id="languages"></a>
+**Languages.** No sentence is written in a component: every word on screen
+is in `src/i18n/messages/en/` (the source) and `src/i18n/messages/tr/`,
+one file per area. `tr/` is typed with `en/`'s shape, so a sentence missing
+in Turkish doesn't compile, and `i18n/messages.test.ts` checks that every
+translation keeps its `{placeholders}` and `<tags>`. Server components and
+server actions get the words with `const { locale, m } = await getI18n()`;
+client components with `const { locale, m } = useI18n()`, which only has
+the parts client components need (`clientMessages()` in
+`i18n/messages/index.ts`: add a part there before using it in the
+browser). Values go into sentences with `fill(m.bills.dueIn, { days })`, and
+counts with `plural(count, m.bills.billCount)` (`{ one, other }`; Turkish
+uses the same form for both). A link or bold words inside a sentence are
+tags (`"Read our <privacy>Privacy policy</privacy>"`) that `rich()` in
+`i18n/rich.tsx` fills in. Every formatting helper in `lib/format.ts` takes
+the language last; pass it. Code that runs in the browser must not import
+`@/i18n/messages` (it holds every sentence of both languages): take the
+words as a parameter instead. The data functions report problems as
+`new DataError("billNotFound")` with a key of `errors.ts`;
+`errorMessage()` turns it into the person's language. Emails take their
+recipient's language (`user.locale`), and the activity log stores what
+happened rather than text (see [Activity log](features.md#activity-log)).
 
 **Data.** Components read data that has the types in `src/types/finance.ts`.
 Amounts are plain numbers and dates are ISO strings; formatting happens only in

@@ -53,7 +53,7 @@ import { DataError } from "./common";
 async function requireOwner() {
   const context = await requireOrganization();
   if (context.role !== "owner") {
-    throw new DataError("Only the company's owner can do this.");
+    throw new DataError("ownerOnly");
   }
   return context;
 }
@@ -65,7 +65,7 @@ async function requireOwner() {
 export async function transferOwnership(memberId: string) {
   const { user: me, organization: company } = await requireOwner();
   if (typeof memberId !== "string" || !memberId) {
-    throw new DataError("Choose who to hand the company over to.");
+    throw new DataError("chooseNewOwner");
   }
 
   const [target] = await db
@@ -74,12 +74,13 @@ export async function transferOwnership(memberId: string) {
       userId: member.userId,
       name: user.name,
       email: user.email,
+      locale: user.locale,
     })
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
     .where(and(eq(member.id, memberId), eq(member.organizationId, company.id)));
-  if (!target) throw new DataError("That person isn't in this company.");
-  if (target.userId === me.id) throw new DataError("You already own this company.");
+  if (!target) throw new DataError("notInCompany");
+  if (target.userId === me.id) throw new DataError("alreadyOwner");
 
   // Both or neither: a company never ends up with two owners or none
   await db.batch([
@@ -98,7 +99,8 @@ export async function transferOwnership(memberId: string) {
       area: "team",
       action: "ownership-transferred",
       entityId: target.id,
-      summary: `Handed the company over to ${target.name} and became an admin`,
+      key: "handedOver",
+      values: { name: target.name },
     },
   );
   // Neither of these throws: the handover stands whatever happens to them
@@ -116,13 +118,13 @@ export async function transferOwnership(memberId: string) {
 export async function deleteCompany(confirmation: string) {
   const { user: me, organization: company } = await requireOwner();
   if (typeof confirmation !== "string" || confirmation.trim() !== company.name.trim()) {
-    throw new DataError("Type the company's name exactly to confirm.");
+    throw new DataError("confirmCompanyName");
   }
 
   const id = company.id;
   // Everyone else on the team, to tell them afterwards
   const team = await db
-    .select({ name: user.name, email: user.email })
+    .select({ name: user.name, email: user.email, locale: user.locale })
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
     .where(and(eq(member.organizationId, id), ne(member.userId, me.id)));

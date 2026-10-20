@@ -19,7 +19,9 @@ import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
 import { addAttachment, deleteAttachment } from "@/lib/data/attachments";
 import { saveCategoryRule } from "@/lib/data/category-rules";
-import { errorMessage } from "@/lib/data/common";
+import { DataError, errorMessage } from "@/lib/data/common";
+import { plural } from "@/i18n/config";
+import { getMessages } from "@/i18n/server";
 import {
   ATTACHMENT_TYPES,
   detectAttachmentType,
@@ -93,12 +95,19 @@ export async function submitTransaction(
   if (receipt) {
     if (receipt.bytes.length > MAX_ATTACHMENT_BYTES) {
       return {
-        error: `A file can be at most ${formatFileSize(MAX_ATTACHMENT_BYTES)}. This one is ${formatFileSize(receipt.bytes.length)}.`,
+        error: await errorMessage(
+          new DataError("fileTooLarge", {
+            max: (locale) => formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+            size: (locale) => formatFileSize(receipt.bytes.length, locale),
+          }),
+        ),
       };
     }
     if (!detectAttachmentType(receipt.bytes)) {
       return {
-        error: `Only ${Object.values(ATTACHMENT_TYPES).join(", ")} files can be attached.`,
+        error: await errorMessage(
+          new DataError("fileType", { types: Object.values(ATTACHMENT_TYPES).join(", ") }),
+        ),
       };
     }
   }
@@ -111,7 +120,7 @@ export async function submitTransaction(
       const input = toTransactionInput(formData);
       if (formField(formData, "remember")) {
         if (!input.categoryId) {
-          return { error: "Choose a category to always use for these descriptions." };
+          return { error: await errorMessage(new DataError("chooseRuleCategory")) };
         }
         // Before the transaction: if the rule is refused, nothing was saved
         // yet, so sending the form again can't add the transaction twice
@@ -136,7 +145,7 @@ export async function submitTransaction(
       }
     }
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // The transaction is there; open it so the file can be added again
   if (withoutFile) redirect(`${LIST_PATH}?edit=${withoutFile}`);
@@ -161,17 +170,17 @@ export async function categorizeSelected(
     .getAll("ids")
     .filter((id): id is string => typeof id === "string");
   const category = formField(formData, "bulkCategory");
-  if (!category) return { error: "Choose a category." };
+  if (!category) return { error: await errorMessage(new DataError("chooseCategory")) };
   let changed;
   try {
     changed = await setTransactionsCategory(ids, category === "none" ? null : category);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
   return {
     error: null,
-    success: `${changed} ${changed === 1 ? "transaction was" : "transactions were"} updated.`,
+    success: plural(changed, (await getMessages()).transactions.bulk.updated),
   };
 }
 
@@ -187,7 +196,7 @@ export async function importStatement(
   try {
     result = await importTransactions(accountId, rows);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   redirect(
     `${LIST_PATH}?imported=${result.imported}&skipped=${result.skipped}${result.billsPaid > 0 ? `&bills=${result.billsPaid}` : ""}${result.billsMerged > 0 ? `&merged=${result.billsMerged}` : ""}`,
@@ -209,7 +218,7 @@ export async function uploadAttachment(
   formData: FormData,
 ): Promise<AttachmentResult> {
   const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "Choose a file to attach." };
+  if (!(file instanceof File)) return { error: await errorMessage(new DataError("chooseFile")) };
   let attachments;
   try {
     attachments = await addAttachment(transactionId, {
@@ -217,7 +226,7 @@ export async function uploadAttachment(
       bytes: new Uint8Array(await file.arrayBuffer()),
     });
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // The list behind the window shows which transactions have files
   refresh();
@@ -230,7 +239,7 @@ export async function removeAttachment(id: string): Promise<AttachmentResult> {
   try {
     attachments = await deleteAttachment(id);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
   return { error: null, attachments };

@@ -171,7 +171,7 @@ describe("plans", () => {
       );
     }
     expect(await getBilling()).toMatchObject({ plan: "growth" });
-    expect((await getBilling()).note).toContain("payment failed");
+    expect((await getBilling()).note).toBe("pastDue");
     expect(sentEmails).toMatchObject([
       {
         to: "paying-co@example.com",

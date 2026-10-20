@@ -7,6 +7,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .page {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -54,4 +55,11 @@
   .card {
     padding: 1.75rem 1.25rem;
   }
+}
+
+/* The EN / TR switch, in the top-right corner */
+.language {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
 }

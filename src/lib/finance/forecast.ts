@@ -42,13 +42,6 @@ export interface ForecastEvent {
   estimated: boolean;
 }
 
-/** How each kind of expected payment is called on screen */
-export const FORECAST_SOURCE_LABELS: Record<ForecastEvent["source"], string> = {
-  bill: "Bill",
-  pending: "Pending payment",
-  recurring: "Regular payment",
-};
-
 export interface Forecast {
   today: ISODate;
   /** The last day looked at */

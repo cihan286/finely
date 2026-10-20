@@ -278,11 +278,12 @@ describe("linking a bank", () => {
     await connectBank("token-3", "Third Bank");
     const [connection] = await listBankConnections();
 
-    bank.fail = new BankError("The bank asks you to log in again.", "ITEM_LOGIN_REQUIRED");
+    bank.fail = new BankError("bankLoginRequired", "ITEM_LOGIN_REQUIRED");
     await expect(syncBankConnection(connection.id)).rejects.toThrow(
       "The bank asks you to log in again.",
     );
-    expect((await listBankConnections())[0].lastError).toBe("The bank asks you to log in again.");
+    // Kept as the sentence's key, so Settings shows it in each person's language
+    expect((await listBankConnections())[0].lastError).toBe("bankLoginRequired");
     expect((await listTransactions()).total).toBe(1);
 
     // Working again: the note goes away

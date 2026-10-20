@@ -14,10 +14,12 @@ import styles from "@/components/auth/AuthForm.module.css";
 import { isGoogleEnabled } from "@/lib/auth";
 import { safeNextPath } from "@/lib/redirect";
 import { getSession } from "@/lib/session";
+import { rich } from "@/i18n/rich";
+import { getMessages } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Create your account",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).auth.signup.title };
+}
 
 export default async function SignupPage({
   searchParams,
@@ -29,37 +31,38 @@ export default async function SignupPage({
 
   // Already logged in? Skip this page
   if (await getSession()) redirect(next ?? "/dashboard");
+  const { auth, common } = await getMessages();
+  const t = auth.signup;
+  // The terms and the privacy policy open in a new tab, so the form stays
+  const legalLink = (href: string) =>
+    function LegalLink(text: string) {
+      return (
+        <Link href={href} className={styles.link} target="_blank">
+          {text}
+        </Link>
+      );
+    };
 
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Create your account</h1>
-        <p className={styles.subtitle}>
-          Get a clear view of your business finances in minutes.
-        </p>
+        <h1 className={styles.title}>{t.title}</h1>
+        <p className={styles.subtitle}>{t.subtitle}</p>
       </div>
 
       <SignupForm googleEnabled={isGoogleEnabled} next={next} />
 
       <p className={styles.footer}>
-        Already have an account?{" "}
+        {t.haveAccount}{" "}
         <Link
           href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
           className={styles.link}
         >
-          Log in
+          {common.logIn}
         </Link>
       </p>
       <p className={styles.legal}>
-        By creating an account, you agree to our{" "}
-        <Link href="/terms" className={styles.link} target="_blank">
-          Terms of service
-        </Link>{" "}
-        and{" "}
-        <Link href="/privacy" className={styles.link} target="_blank">
-          Privacy policy
-        </Link>
-        .
+        {rich(t.agree, { terms: legalLink("/terms"), privacy: legalLink("/privacy") })}
       </p>
     </>
   );

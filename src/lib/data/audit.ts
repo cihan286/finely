@@ -5,8 +5,8 @@
 // a company — a transaction, a bill, a category, a teammate's role — a line
 // is added to the company's activity log saying who did what and when.
 // Owners and admins can read the log in Settings, search it and save it as
-// a file. Lines are never changed or removed (until the company itself is
-// deleted).
+// a file, each in their own language. Lines are never changed or removed
+// (until the company itself is deleted).
 //
 // For developers: server-only. The data functions call recordAudit() right
 // after a change succeeded, with the context they already have. It never
@@ -20,7 +20,15 @@ import "server-only";
 import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { auditLog } from "@/db/finance";
-import { AUDIT_AREAS, type AuditArea } from "@/lib/finance/audit";
+import {
+  isAuditArea,
+  renderAudit,
+  type AuditArea,
+  type AuditDetails,
+} from "@/lib/finance/audit";
+import { DEFAULT_LOCALE } from "@/i18n/config";
+import { messagesFor, type Messages } from "@/i18n/messages";
+import { getI18n } from "@/i18n/server";
 import { todayIn } from "@/lib/dates";
 import type { ActivityExportRow } from "@/lib/finance/export";
 import type { ISODate } from "@/types/finance";
@@ -43,7 +51,7 @@ function matching(organizationId: string, filters: AuditFilters) {
   return and(
     eq(auditLog.organizationId, organizationId),
     // Only a known area narrows the list; anything else shows everything
-    filters.area && filters.area in AUDIT_AREAS
+    filters.area && isAuditArea(filters.area)
       ? eq(auditLog.area, filters.area)
       : undefined,
     pattern
@@ -54,8 +62,17 @@ function matching(organizationId: string, filters: AuditFilters) {
 
 // No name and no person: Finely did it. No name but a person: we never
 // knew what they were called.
-const actorOf = (row: { actorName: string | null; actorId: string | null }) =>
-  row.actorName ?? (row.actorId ? "Someone" : "Finely");
+const actorOf = (row: { actorName: string | null; actorId: string | null }, m: Messages) =>
+  row.actorName ?? (row.actorId ? m.audit.someone : "Finely");
+
+// A line in the reader's words; older lines only have their English text
+const summaryOf = (
+  row: { summary: string; details: AuditDetails | null },
+  { locale, m }: { locale: typeof DEFAULT_LOCALE; m: Messages },
+) => (row.details ? renderAudit(row.details, m, locale) : row.summary);
+
+// The words the log is kept in for searching: English
+const english = messagesFor(DEFAULT_LOCALE);
 
 // A moment in a timezone the way the export files write it:
 // "2026-10-13 14:05" (Sweden writes dates year-month-day)
@@ -75,12 +92,10 @@ export interface AuditActor {
 }
 
 /** What happened */
-export interface AuditEvent {
+export interface AuditEvent extends AuditDetails {
   area: AuditArea;
   /** "created", "updated", "deleted", "paid", "imported", … */
   action: string;
-  /** What happened, as a sentence without the person: 'Deleted "Office rent"' */
-  summary: string;
   entityId?: string | null;
 }
 
@@ -106,7 +121,8 @@ export async function recordAudit(actor: AuditActor, event: AuditEvent) {
       area: event.area,
       action: event.action,
       entityId: event.entityId ?? null,
-      summary: event.summary.slice(0, 1000),
+      summary: renderAudit(event, english, DEFAULT_LOCALE).slice(0, 1000),
+      details: { key: event.key, values: event.values ?? {} },
     });
   } catch (error) {
     console.error(`[audit] Could not record ${event.area}.${event.action}:`, error);
@@ -121,6 +137,7 @@ export async function listAuditLog(
   filters: AuditFilters & { limit?: number; offset?: number } = {},
 ): Promise<{ entries: AuditEntry[]; total: number }> {
   const { organizationId } = await getFinanceContext({ manage: true });
+  const i18n = await getI18n();
   const where = matching(organizationId, filters);
   const limit = Math.min(Math.max(Math.trunc(filters.limit ?? 50), 1), 200);
   const offset = Math.max(Math.trunc(filters.offset ?? 0), 0);
@@ -134,6 +151,7 @@ export async function listAuditLog(
         area: auditLog.area,
         action: auditLog.action,
         summary: auditLog.summary,
+        details: auditLog.details,
         at: auditLog.createdAt,
       })
       .from(auditLog)
@@ -145,10 +163,11 @@ export async function listAuditLog(
   ]);
 
   return {
-    entries: rows.map(({ actorName, actorId, ...row }) => ({
+    entries: rows.map(({ actorName, actorId, details, summary, ...row }) => ({
       ...row,
       area: row.area as AuditArea,
-      actor: actorOf({ actorName, actorId }),
+      actor: actorOf({ actorName, actorId }, i18n.m),
+      summary: summaryOf({ summary, details }, i18n),
     })),
     total,
   };
@@ -162,12 +181,15 @@ export async function exportAuditLog(
   filters: AuditFilters = {},
 ): Promise<{ rows: ActivityExportRow[]; today: ISODate }> {
   const { organizationId, timeZone } = await getFinanceContext({ manage: true });
+  const i18n = await getI18n();
+  const areas: Record<string, string> = i18n.m.audit.areas;
   const rows = await db
     .select({
       actorName: auditLog.actorName,
       actorId: auditLog.actorId,
       area: auditLog.area,
       summary: auditLog.summary,
+      details: auditLog.details,
       at: auditLog.createdAt,
     })
     .from(auditLog)
@@ -177,9 +199,9 @@ export async function exportAuditLog(
   return {
     rows: rows.map((row) => ({
       when: fileDateTime(row.at, timeZone),
-      actor: actorOf(row),
-      area: AUDIT_AREAS[row.area as AuditArea] ?? row.area,
-      summary: row.summary,
+      actor: actorOf(row, i18n.m),
+      area: areas[row.area] ?? row.area,
+      summary: summaryOf(row, i18n),
     })),
     today: todayIn(timeZone),
   };

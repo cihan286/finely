@@ -25,6 +25,10 @@ import {
 } from "recharts";
 import type { Insights } from "@/lib/finance/insights";
 import { formatCompactCurrency, formatCurrency } from "@/lib/format";
+import { fill, type Locale } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
+import { bold, rich } from "@/i18n/rich";
 import styles from "./InsightsView.module.css";
 
 type Month = Insights["monthly"][number];
@@ -34,22 +38,24 @@ function MonthTooltip({
   active,
   payload,
   currency,
-}: TooltipContentProps & { currency: string }) {
+  locale,
+  t,
+}: TooltipContentProps & { currency: string; locale: Locale; t: Messages["insights"] }) {
   const month = payload?.[0]?.payload as Month | undefined;
   if (!active || !month) return null;
   return (
     <div className={styles.tooltip}>
       <span className={styles.tooltipLabel}>
         {month.label} {month.month.slice(0, 4)}
-        {month.partial && " (so far)"}
+        {month.partial && ` ${t.soFar}`}
       </span>
       <span className={styles.tooltipRow}>
         <span className={`${styles.lineKey} ${styles.incomeKey}`} />
-        <strong>{formatCurrency(month.income, { currency: currency })}</strong> in
+        {rich(fill(t.tooltipIn, { amount: formatCurrency(month.income, { currency }, locale) }), bold)}
       </span>
       <span className={styles.tooltipRow}>
         <span className={`${styles.lineKey} ${styles.expensesKey}`} />
-        <strong>{formatCurrency(month.expenses, { currency: currency })}</strong> out
+        {rich(fill(t.tooltipOut, { amount: formatCurrency(month.expenses, { currency }, locale) }), bold)}
       </span>
     </div>
   );
@@ -63,6 +69,8 @@ export default function MonthlyChart({
   /** The company's currency, e.g. "USD" */
   currency: string;
 }) {
+  const { locale, m } = useI18n();
+  const t = m.insights;
   const axisTick = { fill: "currentColor", fontSize: 12 };
   return (
     <div className={styles.chartWrap}>
@@ -89,18 +97,18 @@ export default function MonthlyChart({
             axisLine={false}
             tick={axisTick}
             width={48}
-            tickFormatter={(value: number) => formatCompactCurrency(value, currency)}
+            tickFormatter={(value: number) => formatCompactCurrency(value, currency, locale)}
           />
           {/* A soft band behind the hovered month */}
           <Tooltip
             content={(props: TooltipContentProps) => (
-              <MonthTooltip {...props} currency={currency} />
+              <MonthTooltip {...props} currency={currency} locale={locale} t={t} />
             )}
             cursor={{ fill: "currentColor", fillOpacity: 0.06 }}
           />
           <Bar
             dataKey="income"
-            name="Money in"
+            name={t.moneyIn}
             className={styles.incomeSeries}
             fill="currentColor"
             maxBarSize={24}
@@ -109,7 +117,7 @@ export default function MonthlyChart({
           />
           <Bar
             dataKey="expenses"
-            name="Money out"
+            name={t.moneyOut}
             className={styles.expensesSeries}
             fill="currentColor"
             maxBarSize={24}

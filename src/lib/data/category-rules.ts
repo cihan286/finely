@@ -63,23 +63,21 @@ export async function listCategoryRules(): Promise<CategoryRule[]> {
 // chosen category belongs to this company
 async function parseRuleInput(input: CategoryRuleInput, organizationId: string) {
   // Runs of spaces collapsed, as bank descriptions are when imported
-  const matchText = requiredText(input.matchText, "Text", MAX_RULE_TEXT_LENGTH)
+  const matchText = requiredText(input.matchText, "text", MAX_RULE_TEXT_LENGTH)
     .replace(/\s+/g, " ");
   if (matchText.length < MIN_RULE_TEXT_LENGTH) {
-    throw new DataError(`Text must be at least ${MIN_RULE_TEXT_LENGTH} characters.`);
+    throw new DataError("ruleTextTooShort", { min: MIN_RULE_TEXT_LENGTH });
   }
 
-  const categoryId = requiredText(input.categoryId, "Category");
+  const categoryId = requiredText(input.categoryId, "category");
   const categoryMatches = await db.$count(
     category,
     and(eq(category.id, categoryId), eq(category.organizationId, organizationId)),
   );
-  if (categoryMatches === 0) throw new DataError("Category not found.");
+  if (categoryMatches === 0) throw new DataError("categoryNotFound");
 
   return { matchText, categoryId };
 }
-
-const DUPLICATE_TEXT = "There is already a rule for this text.";
 
 /** Adds a rule (owners and admins only) and returns its ID. */
 export async function createCategoryRule(
@@ -97,11 +95,12 @@ export async function createCategoryRule(
       area: "rule",
       action: "created",
       entityId: row.id,
-      summary: `Added a category rule for descriptions containing “${values.matchText}”`,
+      key: "ruleAdded",
+      values: { text: values.matchText },
     });
     return row.id;
   } catch (error) {
-    if (isUniqueViolation(error)) throw new DataError(DUPLICATE_TEXT);
+    if (isUniqueViolation(error)) throw new DataError("duplicateRule");
     throw error;
   }
 }
@@ -122,15 +121,16 @@ export async function updateCategoryRule(id: string, input: CategoryRuleInput) {
         ),
       )
       .returning({ id: categoryRule.id });
-    if (updated.length === 0) throw new DataError("Rule not found.");
+    if (updated.length === 0) throw new DataError("ruleNotFound");
     await recordAudit(actor, {
       area: "rule",
       action: "updated",
       entityId: id,
-      summary: `Changed the category rule for descriptions containing “${values.matchText}”`,
+      key: "ruleChanged",
+      values: { text: values.matchText },
     });
   } catch (error) {
-    if (isUniqueViolation(error)) throw new DataError(DUPLICATE_TEXT);
+    if (isUniqueViolation(error)) throw new DataError("duplicateRule");
     throw error;
   }
 }
@@ -210,7 +210,7 @@ export async function applyCategoryRule(id: string): Promise<number> {
     .where(
       and(eq(categoryRule.id, id), eq(categoryRule.organizationId, organizationId)),
     );
-  if (!rule) throw new DataError("Rule not found.");
+  if (!rule) throw new DataError("ruleNotFound");
   return categorizeMatching(organizationId, rule.matchText);
 }
 
@@ -248,7 +248,8 @@ export async function saveCategoryRule(
     area: "rule",
     action: existing ? "updated" : "created",
     entityId: existing?.id,
-    summary: `${existing ? "Changed the" : "Added a"} category rule for descriptions containing “${values.matchText}”`,
+    key: existing ? "ruleChanged" : "ruleAdded",
+    values: { text: values.matchText },
   });
   return { categorized: await categorizeMatching(organizationId, values.matchText) };
 }
@@ -269,11 +270,12 @@ export async function deleteCategoryRule(id: string) {
       ),
     )
     .returning({ id: categoryRule.id, matchText: categoryRule.matchText });
-  if (deleted.length === 0) throw new DataError("Rule not found.");
+  if (deleted.length === 0) throw new DataError("ruleNotFound");
   await recordAudit(actor, {
     area: "rule",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the category rule for descriptions containing “${deleted[0].matchText}”`,
+    key: "ruleDeleted",
+    values: { text: deleted[0].matchText },
   });
 }

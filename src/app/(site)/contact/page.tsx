@@ -10,23 +10,21 @@
 
 import type { Metadata } from "next";
 import ContactForm from "@/components/home/contact-form/ContactForm";
+import { getMessages } from "@/i18n/server";
 import styles from "../site.module.css";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description:
-    "Questions about Finely, the Enterprise plan or your account? Send us a message.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { contact } = (await getMessages()).site;
+  return { title: contact.label, description: contact.metaDescription };
+}
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const t = (await getMessages()).site.contact;
   return (
     <>
-      <span className={styles.label}>Contact</span>
-      <h1 className={styles.title}>Talk to us</h1>
-      <p className={styles.intro}>
-        Curious about the Enterprise plan, stuck on something, or have an idea
-        for Finely? Send us a message and we&apos;ll reply by email.
-      </p>
+      <span className={styles.label}>{t.label}</span>
+      <h1 className={styles.title}>{t.title}</h1>
+      <p className={styles.intro}>{t.intro}</p>
 
       <div className={styles.card}>
         <ContactForm />
@@ -34,3 +32,4 @@ export default function ContactPage() {
     </>
   );
 }
+

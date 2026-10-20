@@ -25,6 +25,7 @@ import { startOfDay, todayIn } from "@/lib/dates";
 import { listAccounts } from "./accounts";
 import { getFinanceContext } from "./common";
 import { listTransactions } from "./transactions";
+import { getLocale } from "@/i18n/server";
 
 export type { DashboardSummary };
 
@@ -73,6 +74,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   ]);
 
   return buildDashboardSummary({
+    locale: await getLocale(),
     today,
     daily,
     categorySpending,

@@ -36,6 +36,8 @@ real customers.*
   from the bank mark as paid; a notification bell; a weekly summary email and
   alerts; an activity log of who changed what; exports to CSV.
 - **Paid plans** through Stripe, with a team-size limit per plan.
+- **English and Turkish**, switched with one click: every page, email,
+  export and error message, with each language's number and date formats.
 
 <table>
   <tr>
@@ -79,6 +81,11 @@ real customers.*
   security headers, login, sign-up and contact-form rate limiting, roles
   checked on the server for every action, and a demo that can't email,
   invite or pay for anything.
+- **Two languages, done properly.** Typed dictionaries (a sentence missing
+  in Turkish doesn't compile), each person's language saved for the emails
+  sent to them, and an activity log stored as what happened rather than as
+  text, so every reader sees it in their own language. Browser code only
+  gets the words it needs.
 - **Accessible.** The public pages, company setup, and every page, main
   dialog and the notifications panel of the demo pass axe's WCAG 2.1 AA checks in both
   light and dark mode (text contrast, names for every button and field,
@@ -168,6 +175,9 @@ is. What's missing at that level:
 - **Exports** are CSV files, plus the browser's "Save as PDF" on the
   Insights page.
 - **Deleting a company** is immediate: there's no grace period.
+- **Languages:** English and Turkish only. Categories, the demo's sample
+  data and activity log lines from before both languages existed stay in
+  the language they were written in.
 - **Terms and privacy** describe what the app really does in plain words;
   they aren't legal documents.
 

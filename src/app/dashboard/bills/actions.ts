@@ -51,7 +51,7 @@ export async function submitBill(
       else await createBill(input);
     }
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
   redirect(LIST_PATH);
@@ -80,7 +80,7 @@ export async function submitBillPayment(
           },
     );
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   redirect(
     `${LIST_PATH}?paid=${transactionId ? "linked" : "1"}${result.nextDueDate ? `&next=${result.nextDueDate}` : ""}`,
@@ -95,7 +95,7 @@ export async function submitUndoBillPayment(
   try {
     await undoBillPayment(formField(formData, "id"));
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   redirect(`${LIST_PATH}?undone=1`);
 }

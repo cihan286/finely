@@ -47,9 +47,8 @@ import {
   transaction,
 } from "@/db/finance";
 import { addDays, localDay, startOfDay, todayIn, zonedTime } from "@/lib/dates";
-import { describeChanges } from "@/lib/finance/audit";
+import { hasChanges, type AuditChange } from "@/lib/finance/audit";
 import {
-  BILL_REPEAT_LABELS,
   matchBillPayments,
   nextDueDate,
 } from "@/lib/finance/bills";
@@ -61,7 +60,6 @@ import {
   type BillRepeat,
   type ISODate,
 } from "@/types/finance";
-import { formatCurrency, formatDate } from "@/lib/format";
 import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
@@ -368,7 +366,13 @@ export async function settleBillsWith(
           area: "bill",
           action: "paid",
           entityId: row.id,
-          summary: `The bill “${row.name}” (${formatCurrency(row.amount, { currency })}) was marked as paid: its payment of ${formatDate(payment.day)} (“${payment.name}”) arrived in the transactions`,
+          key: "billPaidByArrival",
+          values: {
+            name: row.name,
+            amount: { money: row.amount, currency },
+            day: { day: payment.day },
+            payment: payment.name,
+          },
         });
       }
       const used = new Set(matches.map((m) => m.paymentId));
@@ -449,7 +453,13 @@ export async function settleBillsWith(
         area: "bill",
         action: "payment-merged",
         entityId: row.id,
-        summary: `The payment of the bill “${row.name}” (${formatCurrency(row.amount, { currency })}) arrived in the transactions (“${payment.name}”, ${formatDate(payment.day)}), so the one recorded when the bill was marked as paid was removed`,
+        key: "billPaymentMerged",
+        values: {
+          name: row.name,
+          amount: { money: row.amount, currency },
+          payment: payment.name,
+          day: { day: payment.day },
+        },
       });
     }
     return { paid: settled, merged };
@@ -564,23 +574,23 @@ async function parseBillInput(
   organizationId: string,
   currency: string,
 ) {
-  const categoryId = optionalText(input.categoryId, "Category", 120);
+  const categoryId = optionalText(input.categoryId, "category", 120);
   if (categoryId) {
     const matches = await db.$count(
       category,
       and(eq(category.id, categoryId), eq(category.organizationId, organizationId)),
     );
-    if (matches === 0) throw new DataError("Category not found.");
+    if (matches === 0) throw new DataError("categoryNotFound");
   }
-  const amount = money(input.amount, "Amount", currency);
-  if (amount <= 0) throw new DataError("Amount must be more than zero.");
+  const amount = money(input.amount, "amount", currency);
+  if (amount <= 0) throw new DataError("amountAboveZero");
   return {
-    name: requiredText(input.name, "Bill"),
+    name: requiredText(input.name, "bill"),
     amount,
-    dueDate: isoDay(input.dueDate, "Due date"),
-    repeat: oneOf(input.repeat, BILL_REPEATS, "Repeat"),
+    dueDate: isoDay(input.dueDate, "dueDate"),
+    repeat: oneOf(input.repeat, BILL_REPEATS, "repeat"),
     categoryId,
-    notes: optionalText(input.notes, "Notes"),
+    notes: optionalText(input.notes, "notes"),
   };
 }
 
@@ -597,7 +607,12 @@ export async function createBill(input: BillInput): Promise<string> {
     area: "bill",
     action: "created",
     entityId: row.id,
-    summary: `Added the bill “${values.name}” (${formatCurrency(values.amount, { currency: actor.currency })}, due ${formatDate(values.dueDate)})`,
+    key: "billAdded",
+    values: {
+      name: values.name,
+      amount: { money: values.amount, currency: actor.currency },
+      due: { day: values.dueDate },
+    },
   });
   return row.id;
 }
@@ -623,36 +638,26 @@ export async function updateBill(id: string, input: BillInput) {
     .returning({ id: bill.id });
   if (updated.length > 0) {
     const [after] = await selectBills().where(own);
-    const changes =
+    const money = (amount: number) => ({ money: amount, currency: actor.currency });
+    const changes: AuditChange[] =
       before && after
-        ? describeChanges([
-            { label: "name", before: before.name, after: after.name },
-            {
-              label: "amount",
-              before: formatCurrency(before.amount, { currency: actor.currency }),
-              after: formatCurrency(after.amount, { currency: actor.currency }),
-            },
-            {
-              label: "due date",
-              before: formatDate(before.dueDate),
-              after: formatDate(after.dueDate),
-            },
-            {
-              label: "repeat",
-              before: BILL_REPEAT_LABELS[before.repeat as BillRepeat],
-              after: BILL_REPEAT_LABELS[after.repeat as BillRepeat],
-            },
-            { label: "category", before: before.category, after: after.category },
-            { label: "notes", before: before.notes, after: after.notes },
-          ])
-        : "";
+        ? [
+            { field: "name", before: before.name, after: after.name },
+            { field: "amount", before: money(before.amount), after: money(after.amount) },
+            { field: "dueDate", before: { day: before.dueDate }, after: { day: after.dueDate } },
+            { field: "repeat", before: { repeat: before.repeat }, after: { repeat: after.repeat } },
+            { field: "category", before: before.category, after: after.category },
+            { field: "notes", before: before.notes, after: after.notes },
+          ]
+        : [];
     // Saved without changing anything: nothing to record
-    if (changes) {
+    if (hasChanges(changes)) {
       await recordAudit(actor, {
         area: "bill",
         action: "updated",
         entityId: id,
-        summary: `Changed the bill “${values.name}”: ${changes}`,
+        key: "billChanged",
+        values: { name: values.name, changes: { changes } },
       });
     }
     return;
@@ -662,9 +667,7 @@ export async function updateBill(id: string, input: BillInput) {
     bill,
     and(eq(bill.id, id), eq(bill.organizationId, organizationId)),
   );
-  throw new DataError(
-    exists ? "This bill is already paid and can't be changed." : "Bill not found.",
-  );
+  throw new DataError(exists ? "billPaidCantChange" : "billNotFound");
 }
 
 /**
@@ -678,13 +681,14 @@ export async function deleteBill(id: string) {
     .delete(bill)
     .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId)))
     .returning({ id: bill.id, name: bill.name, amount: bill.amount, paidAt: bill.paidAt });
-  if (deleted.length === 0) throw new DataError("Bill not found.");
+  if (deleted.length === 0) throw new DataError("billNotFound");
   const [gone] = deleted;
   await recordAudit(actor, {
     area: "bill",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the ${gone.paidAt ? "paid " : ""}bill “${gone.name}” (${formatCurrency(gone.amount, { currency: actor.currency })})`,
+    key: gone.paidAt ? "paidBillDeleted" : "billDeleted",
+    values: { name: gone.name, amount: { money: gone.amount, currency: actor.currency } },
   });
 }
 
@@ -705,18 +709,18 @@ export async function payBill(
   const { organizationId, userId, timeZone } = actor;
   const existingId =
     "transactionId" in payment
-      ? requiredText(payment.transactionId, "Payment")
+      ? requiredText(payment.transactionId, "payment")
       : null;
   const accountId =
-    "transactionId" in payment ? null : requiredText(payment.accountId, "Account");
-  const day = "transactionId" in payment ? null : isoDay(payment.date, "Payment date");
+    "transactionId" in payment ? null : requiredText(payment.accountId, "account");
+  const day = "transactionId" in payment ? null : isoDay(payment.date, "paymentDate");
 
   const [row] = await db
     .select()
     .from(bill)
     .where(and(eq(bill.id, id), eq(bill.organizationId, organizationId)));
-  if (!row) throw new DataError("Bill not found.");
-  if (row.paidAt) throw new DataError("This bill is already paid.");
+  if (!row) throw new DataError("billNotFound");
+  if (row.paidAt) throw new DataError("billAlreadyPaid");
 
   let paidAt: Date;
   let transactionId: string;
@@ -727,7 +731,7 @@ export async function payBill(
     const candidates = await selectPaymentCandidates(organizationId, timeZone, row);
     const existing = candidates.find((candidate) => candidate.id === existingId);
     if (!existing) {
-      throw new DataError("That transaction can't be this bill's payment.");
+      throw new DataError("wrongPayment");
     }
     paidAt = existing.occurredAt;
     transactionId = existing.id;
@@ -739,7 +743,7 @@ export async function payBill(
         eq(financialAccount.organizationId, organizationId),
       ),
     );
-    if (accountMatches === 0) throw new DataError("Account not found.");
+    if (accountMatches === 0) throw new DataError("accountNotFound");
     paidAt = zonedTime(day!, "12:00", timeZone);
     transactionId = prefixedId("tx")();
     recordPayment = db.insert(transaction).values({
@@ -783,7 +787,12 @@ export async function payBill(
     area: "bill",
     action: "paid",
     entityId: id,
-    summary: `Marked the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })}) as paid on ${formatDate(localDay(paidAt, timeZone))}${recordPayment ? "" : ", with a payment that was already in the transactions"}`,
+    key: recordPayment ? "billPaid" : "billPaidLinked",
+    values: {
+      name: row.name,
+      amount: { money: row.amount, currency: actor.currency },
+      day: { day: localDay(paidAt, timeZone) },
+    },
   });
   return { transactionId, nextDueDate: next };
 }
@@ -800,8 +809,8 @@ export async function undoBillPayment(id: string): Promise<{ deletedPayment: boo
   const { organizationId } = actor;
   const own = and(eq(bill.id, id), eq(bill.organizationId, organizationId));
   const [row] = await db.select().from(bill).where(own);
-  if (!row) throw new DataError("Bill not found.");
-  if (!row.paidAt) throw new DataError("This bill isn't paid.");
+  if (!row) throw new DataError("billNotFound");
+  if (!row.paidAt) throw new DataError("billNotPaid");
 
   // The bill that paying this one added, as long as it's still as it was
   const next = nextDueDate(row.dueDate, row.repeat as BillRepeat);
@@ -849,7 +858,8 @@ export async function undoBillPayment(id: string): Promise<{ deletedPayment: boo
     area: "bill",
     action: "payment-undone",
     entityId: id,
-    summary: `Undid the payment of the bill “${row.name}” (${formatCurrency(row.amount, { currency: actor.currency })})${deletePayment ? " and deleted its transaction" : ""}`,
+    key: deletePayment ? "billPaymentUndoneDeleted" : "billPaymentUndone",
+    values: { name: row.name, amount: { money: row.amount, currency: actor.currency } },
   });
   return { deletedPayment: deletePayment !== null };
 }

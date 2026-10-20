@@ -75,18 +75,17 @@ export async function addAttachment(
   const { organizationId, userId } = context;
 
   if (!(file?.bytes instanceof Uint8Array) || file.bytes.length === 0) {
-    throw new DataError("Choose a file to attach.");
+    throw new DataError("chooseFile");
   }
   if (file.bytes.length > MAX_ATTACHMENT_BYTES) {
-    throw new DataError(
-      `A file can be at most ${formatFileSize(MAX_ATTACHMENT_BYTES)}. This one is ${formatFileSize(file.bytes.length)}.`,
-    );
+    throw new DataError("fileTooLarge", {
+      max: (locale) => formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+      size: (locale) => formatFileSize(file.bytes.length, locale),
+    });
   }
   const contentType = detectAttachmentType(file.bytes);
   if (!contentType) {
-    throw new DataError(
-      `Only ${Object.values(ATTACHMENT_TYPES).join(", ")} files can be attached.`,
-    );
+    throw new DataError("fileType", { types: Object.values(ATTACHMENT_TYPES).join(", ") });
   }
 
   const [transactionMatches, existing] = await Promise.all([
@@ -105,11 +104,9 @@ export async function addAttachment(
       ),
     ),
   ]);
-  if (transactionMatches === 0) throw new DataError("Transaction not found.");
+  if (transactionMatches === 0) throw new DataError("transactionNotFound");
   if (existing >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-    throw new DataError(
-      `A transaction can have at most ${MAX_ATTACHMENTS_PER_TRANSACTION} files.`,
-    );
+    throw new DataError("tooManyFiles", { max: MAX_ATTACHMENTS_PER_TRANSACTION });
   }
 
   const name = cleanFileName(typeof file.name === "string" ? file.name : "");
@@ -126,7 +123,8 @@ export async function addAttachment(
     area: "attachment",
     action: "created",
     entityId: transactionId,
-    summary: `Attached “${name}” to a transaction`,
+    key: "fileAttached",
+    values: { name },
   });
   return selectAttachments(transactionId, context);
 }
@@ -147,9 +145,9 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
     .where(
       and(eq(attachment.id, id), eq(attachment.organizationId, context.organizationId)),
     );
-  if (!row) throw new DataError("File not found.");
+  if (!row) throw new DataError("fileNotFound");
   if (row.createdById !== context.userId && !canManageFinances(context.role)) {
-    throw new DataError("Only the person who added this file, an owner or an admin can delete it.");
+    throw new DataError("fileDeleteNotAllowed");
   }
   await db
     .delete(attachment)
@@ -160,7 +158,8 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
     area: "attachment",
     action: "deleted",
     entityId: row.transactionId,
-    summary: `Deleted the attached file “${row.name}”`,
+    key: "fileDeleted",
+    values: { name: row.name },
   });
   return selectAttachments(row.transactionId, context);
 }

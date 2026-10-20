@@ -25,6 +25,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 import styles from "./Dialog.module.css";
 
 const CloseContext = createContext<() => void>(() => {});
@@ -52,6 +53,7 @@ export default function Dialog({
   size = "md",
   children,
 }: DialogProps) {
+  const { m } = useI18n();
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const close = () => dialogRef.current?.close();
@@ -84,7 +86,7 @@ export default function Dialog({
             type="button"
             className={styles.closeButton}
             onClick={close}
-            aria-label="Close"
+            aria-label={m.common.close}
           >
             <X size={18} />
           </button>

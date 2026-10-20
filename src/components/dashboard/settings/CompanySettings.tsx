@@ -31,7 +31,10 @@ import Message from "@/components/common/form/Message";
 import { submitCompanySettings } from "@/app/dashboard/settings/actions";
 import { initialActionState } from "@/lib/action-state";
 import { authClient } from "@/lib/auth-client";
-import { CURRENCIES, type CurrencyCode } from "@/lib/finance/currencies";
+import { CURRENCIES, currencyName, type CurrencyCode } from "@/lib/finance/currencies";
+import { fill, intlLocale } from "@/i18n/config";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import { amountInputProps, formatCurrency } from "@/lib/format";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
@@ -69,6 +72,10 @@ export default function CompanySettings({
   timeZones,
 }: CompanySettingsProps) {
   const router = useRouter();
+  const i18n = useI18n();
+  const { locale, m } = i18n;
+  const t = m.settings.company;
+  const saveText = (busy: boolean) => (busy ? m.common.saving : m.settings.save);
   // Renaming: its result, and whether it's being saved
   const [renamed, setRenamed] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [renaming, setRenaming] = useState(false);
@@ -90,9 +97,7 @@ export default function CompanySettings({
     const chosen = String(formData.get("currency"));
     if (
       chosen === currency ||
-      !window.confirm(
-        `Show every amount in ${chosen} instead of ${currency}? Nothing is converted: 100.00 ${currency} becomes 100.00 ${chosen}.`,
-      )
+      !window.confirm(fill(t.confirmCurrency, { to: chosen, from: currency }))
     ) {
       return;
     }
@@ -122,10 +127,10 @@ export default function CompanySettings({
     });
     setRenaming(false);
     if (error) {
-      setRenamed({ type: "error", text: error.message ?? "Could not rename the company. Please try again." });
+      setRenamed({ type: "error", text: authErrorText(error, i18n, t.renameFailed) });
       return;
     }
-    setRenamed({ type: "success", text: `The company is now called ${name}.` });
+    setRenamed({ type: "success", text: fill(t.renamed, { name }) });
     // The name is also shown in the top bar and on other pages
     router.refresh();
   };
@@ -135,16 +140,14 @@ export default function CompanySettings({
       {renamed && <Message type={renamed.type}>{renamed.text}</Message>}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Company name</h2>
-          <p className={shared.cardHint}>
-            Shown in the top bar and in the invitations you send.
-          </p>
+          <h2 className={shared.cardTitle}>{t.name}</h2>
+          <p className={shared.cardHint}>{t.nameHint}</p>
         </div>
         {canManage ? (
           <form className={styles.form} onSubmit={handleRename}>
             <Input
               name="name"
-              aria-label="Company name"
+              aria-label={t.name}
               // Show the saved name after it changes
               key={organization.name}
               defaultValue={organization.name}
@@ -158,7 +161,7 @@ export default function CompanySettings({
               variant="primary"
               size="sm"
               loading={renaming}
-              text={renaming ? "Saving" : "Save"}
+              text={saveText(renaming)}
               disabled={renaming}
             />
           </form>
@@ -174,17 +177,14 @@ export default function CompanySettings({
       )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Timezone</h2>
-          <p className={shared.cardHint}>
-            Decides which day each transaction belongs to and when a new day
-            starts on the dashboard.
-          </p>
+          <h2 className={shared.cardTitle}>{t.timezone}</h2>
+          <p className={shared.cardHint}>{t.timezoneHint}</p>
         </div>
         {canManage ? (
           <form className={styles.form} onSubmit={handleSubmit}>
             <Select
               name="timezone"
-              aria-label="Timezone"
+              aria-label={t.timezone}
               // Re-select the saved value after it changes
               key={timeZone}
               defaultValue={timeZone}
@@ -201,7 +201,7 @@ export default function CompanySettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Save"}
+              text={saveText(pending)}
               disabled={pending}
             />
           </form>
@@ -210,14 +210,14 @@ export default function CompanySettings({
         )}
         {canManage && deviceTimeZone && deviceTimeZone !== timeZone && (
           <p className={styles.hint}>
-            This device is set to {deviceTimeZone.replaceAll("_", " ")}.{" "}
+            {fill(t.deviceTimezone, { zone: deviceTimeZone.replaceAll("_", " ") })}{" "}
             <button
               type="button"
               className={styles.linkButton}
               onClick={() => save(deviceTimeZone)}
               disabled={pending}
             >
-              Use it for the company
+              {t.useDevice}
             </button>
           </p>
         )}
@@ -225,18 +225,14 @@ export default function CompanySettings({
 
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Currency</h2>
-          <p className={shared.cardHint}>
-            The currency your company keeps its books in. Every amount is
-            shown in it. Changing it doesn&apos;t convert anything, so choose
-            it before adding transactions.
-          </p>
+          <h2 className={shared.cardTitle}>{t.currency}</h2>
+          <p className={shared.cardHint}>{t.currencyHint}</p>
         </div>
         {canManage ? (
           <form className={styles.form} onSubmit={handleCurrency}>
             <Select
               name="currency"
-              aria-label="Currency"
+              aria-label={t.currency}
               // Re-select the saved value after it changes
               key={currency}
               defaultValue={currency}
@@ -244,7 +240,7 @@ export default function CompanySettings({
             >
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
                 <option key={code} value={code}>
-                  {code} – {CURRENCIES[code]}
+                  {code} – {currencyName(code, intlLocale(locale))}
                 </option>
               ))}
             </Select>
@@ -253,36 +249,31 @@ export default function CompanySettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Save"}
+              text={saveText(pending)}
               disabled={pending}
             />
           </form>
         ) : (
           <p className={styles.current}>
             {currency}
-            {currency in CURRENCIES && ` – ${CURRENCIES[currency as CurrencyCode]}`}
+            {currency in CURRENCIES && ` – ${currencyName(currency, intlLocale(locale))}`}
           </p>
         )}
       </section>
 
       <section className={shared.card} id="budget">
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Overall monthly budget</h2>
-          <p className={shared.cardHint}>
-            The most the company wants to spend in a month, across all
-            categories. The dashboard shows how much of it is used, and the
-            bell warns at 80% and when it&apos;s exceeded. Each category can
-            have its own budget too (below).
-          </p>
+          <h2 className={shared.cardTitle}>{t.budget}</h2>
+          <p className={shared.cardHint}>{t.budgetHint}</p>
         </div>
         {canManage ? (
           <form className={styles.form} onSubmit={handleBudget}>
             <Input
               name="overallBudget"
               type="number"
-              aria-label={`Overall monthly budget (${currency})`}
+              aria-label={fill(t.budgetLabel, { currency })}
               {...amountInputProps(currency)}
-              placeholder="No overall budget"
+              placeholder={t.noBudget}
               // Show the saved amount after it changes
               key={monthlyBudget ?? "none"}
               defaultValue={monthlyBudget ?? ""}
@@ -293,15 +284,15 @@ export default function CompanySettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Save"}
+              text={saveText(pending)}
               disabled={pending}
             />
           </form>
         ) : (
           <p className={styles.current}>
             {monthlyBudget === null
-              ? "None"
-              : `${formatCurrency(monthlyBudget, { currency })} a month`}
+              ? t.none
+              : fill(t.perMonth, { amount: formatCurrency(monthlyBudget, { currency }, locale) })}
           </p>
         )}
       </section>

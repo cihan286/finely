@@ -22,6 +22,8 @@ import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react";
 import Spinner from "@/components/common/spinner/Spinner";
 import { authClient } from "@/lib/auth-client";
 import { useDismiss } from "@/lib/use-dismiss";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./CompanySwitcher.module.css";
 
 interface Company {
@@ -38,6 +40,7 @@ interface CompanySwitcherProps {
 
 export default function CompanySwitcher({ current, companies }: CompanySwitcherProps) {
   const router = useRouter();
+  const t = useI18n().m.shell.switcher;
   const [open, setOpen] = useState(false);
   // The company being switched to, until the page shows it
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export default function CompanySwitcher({ current, companies }: CompanySwitcherP
         aria-haspopup="menu"
         aria-expanded={open}
         aria-busy={switching || undefined}
-        aria-label={`Company: ${current.name}. Switch company`}
+        aria-label={fill(t.label, { name: current.name })}
         title={current.name}
       >
         {switching ? <Spinner /> : <Building2 size={16} aria-hidden="true" />}
@@ -84,7 +87,7 @@ export default function CompanySwitcher({ current, companies }: CompanySwitcherP
       </button>
 
       {open && (
-        <div className={styles.menu} role="menu" aria-label="Your companies">
+        <div className={styles.menu} role="menu" aria-label={t.yourCompanies}>
           {companies.map((company) => {
             const active = company.id === current.id;
             return (
@@ -108,7 +111,7 @@ export default function CompanySwitcher({ current, companies }: CompanySwitcherP
             onClick={() => setOpen(false)}
           >
             <Plus size={16} aria-hidden="true" />
-            <span className={styles.name}>New company</span>
+            <span className={styles.name}>{t.newCompany}</span>
           </Link>
         </div>
       )}

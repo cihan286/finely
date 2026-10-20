@@ -17,9 +17,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { companySettings } from "@/db/finance";
 import { isValidTimeZone } from "@/lib/dates";
-import { CURRENCIES, isCurrency } from "@/lib/finance/currencies";
+import { isCurrency } from "@/lib/finance/currencies";
 import { recordAudit } from "./audit";
-import { formatCurrency } from "@/lib/format";
 import { DataError, getFinanceContext, money } from "./common";
 
 /** The current company's settings */
@@ -44,9 +43,9 @@ export async function getCompanySettings() {
 export async function updateOverallBudget(amount: number | null) {
   const actor = await getFinanceContext({ manage: true });
   const { organizationId, currency } = actor;
-  const monthlyBudget = amount === null ? null : money(amount, "Monthly budget", currency);
+  const monthlyBudget = amount === null ? null : money(amount, "monthlyBudget", currency);
   if (monthlyBudget !== null && monthlyBudget <= 0) {
-    throw new DataError("Monthly budget must be more than zero. Leave it empty for no budget.");
+    throw new DataError("budgetAboveZero");
   }
   await db
     .insert(companySettings)
@@ -58,10 +57,12 @@ export async function updateOverallBudget(amount: number | null) {
   await recordAudit(actor, {
     area: "category",
     action: "updated",
-    summary:
-      monthlyBudget === null
-        ? "Removed the company's overall monthly budget"
-        : `Set the company's overall monthly budget to ${formatCurrency(monthlyBudget, { currency })}`,
+    ...(monthlyBudget === null
+      ? { key: "overallBudgetRemoved" as const }
+      : {
+          key: "overallBudgetSet" as const,
+          values: { amount: { money: monthlyBudget, currency } },
+        }),
   });
 }
 
@@ -87,7 +88,7 @@ export async function updateTimeZone(timeZone: string) {
   const actor = await getFinanceContext({ manage: true });
   const { organizationId } = actor;
   if (typeof timeZone !== "string" || !isValidTimeZone(timeZone)) {
-    throw new DataError("Choose a timezone from the list.");
+    throw new DataError("chooseTimezone");
   }
   await db
     .insert(companySettings)
@@ -99,7 +100,8 @@ export async function updateTimeZone(timeZone: string) {
   await recordAudit(actor, {
     area: "settings",
     action: "updated",
-    summary: `Changed the company's timezone to ${timeZone}`,
+    key: "timezoneChanged",
+    values: { zone: timeZone },
   });
 }
 
@@ -109,7 +111,7 @@ export async function updateTimeZone(timeZone: string) {
  */
 export async function updateCurrency(currency: string) {
   const actor = await getFinanceContext({ manage: true });
-  if (!isCurrency(currency)) throw new DataError("Choose a currency from the list.");
+  if (!isCurrency(currency)) throw new DataError("chooseCurrency");
   if (currency === actor.currency) return;
   await db
     .insert(companySettings)
@@ -121,6 +123,7 @@ export async function updateCurrency(currency: string) {
   await recordAudit(actor, {
     area: "settings",
     action: "updated",
-    summary: `Changed the company's currency from ${actor.currency} to ${currency} (${CURRENCIES[currency]})`,
+    key: "currencyChanged",
+    values: { from: actor.currency, to: { currency } },
   });
 }

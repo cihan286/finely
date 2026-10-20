@@ -26,6 +26,9 @@ import { useState } from "react";
 import Button from "@/components/common/button/Button";
 import { Check, ArrowRight } from "lucide-react";
 import { PLANS } from "@/lib/finance/plans";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 
 // What every plan needs: name, prices, features list and button
 interface Plan {
@@ -43,49 +46,45 @@ interface Plan {
 
 type BillingCycle = "monthly" | "yearly";
 
-// The plans shown on the page, in order
-const plans: Plan[] = [
+// The plans shown on the page, in order, in the page's language
+const plansIn = (t: Messages["home"]["pricing"]): Plan[] => [
   {
     name: "Starter",
-    description: "For small teams",
+    description: t.starterDescription,
     monthlyPrice: PLANS.starter.monthlyPrice,
     yearlyPrice: PLANS.starter.yearlyPrice,
     features: [
-      `Up to ${PLANS.starter.members} team members`,
-      "Statement import and linked US banks",
-      "Bills, budgets and a 30-day forecast",
-      "Insights, exports and an activity log",
+      fill(t.upToMembers, { members: PLANS.starter.members }),
+      t.starterImports,
+      t.starterPlanning,
+      t.starterInsights,
     ],
-    cta: "Get started",
+    cta: t.getStarted,
     ctaHref: "/signup",
     variant: "secondary",
     featured: false,
   },
   {
     name: "Growth",
-    description: "For growing teams",
+    description: t.growthDescription,
     monthlyPrice: PLANS.growth.monthlyPrice,
     yearlyPrice: PLANS.growth.yearlyPrice,
     features: [
-      `Up to ${PLANS.growth.members} team members`,
-      "Everything in Starter",
+      fill(t.upToMembers, { members: PLANS.growth.members }),
+      t.everythingInStarter,
     ],
-    cta: "Get started",
+    cta: t.getStarted,
     ctaHref: "/signup",
     variant: "primary",
     featured: true,
   },
   {
     name: "Enterprise",
-    description: `For teams of more than ${PLANS.growth.members}`,
+    description: fill(t.enterpriseDescription, { members: PLANS.growth.members }),
     monthlyPrice: null,
     yearlyPrice: null,
-    features: [
-      "Unlimited team members",
-      "Everything in Growth",
-      "Set up together with our team",
-    ],
-    cta: "Contact sales",
+    features: [t.unlimitedMembers, t.everythingInGrowth, t.setUpTogether],
+    cta: t.contactSales,
     ctaHref: "/contact",
     variant: "secondary",
     featured: false,
@@ -94,14 +93,16 @@ const plans: Plan[] = [
 
 // Lowest yearly discount among paid plans, so the badge holds for every plan
 const yearlySavings = Math.min(
-  ...plans.flatMap(({ monthlyPrice, yearlyPrice }) =>
-    monthlyPrice !== null && yearlyPrice !== null
+  ...Object.values(PLANS).flatMap(({ monthlyPrice, yearlyPrice }) =>
+    monthlyPrice && yearlyPrice !== null
       ? [Math.floor((1 - yearlyPrice / monthlyPrice) * 100)]
       : [],
   ),
 );
 
 export default function Pricing() {
+  const t = useI18n().m.home.pricing;
+  const plans = plansIn(t);
   // Which prices are shown right now: monthly or yearly
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 
@@ -109,17 +110,14 @@ export default function Pricing() {
     <section id="pricing" className={styles.mainContainer}>
       <div className={styles.backgroundLayer} aria-hidden="true" />
       <div className={styles.headlineContainer}>
-        <span className={styles.title}>Pricing</span>
+        <span className={styles.title}>{t.title}</span>
         <div className={styles.headline}>
-          <span>Simple Pricing That </span>
-          <span>Scales With You</span>
+          <span>{t.headline1} </span>
+          <span>{t.headline2}</span>
         </div>
         <div className={styles.subHeadline}>
-          <span>Every plan includes all of Finely: you pay for the size of your team.</span>
-          <span>
-            Free for teams of up to {PLANS.free.members}. Upgrade, downgrade or
-            cancel anytime.
-          </span>
+          <span>{t.sub1}</span>
+          <span>{fill(t.sub2, { members: PLANS.free.members })}</span>
         </div>
 
         {/* Monthly / Yearly switch */}
@@ -130,7 +128,7 @@ export default function Pricing() {
             }`}
             onClick={() => setBillingCycle("monthly")}
           >
-            Monthly
+            {t.monthly}
           </button>
           <button
             className={`${styles.toggleOption} ${
@@ -138,8 +136,10 @@ export default function Pricing() {
             }`}
             onClick={() => setBillingCycle("yearly")}
           >
-            Yearly
-            <span className={styles.savingsBadge}>Save {yearlySavings}%</span>
+            {t.yearly}
+            <span className={styles.savingsBadge}>
+              {fill(t.save, { percent: yearlySavings })}
+            </span>
           </button>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function Pricing() {
             }`}
           >
             {plan.featured && (
-              <span className={styles.popularBadge}>Most popular</span>
+              <span className={styles.popularBadge}>{t.mostPopular}</span>
             )}
 
             <div className={styles.cardHeader}>
@@ -164,7 +164,7 @@ export default function Pricing() {
 
             <div className={styles.priceRow}>
               {plan.monthlyPrice === null ? (
-                <span className={styles.priceCustom}>Custom</span>
+                <span className={styles.priceCustom}>{t.custom}</span>
               ) : (
                 <>
                   <span className={styles.priceCurrency}>$</span>
@@ -173,12 +173,12 @@ export default function Pricing() {
                       ? plan.yearlyPrice
                       : plan.monthlyPrice}
                   </span>
-                  <span className={styles.pricePeriod}>/mo</span>
+                  <span className={styles.pricePeriod}>{t.perMonth}</span>
                 </>
               )}
             </div>
             {plan.monthlyPrice !== null && billingCycle === "yearly" && (
-              <span className={styles.billedNote}>billed annually</span>
+              <span className={styles.billedNote}>{t.billedAnnually}</span>
             )}
 
             <div className={styles.divider} />

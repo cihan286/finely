@@ -75,7 +75,7 @@ export async function updateEmailPreferences(preferences: EmailPreferences) {
     typeof preferences?.weeklyDigest !== "boolean" ||
     typeof preferences?.unusualCharges !== "boolean"
   ) {
-    throw new DataError("Choose which emails you want.");
+    throw new DataError("chooseEmails");
   }
   const values = {
     weeklyDigest: preferences.weeklyDigest,
@@ -119,12 +119,13 @@ export async function unsubscribe(target: UnsubscribeTarget): Promise<string | n
 async function selectRecipients(
   organizationId: string,
   kind: keyof EmailPreferences,
-): Promise<{ userId: string; name: string; email: string }[]> {
+): Promise<{ userId: string; name: string; email: string; locale: string | null }[]> {
   const rows = await db
     .select({
       userId: user.id,
       name: user.name,
       email: user.email,
+      locale: user.locale,
       wanted: notificationPreference[kind],
     })
     .from(member)
@@ -139,7 +140,7 @@ async function selectRecipients(
     .where(and(eq(member.organizationId, organizationId), eq(user.emailVerified, true)));
   return rows
     .filter((row) => row.wanted ?? DEFAULT_EMAIL_PREFERENCES[kind])
-    .map(({ userId, name, email }) => ({ userId, name, email }));
+    .map(({ userId, name, email, locale }) => ({ userId, name, email, locale }));
 }
 
 // A company's completed expenses since the history for unusual charges
@@ -305,7 +306,8 @@ export async function loadDigest(
       accounts.reduce((sum, a) => sum + a.openingBalance + a.completedTotal, 0),
     ),
     topCategories: topCategories.map((c) => ({
-      name: c.name ?? "Uncategorized",
+      // null: no category ("Uncategorized" in each reader's language)
+      name: c.name,
       amount: round2(c.amount),
     })),
     overdueBills: billSummary.overdue,

@@ -20,6 +20,8 @@ import Field from "@/components/common/form/Field";
 import { Input } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import styles from "./AuthForm.module.css";
 
 // "Acme Corp" -> "acme-corp-4f9a2c": readable, and unique thanks to the suffix
@@ -37,6 +39,8 @@ function makeSlug(name: string): string {
 
 export default function CreateOrganizationForm() {
   const router = useRouter();
+  const i18n = useI18n();
+  const t = i18n.m.auth.onboarding;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +60,7 @@ export default function CreateOrganizationForm() {
     });
 
     if (error) {
-      setError(error.message ?? "Could not create your company. Please try again.");
+      setError(authErrorText(error, i18n, t.failed));
       setLoading(false);
       return;
     }
@@ -75,14 +79,14 @@ export default function CreateOrganizationForm() {
       )}
 
       <Field
-        label="Company name"
-        hint="You can invite your team once it's set up."
+        label={t.companyName}
+        hint={t.companyHint}
       >
         <Input
           size="lg"
           name="name"
           autoComplete="organization"
-          placeholder="Northpeak Studio"
+          placeholder={t.companyPlaceholder}
           maxLength={100}
           required
         />
@@ -92,7 +96,7 @@ export default function CreateOrganizationForm() {
         <Button
           type="submit"
           loading={loading}
-          text={loading ? "Setting up" : "Continue"}
+          text={loading ? t.settingUp : t.continue}
           size="sm"
           fullWidth
           disabled={loading}

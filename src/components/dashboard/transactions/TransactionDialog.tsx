@@ -50,6 +50,8 @@ import type {
   Category,
   TransactionDetails,
 } from "@/types/finance";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import Attachments from "./Attachments";
 import forms from "./forms.module.css";
 import styles from "./TransactionDialog.module.css";
@@ -77,13 +79,14 @@ interface TransactionDialogProps {
 }
 
 export default function TransactionDialog(props: TransactionDialogProps) {
+  const t = useI18n().m.transactions.dialog;
   const [state, dispatch, pending] = useActionState(
     submitTransaction,
     initialActionState,
   );
   return (
     <Dialog
-      title={props.transaction ? "Edit transaction" : "Add transaction"}
+      title={props.transaction ? t.editTitle : t.addTitle}
       closeHref={props.closeHref}
       busy={pending}
     >
@@ -126,6 +129,9 @@ function TransactionForm({
   submit,
 }: TransactionFormProps) {
   const close = useCloseDialog();
+  const { locale, m } = useI18n();
+  const words = m.transactions;
+  const t = words.dialog;
   const isNew = transaction === null;
   // Whether "always use this category" is ticked
   const [remember, setRemember] = useState(false);
@@ -135,7 +141,7 @@ function TransactionForm({
     const submitter = e.nativeEvent.submitter;
     if (
       submitter?.getAttribute("value") === "delete" &&
-      !window.confirm("Delete this transaction? This can't be undone.")
+      !window.confirm(t.confirmDelete)
     ) {
       return;
     }
@@ -160,7 +166,7 @@ function TransactionForm({
 
       {/* Money out / Money in: decides whether the amount is negative */}
       <fieldset className={styles.direction}>
-        <legend className={forms.srOnly}>Type</legend>
+        <legend className={forms.srOnly}>{t.type}</legend>
         <label>
           <input
             type="radio"
@@ -168,7 +174,7 @@ function TransactionForm({
             value="out"
             defaultChecked={!transaction || transaction.amount < 0}
           />
-          <span>Money out</span>
+          <span>{words.moneyOut}</span>
         </label>
         <label>
           <input
@@ -177,12 +183,12 @@ function TransactionForm({
             value="in"
             defaultChecked={transaction !== null && transaction.amount > 0}
           />
-          <span>Money in</span>
+          <span>{words.moneyIn}</span>
         </label>
       </fieldset>
 
       <div className={forms.grid}>
-        <Field label={`Amount (${currency})`}>
+        <Field label={fill(t.amountIn, { currency })}>
           <Input
             name="amount"
             type="number"
@@ -192,7 +198,7 @@ function TransactionForm({
             autoFocus
           />
         </Field>
-        <Field label="Date">
+        <Field label={t.date}>
           <Input
             name="date"
             type="date"
@@ -202,11 +208,11 @@ function TransactionForm({
         </Field>
       </div>
 
-      <Field label="Description">
+      <Field label={t.description}>
         <Input
           name="name"
           type="text"
-          placeholder="e.g. Office rent, Stripe payout"
+          placeholder={t.descriptionPlaceholder}
           defaultValue={transaction?.name ?? ""}
           maxLength={120}
           required
@@ -214,7 +220,7 @@ function TransactionForm({
       </Field>
 
       <div className={forms.grid}>
-        <Field label="Account">
+        <Field label={t.account}>
           <Select
             name="accountId"
             defaultValue={transaction?.account ?? accounts[0]?.id}
@@ -228,14 +234,14 @@ function TransactionForm({
             ))}
           </Select>
         </Field>
-        <Field label="Category">
+        <Field label={t.category}>
           <Select
             name="categoryId"
             defaultValue={transaction?.categoryId ?? ""}
           >
-            <option value="">Uncategorized</option>
+            <option value="">{words.uncategorized}</option>
             {incomeCategories.length > 0 && (
-              <optgroup label="Money in">
+              <optgroup label={words.moneyIn}>
                 {incomeCategories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -244,7 +250,7 @@ function TransactionForm({
               </optgroup>
             )}
             {expenseCategories.length > 0 && (
-              <optgroup label="Money out">
+              <optgroup label={words.moneyOut}>
                 {expenseCategories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -260,22 +266,18 @@ function TransactionForm({
           but the one this transaction already has stays */}
       {cards.length > 0 && (
         <Field
-          label="Paid with"
+          label={t.paidWith}
           optional
-          hint={
-            isNew
-              ? "Left empty, the card is taken from the description if it names one (“CARD 4821”)."
-              : undefined
-          }
+          hint={isNew ? t.paidWithHint : undefined}
         >
           <Select name="cardId" defaultValue={transaction?.cardId ?? ""}>
-            <option value="">No card</option>
+            <option value="">{t.noCard}</option>
             {cards
               .filter((c) => !c.archived || c.id === transaction?.cardId)
               .map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} •••• {c.last4}
-                  {c.archived ? " (archived)" : ""}
+                  {c.archived ? ` ${t.archived}` : ""}
                 </option>
               ))}
           </Select>
@@ -292,18 +294,18 @@ function TransactionForm({
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
             />
-            Always use this category for descriptions like this
+            {t.remember}
           </label>
           {remember && (
             <Field
-              label="Descriptions containing"
-              hint="Leave empty to use the whole description. Shorter text matches more, e.g. “AWS”. Transactions that have no category yet get it too."
+              label={t.containing}
+              hint={t.containingHint}
             >
               <Input
                 name="ruleText"
                 type="text"
                 defaultValue={transaction?.name ?? ""}
-                placeholder="The whole description"
+                placeholder={t.wholeDescription}
                 minLength={MIN_RULE_TEXT_LENGTH}
                 maxLength={MAX_RULE_TEXT_LENGTH}
               />
@@ -312,17 +314,17 @@ function TransactionForm({
         </div>
       )}
 
-      <Field label="Status">
+      <Field label={t.status}>
         <Select
           name="status"
           defaultValue={transaction?.status ?? "completed"}
         >
-          <option value="completed">Completed</option>
-          <option value="pending">Pending (not in balances yet)</option>
+          <option value="completed">{words.status.completed}</option>
+          <option value="pending">{words.status.pendingLong}</option>
         </Select>
       </Field>
 
-      <Field label="Notes" optional>
+      <Field label={t.notes} optional>
         <Textarea
           name="notes"
           rows={2}
@@ -335,9 +337,12 @@ function TransactionForm({
           by opening the transaction. */}
       {isNew && (
         <Field
-          label="Receipt or invoice"
+          label={t.receipt}
           optional
-          hint={`${Object.values(ATTACHMENT_TYPES).join(", ")}, up to ${formatFileSize(MAX_ATTACHMENT_BYTES)}. Open the transaction later to add more.`}
+          hint={fill(t.receiptHint, {
+            types: Object.values(ATTACHMENT_TYPES).join(", "),
+            size: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+          })}
         >
           <Input name="receipt" type="file" accept={ATTACHMENT_ACCEPT} />
         </Field>
@@ -355,14 +360,14 @@ function TransactionForm({
             disabled={pending}
           >
             <Trash2 size={16} />
-            Delete
+            {m.common.delete}
           </button>
         )}
         <div className={forms.footerRight}>
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -371,7 +376,7 @@ function TransactionForm({
             variant="primary"
             size="sm"
             loading={pending}
-            text={pending ? "Saving" : isNew ? "Add transaction" : "Save changes"}
+            text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
             disabled={pending}
           />
         </div>

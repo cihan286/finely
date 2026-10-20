@@ -16,14 +16,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Button from "@/components/common/button/Button";
-import { EMAIL_KIND_LABELS, readUnsubscribeLink } from "@/lib/email/unsubscribe";
+import { readUnsubscribeLink } from "@/lib/email/unsubscribe";
+import { rich } from "@/i18n/rich";
+import { getMessages } from "@/i18n/server";
 import { confirmUnsubscribe } from "./actions";
 import styles from "../site.module.css";
 
-export const metadata: Metadata = {
-  title: "Unsubscribe",
-  // Personal links: nothing for a search engine
-  robots: { index: false },
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: (await getMessages()).site.unsubscribe.title,
+    // Personal links: nothing for a search engine
+    robots: { index: false },
+  };
+}
+
+// The way back to these emails, inside the sentences
+const settingsLink = {
+  settings: (text: string) => <Link href="/dashboard/settings#emails">{text}</Link>,
 };
 
 // One value from the address: the first if repeated, "" if missing
@@ -44,38 +53,26 @@ export default async function UnsubscribePage({
   };
   const target = readUnsubscribeLink(query);
   const done = Boolean(single(params.done));
+  const t = (await getMessages()).site.unsubscribe;
 
   return (
     <>
-      <span className={styles.label}>Email notifications</span>
-      <h1 className={styles.title}>
-        {!target ? "This link doesn't work" : done ? "You're unsubscribed" : "Unsubscribe"}
-      </h1>
+      <span className={styles.label}>{t.label}</span>
+      <h1 className={styles.title}>{!target ? t.broken : done ? t.done : t.title}</h1>
 
       {!target ? (
-        <p className={styles.intro}>
-          The link is incomplete or was changed. Open the link in the email
-          again, or choose your emails under{" "}
-          <Link href="/dashboard/settings#emails">Settings → Email notifications</Link>.
-        </p>
+        <p className={styles.intro}>{rich(t.brokenText, settingsLink)}</p>
       ) : done ? (
-        <p className={styles.intro}>
-          You won&apos;t get {EMAIL_KIND_LABELS[target.kind]} for this company
-          any more. Changed your mind? Switch it back on under{" "}
-          <Link href="/dashboard/settings#emails">Settings → Email notifications</Link>.
-        </p>
+        <p className={styles.intro}>{rich(t.stopped[target.kind], settingsLink)}</p>
       ) : (
         <>
-          <p className={styles.intro}>
-            Stop {EMAIL_KIND_LABELS[target.kind]} for this company? Your other
-            emails from Finely stay as they are.
-          </p>
+          <p className={styles.intro}>{t.question[target.kind]}</p>
           <form action={confirmUnsubscribe}>
             <input type="hidden" name="u" value={query.u} />
             <input type="hidden" name="o" value={query.o} />
             <input type="hidden" name="k" value={query.k} />
             <input type="hidden" name="t" value={query.t} />
-            <Button type="submit" variant="primary" text="Unsubscribe" />
+            <Button type="submit" variant="primary" text={t.title} />
           </form>
         </>
       )}

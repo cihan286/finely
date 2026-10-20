@@ -27,7 +27,8 @@ import { account, invitation, member, organization, session, user } from "@/db/s
 import { afterResponse } from "@/lib/after-response";
 import { sendEmail } from "@/lib/email/send";
 import { accountDeletedEmail } from "@/lib/email/templates";
-import { AUDIT_AREAS, type AuditArea } from "@/lib/finance/audit";
+import { renderAudit } from "@/lib/finance/audit";
+import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/session";
 import { recordAudit } from "./audit";
 import { DataError } from "./common";
@@ -43,6 +44,8 @@ export interface PersonalData {
     email: string;
     emailVerified: boolean;
     image: string | null;
+    /** "en" or "tr"; null before the person picked or signed up with one */
+    language: string | null;
     createdAt: string;
   };
   /** "credential" = email and password; otherwise the service, e.g. "google" */
@@ -154,6 +157,7 @@ export async function exportPersonalData(): Promise<PersonalData> {
           at: auditLog.createdAt,
           area: auditLog.area,
           what: auditLog.summary,
+          details: auditLog.details,
         })
         .from(auditLog)
         .innerJoin(organization, eq(auditLog.organizationId, organization.id))
@@ -161,7 +165,9 @@ export async function exportPersonalData(): Promise<PersonalData> {
         .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
         .limit(MAX_ACTIVITY_LINES),
     ]);
-  if (!profile) throw new DataError("Account not found.");
+  if (!profile) throw new DataError("accountNotFound");
+  const { locale, m } = await getI18n();
+  const areas: Record<string, string> = m.audit.areas;
 
   return {
     exportedAt: new Date().toISOString(),
@@ -170,6 +176,7 @@ export async function exportPersonalData(): Promise<PersonalData> {
       email: profile.email,
       emailVerified: profile.emailVerified,
       image: profile.image,
+      language: profile.locale,
       createdAt: profile.createdAt.toISOString(),
     },
     signInMethods: methods.map((m) => ({
@@ -202,11 +209,10 @@ export async function exportPersonalData(): Promise<PersonalData> {
     activity: activity.map((a) => ({
       company: a.company,
       at: a.at.toISOString(),
-      about: AUDIT_AREAS[a.area as AuditArea] ?? a.area,
-      what: a.what,
+      about: areas[a.area] ?? a.area,
+      what: a.details ? renderAudit(a.details, m, locale) : a.what,
     })),
-    note:
-      "Your password and sign-in tokens are left out on purpose. Transactions, bills, files and other records of a company belong to that company, not to you: its owner or an admin can export them.",
+    note: m.settings.person.exportNote,
   };
 }
 
@@ -219,15 +225,15 @@ export async function exportPersonalData(): Promise<PersonalData> {
 export async function deleteOwnAccount(confirmation: string) {
   const { id } = await requireUser();
   const [person] = await db
-    .select({ name: user.name, email: user.email })
+    .select({ name: user.name, email: user.email, locale: user.locale })
     .from(user)
     .where(eq(user.id, id));
-  if (!person) throw new DataError("Account not found.");
+  if (!person) throw new DataError("accountNotFound");
   if (
     typeof confirmation !== "string" ||
     confirmation.trim().toLowerCase() !== person.email.toLowerCase()
   ) {
-    throw new DataError("Type your email address exactly to confirm.");
+    throw new DataError("confirmEmail");
   }
 
   const memberships = await db
@@ -241,9 +247,9 @@ export async function deleteOwnAccount(confirmation: string) {
     .where(eq(member.userId, id));
   const owned = memberships.filter((m) => m.role === "owner").map((m) => m.company);
   if (owned.length > 0) {
-    throw new DataError(
-      `You still own ${owned.join(", ")}. Hand ${owned.length === 1 ? "it" : "each"} over to someone else or delete ${owned.length === 1 ? "it" : "them"} first (Settings, at the bottom, in that company).`,
-    );
+    throw new DataError(owned.length === 1 ? "stillOwnsOne" : "stillOwnsMany", {
+      companies: owned.join(", "),
+    });
   }
 
   // While the account still exists, so the lines carry who it was
@@ -253,7 +259,7 @@ export async function deleteOwnAccount(confirmation: string) {
       {
         area: "team",
         action: "left",
-        summary: "Left the company (deleted their Finely account)",
+        key: "leftDeletedAccount",
       },
     );
   }

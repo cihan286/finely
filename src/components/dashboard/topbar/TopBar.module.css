@@ -254,6 +254,11 @@
 
 /* Screens narrower than 768px (phones and tablets) */
 @media (max-width: 768px) {
+  /* No room on phones: the language is picked in Settings → Your account */
+  .language {
+    display: none;
+  }
+
   .topBar {
     height: 64px;
     padding: 0 1rem;

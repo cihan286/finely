@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/i18n/client";
 import Spinner from "@/components/common/spinner/Spinner";
 
 interface ResendVerificationButtonProps {
@@ -25,6 +26,7 @@ export default function ResendVerificationButton({
   callbackURL,
   className,
 }: ResendVerificationButtonProps) {
+  const t = useI18n().m.auth.resend;
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const handleClick = async () => {
@@ -33,7 +35,7 @@ export default function ResendVerificationButton({
     setState(error ? "error" : "sent");
   };
 
-  if (state === "sent") return <span role="status">Sent! Check your inbox.</span>;
+  if (state === "sent") return <span role="status">{t.sent}</span>;
 
   return (
     <button
@@ -44,12 +46,12 @@ export default function ResendVerificationButton({
     >
       {state === "sending" ? (
         <>
-          <Spinner size={12} /> Sending
+          <Spinner size={12} /> {t.sending}
         </>
       ) : state === "error" ? (
-        "Couldn't send. Try again"
+        t.failed
       ) : (
-        "Resend email"
+        t.resend
       )}
     </button>
   );

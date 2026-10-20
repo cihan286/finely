@@ -154,9 +154,9 @@ export async function getRecurring(): Promise<{
 export async function hideRecurring(key: string, name: string) {
   const actor = await getFinanceContext();
   const { organizationId } = actor;
-  const cleanKey = requiredText(key, "Payment", 200);
-  if (!/^(in|out):./.test(cleanKey)) throw new DataError("Payment not found.");
-  const cleanName = requiredText(name, "Name", 200);
+  const cleanKey = requiredText(key, "payment", 200);
+  if (!/^(in|out):./.test(cleanKey)) throw new DataError("paymentNotFound");
+  const cleanName = requiredText(name, "name", 200);
   const added = await db
     .insert(recurringDismissal)
     .values({ organizationId, key: cleanKey, name: cleanName })
@@ -166,7 +166,8 @@ export async function hideRecurring(key: string, name: string) {
     await recordAudit(actor, {
       area: "settings",
       action: "recurring-hidden",
-      summary: `Marked “${cleanName}” as not a regular payment`,
+      key: "recurringHidden",
+      values: { name: cleanName },
     });
   }
 }
@@ -180,15 +181,16 @@ export async function showRecurring(key: string) {
     .where(
       and(
         eq(recurringDismissal.organizationId, organizationId),
-        eq(recurringDismissal.key, requiredText(key, "Payment", 200)),
+        eq(recurringDismissal.key, requiredText(key, "payment", 200)),
       ),
     )
     .returning({ name: recurringDismissal.name });
-  if (removed.length === 0) throw new DataError("Payment not found.");
+  if (removed.length === 0) throw new DataError("paymentNotFound");
   await recordAudit(actor, {
     area: "settings",
     action: "recurring-shown",
-    summary: `Counted “${removed[0].name}” as a regular payment again`,
+    key: "recurringShown",
+    values: { name: removed[0].name },
   });
 }
 

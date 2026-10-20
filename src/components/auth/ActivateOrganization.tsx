@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/i18n/client";
 import Message from "@/components/common/form/Message";
 import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./AuthForm.module.css";
@@ -25,6 +26,7 @@ export default function ActivateOrganization({
   organizationId: string;
 }) {
   const router = useRouter();
+  const t = useI18n().m.auth.onboarding;
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -39,12 +41,10 @@ export default function ActivateOrganization({
   }, [organizationId, router]);
 
   return failed ? (
-    <Message type="error">
-      We couldn&apos;t open your company. Please refresh the page to try again.
-    </Message>
+    <Message type="error">{t.openFailed}</Message>
   ) : (
     <p className={styles.subtitle} role="status">
-      <Spinner size={14} /> Opening your company
+      <Spinner size={14} /> {t.opening}
     </p>
   );
 }

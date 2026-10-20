@@ -14,10 +14,11 @@ import styles from "@/components/auth/AuthForm.module.css";
 import { isGoogleEnabled } from "@/lib/auth";
 import { safeNextPath } from "@/lib/redirect";
 import { getSession } from "@/lib/session";
+import { getMessages } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Log in",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).auth.login.title };
+}
 
 export default async function LoginPage({
   searchParams,
@@ -32,12 +33,13 @@ export default async function LoginPage({
 
   // Already logged in? Skip this page
   if (await getSession()) redirect(next ?? "/dashboard");
+  const t = (await getMessages()).auth.login;
 
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Welcome back</h1>
-        <p className={styles.subtitle}>Log in to your Finely account.</p>
+        <h1 className={styles.title}>{t.heading}</h1>
+        <p className={styles.subtitle}>{t.subtitle}</p>
       </div>
 
       <LoginForm
@@ -45,20 +47,20 @@ export default async function LoginPage({
         next={next}
         notice={
           reset === "success"
-            ? "Your password was changed. Log in with your new password."
+            ? t.passwordChanged
             : deleted
-              ? "Your account was deleted. Thanks for trying Finely."
+              ? t.accountDeleted
               : undefined
         }
       />
 
       <p className={styles.footer}>
-        New to Finely?{" "}
+        {t.newToFinely}{" "}
         <Link
           href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
           className={styles.link}
         >
-          Create an account
+          {t.createAccount}
         </Link>
       </p>
     </>

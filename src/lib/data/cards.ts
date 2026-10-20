@@ -22,10 +22,9 @@ import { db } from "@/db";
 import { card, transaction } from "@/db/finance";
 import { member, user } from "@/db/schema";
 import { startOfDay, todayIn } from "@/lib/dates";
-import { describeChanges } from "@/lib/finance/audit";
+import { hasChanges, type AuditChange } from "@/lib/finance/audit";
 import { monthStart, nextMonthStart } from "@/lib/finance/budgets";
 import { buildCards, type CardProgress } from "@/lib/finance/cards";
-import { formatCurrency } from "@/lib/format";
 import type { Card, ISODate } from "@/types/finance";
 import { recordAudit } from "./audit";
 import {
@@ -160,27 +159,27 @@ async function parseCardInput(
   organizationId: string,
   currency: string,
 ) {
-  const last4 = requiredText(input.last4, "Last four digits", 4);
+  const last4 = requiredText(input.last4, "lastFour", 4);
   if (!/^\d{4}$/.test(last4)) {
-    throw new DataError("Last four digits must be exactly 4 digits.");
+    throw new DataError("lastFourDigits");
   }
-  const holderId = optionalText(input.holderId, "Card holder", 120);
+  const holderId = optionalText(input.holderId, "cardHolder", 120);
   if (holderId) {
     const matches = await db.$count(
       member,
       and(eq(member.userId, holderId), eq(member.organizationId, organizationId)),
     );
-    if (matches === 0) throw new DataError("The card holder isn't on this team.");
+    if (matches === 0) throw new DataError("holderNotOnTeam");
   }
   const monthlyLimit =
     input.monthlyLimit === null || input.monthlyLimit === undefined
       ? null
-      : money(input.monthlyLimit, "Monthly limit", currency);
+      : money(input.monthlyLimit, "monthlyLimit", currency);
   if (monthlyLimit !== null && monthlyLimit <= 0) {
-    throw new DataError("Monthly limit must be more than zero. Leave it empty for no limit.");
+    throw new DataError("limitAboveZero");
   }
   return {
-    name: requiredText(input.name, "Name", 60),
+    name: requiredText(input.name, "name", 60),
     last4,
     holderId,
     monthlyLimit,
@@ -189,9 +188,9 @@ async function parseCardInput(
 
 // "Marketing card (•••• 4821)"
 const label = (c: { name: string; last4: string }) => `“${c.name}” (•••• ${c.last4})`;
-// A limit as text for the activity log
-const limitText = (amount: number | null, currency: string) =>
-  amount === null ? null : `${formatCurrency(amount, { currency })} a month`;
+// A limit for the activity log: "$500.00 a month", or nothing
+const limitValue = (amount: number | null, currency: string) =>
+  amount === null ? null : { perMonth: amount, currency };
 
 /** Adds a card (owners and admins only) and returns its ID. */
 export async function createCard(input: CardInput): Promise<string> {
@@ -206,7 +205,8 @@ export async function createCard(input: CardInput): Promise<string> {
     area: "card",
     action: "created",
     entityId: row.id,
-    summary: `Added the card ${label(values)}`,
+    key: "cardAdded",
+    values: { card: label(values) },
   });
   return row.id;
 }
@@ -220,28 +220,29 @@ export async function updateCard(id: string, input: CardInput) {
   // What it was, to say what changed
   const [before] = await selectCards().where(own);
   const updated = await db.update(card).set(values).where(own).returning({ id: card.id });
-  if (updated.length === 0) throw new DataError("Card not found.");
+  if (updated.length === 0) throw new DataError("cardNotFound");
   const [after] = await selectCards().where(own);
-  const changes =
+  const changes: AuditChange[] =
     before && after
-      ? describeChanges([
-          { label: "name", before: before.name, after: after.name },
-          { label: "last four digits", before: before.last4, after: after.last4 },
-          { label: "holder", before: before.holder, after: after.holder },
+      ? [
+          { field: "name", before: before.name, after: after.name },
+          { field: "last4", before: before.last4, after: after.last4 },
+          { field: "holder", before: before.holder, after: after.holder },
           {
-            label: "monthly limit",
-            before: limitText(before.monthlyLimit, currency),
-            after: limitText(after.monthlyLimit, currency),
+            field: "limit",
+            before: limitValue(before.monthlyLimit, currency),
+            after: limitValue(after.monthlyLimit, currency),
           },
-        ])
-      : "";
+        ]
+      : [];
   // Saved without changing anything: nothing to record
-  if (changes) {
+  if (hasChanges(changes)) {
     await recordAudit(actor, {
       area: "card",
       action: "updated",
       entityId: id,
-      summary: `Changed the card ${label(values)}: ${changes}`,
+      key: "cardChanged",
+      values: { card: label(values), changes: { changes } },
     });
   }
 }
@@ -272,14 +273,15 @@ export async function setCardArchived(id: string, archived: boolean) {
       card,
       and(eq(card.id, id), eq(card.organizationId, organizationId)),
     );
-    if (exists === 0) throw new DataError("Card not found.");
+    if (exists === 0) throw new DataError("cardNotFound");
     return;
   }
   await recordAudit(actor, {
     area: "card",
     action: archived ? "archived" : "restored",
     entityId: id,
-    summary: `${archived ? "Archived" : "Took back into use"} the card ${label(updated[0])}`,
+    key: archived ? "cardArchived" : "cardRestored",
+    values: { card: label(updated[0]) },
   });
 }
 
@@ -294,11 +296,12 @@ export async function deleteCard(id: string) {
     .delete(card)
     .where(and(eq(card.id, id), eq(card.organizationId, organizationId)))
     .returning({ name: card.name, last4: card.last4 });
-  if (deleted.length === 0) throw new DataError("Card not found.");
+  if (deleted.length === 0) throw new DataError("cardNotFound");
   await recordAudit(actor, {
     area: "card",
     action: "deleted",
     entityId: id,
-    summary: `Deleted the card ${label(deleted[0])}`,
+    key: "cardDeleted",
+    values: { card: label(deleted[0]) },
   });
 }

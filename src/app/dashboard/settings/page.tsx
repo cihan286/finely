@@ -42,12 +42,14 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { localDay } from "@/lib/dates";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
+import { fill } from "@/i18n/config";
+import { getI18n } from "@/i18n/server";
 import styles from "./page.module.css";
 
 // Browser tab title: "Settings | Finely"
-export const metadata: Metadata = {
-  title: "Settings",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).m.settings.title };
+}
 
 export default async function SettingsPage({
   searchParams,
@@ -60,6 +62,8 @@ export default async function SettingsPage({
   // Protects the page and loads the company with its members and invitations
   const { user, organization, role } = await requireOrganization();
   const { handedOver, billing: billingResult } = await searchParams;
+  const { locale, m } = await getI18n();
+  const t = m.settings;
   const [
     accounts,
     categories,
@@ -91,12 +95,12 @@ export default async function SettingsPage({
   // Owner first, then admins, then members; alphabetical within each role
   const order = { owner: 0, admin: 1, member: 2 } as Record<string, number>;
   const members = organization.members
-    .map((m) => ({
-      id: m.id,
-      name: m.user.name,
-      email: m.user.email,
-      role: m.role,
-      isYou: m.userId === user.id,
+    .map((member) => ({
+      id: member.id,
+      name: member.user.name,
+      email: member.user.email,
+      role: member.role,
+      isYou: member.userId === user.id,
     }))
     .sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.name.localeCompare(b.name));
 
@@ -114,15 +118,14 @@ export default async function SettingsPage({
   return (
     <main className={styles.page}>
       <div>
-        <h1 className={styles.title}>Settings</h1>
+        <h1 className={styles.title}>{t.title}</h1>
         <p className={styles.subtitle}>
-          Manage {organization.name}&apos;s name, timezone, team, bank accounts and
-          categories.
+          {fill(t.subtitle, { company: organization.name })}
           {canManageFinances(role) && (
             <>
               {" "}
               <Link href="/dashboard/settings/activity" className={styles.link}>
-                See who changed what
+                {t.activityLink}
               </Link>
             </>
           )}
@@ -130,10 +133,12 @@ export default async function SettingsPage({
       </div>
       {handedOver && role !== "owner" && (
         <Message type="success">
-          {organization.members.find((m) => m.role === "owner")?.user.name ??
-            "Someone else"}{" "}
-          now owns {organization.name}. You&apos;re an admin, and can leave the
-          company from the team list if you want.
+          {fill(t.handedOver, {
+            owner:
+              organization.members.find((member) => member.role === "owner")?.user.name ??
+              t.someoneElse,
+            company: organization.name,
+          })}
         </Message>
       )}
       <CompanySettings
@@ -160,9 +165,13 @@ export default async function SettingsPage({
             institutionName: bank.institutionName,
             accountCount: bank.accountCount,
             lastSynced: bank.lastSyncedAt
-              ? formatDateTime(bank.lastSyncedAt, settings.timeZone)
+              ? formatDateTime(bank.lastSyncedAt, settings.timeZone, locale)
               : null,
-            lastError: bank.lastError,
+            // Saved as a sentence's key (lib/data/bank.ts); older ones as text
+            lastError:
+              bank.lastError && bank.lastError in m.errors
+                ? m.errors[bank.lastError as keyof typeof m.errors]
+                : bank.lastError,
           }))}
         />
       )}
@@ -191,7 +200,7 @@ export default async function SettingsPage({
           note={billing.note}
           periodEnd={
             billing.currentPeriodEnd
-              ? formatDate(localDay(billing.currentPeriodEnd, settings.timeZone))
+              ? formatDate(localDay(billing.currentPeriodEnd, settings.timeZone), locale)
               : null
           }
           hasCustomer={billing.hasCustomer}

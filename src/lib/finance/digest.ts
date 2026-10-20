@@ -55,7 +55,8 @@ export interface Digest {
   /** What's in all accounts now */
   balance: number;
   /** The categories most was spent in, largest first (at most three) */
-  topCategories: { name: string; amount: number }[];
+  /** null name: spending without a category */
+  topCategories: { name: string | null; amount: number }[];
   overdueBills: { count: number; amount: number };
   billsDueSoon: { count: number; amount: number };
   /** Categories over their budget this month */

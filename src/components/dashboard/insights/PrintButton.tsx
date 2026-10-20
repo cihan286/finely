@@ -14,13 +14,15 @@
 
 import { Printer } from "lucide-react";
 import Button from "@/components/common/button/Button";
+import { useI18n } from "@/i18n/client";
 
 export default function PrintButton() {
+  const { m } = useI18n();
   return (
     <Button
       variant="outline"
       size="sm"
-      text="Print / Save as PDF"
+      text={m.insights.print}
       icon={<Printer size={16} />}
       action={() => window.print()}
     />

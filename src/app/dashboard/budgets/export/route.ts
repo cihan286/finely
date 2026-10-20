@@ -11,12 +11,13 @@
 // every data function.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import { getBudgets } from "@/lib/data/budgets";
 import { budgetsCsv, exportFileName } from "@/lib/finance/export";
 
 export async function GET() {
   const { budgets, today } = await getBudgets();
-  return new Response(budgetsCsv(today, budgets), {
+  return new Response(budgetsCsv(today, budgets, await getMessages()), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName(`budgets-${today.slice(0, 7)}`, today)}"`,

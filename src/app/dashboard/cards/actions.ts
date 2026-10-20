@@ -51,7 +51,7 @@ export async function submitCard(
       else await createCard(input);
     }
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
   redirect(LIST_PATH);

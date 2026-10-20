@@ -1,0 +1,41 @@
+// The Cards page and its window
+export const cards = {
+  title: "Cards",
+  subtitle: "{company}'s payment cards, and what each spent in {month}.",
+  add: "Add card",
+  empty: "No cards yet.",
+  emptyManage:
+    "Add the cards your bank issued to see who spends what. Finely only needs a name and the last four digits.",
+  emptyMember: "An owner or admin can add your company's payment cards here.",
+  archived: "Archived",
+  endingIn: "Ending in {last4}",
+  shared: "Shared card",
+  spentOf: "{spent} of {limit}",
+  noLimit: "No limit",
+  overLimit: "{amount} over the limit",
+  left: "{amount} left",
+  limitUsed: "{name} limit used",
+  noPayments: "No payments in {month}",
+  payments: { one: "1 payment in {month}", other: "{count} payments in {month}" },
+  viewPayments: "View payments",
+  viewPaymentsLabel: "View payments of {name}",
+  editLabel: "Edit {name}",
+  dialog: {
+    editTitle: "Edit card",
+    confirmDelete:
+      "Delete this card? The transactions paid with it stay, without a card. This can't be undone.",
+    name: "Name",
+    namePlaceholder: "e.g. Marketing card",
+    lastFour: "Last four digits",
+    lastFourHint:
+      "Finely never asks for the full number. Bank statements name a card by these, which is how its payments are recognized.",
+    exactlyFour: "Exactly 4 digits",
+    carriedBy: "Carried by",
+    sharedNobody: "Shared (nobody in particular)",
+    limit: "Monthly limit ({currency})",
+    limitHint: "Finely warns when it's reached; it can't stop the card.",
+    useAgain: "Use again",
+    archive: "Archive",
+    saveChanges: "Save changes",
+  },
+};

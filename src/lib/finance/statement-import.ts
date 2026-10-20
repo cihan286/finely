@@ -61,7 +61,10 @@ export interface StatementRow {
 export interface RowProblem {
   /** The line's number in the file (counting the column names line) */
   line: number;
-  message: string;
+  /** What's wrong (the page says it in its words: import.problems) */
+  problem: "notADate" | "noAmount" | "zero" | "noDescription";
+  /** The text that isn't a date */
+  value?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -148,13 +151,13 @@ export function parseStatementAmount(value: string): number | null {
 /* Columns                                                             */
 /* ------------------------------------------------------------------ */
 
-/** 0 -> "Column A", 26 -> "Column AA" */
+/** 0 -> "A", 26 -> "AA", as spreadsheets name columns */
 export function columnLetter(index: number): string {
   let letters = "";
   for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
     letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters;
   }
-  return `Column ${letters}`;
+  return letters;
 }
 
 // Common column names in bank exports (English and a few other languages)
@@ -263,11 +266,12 @@ export function interpretRows(
   for (let i = start; i < rows.length; i++) {
     const cells = rows[i];
     const cell = (column: number) => (column >= 0 ? (cells[column] ?? "") : "");
-    const problem = (message: string) => problems.push({ line: i + 1, message });
+    const problem = (problem: RowProblem["problem"], value?: string) =>
+      problems.push({ line: i + 1, problem, ...(value === undefined ? {} : { value }) });
 
     const date = parseStatementDate(cell(mapping.date), mapping.dateFormat);
     if (!date) {
-      problem(`“${cell(mapping.date)}” isn't a date in the chosen format.`);
+      problem("notADate", cell(mapping.date));
       continue;
     }
 
@@ -284,19 +288,19 @@ export function interpretRows(
       amount = parseStatementAmount(cell(mapping.amount));
     }
     if (amount === null) {
-      problem("No amount.");
+      problem("noAmount");
       continue;
     }
     amount = Math.round(amount * 100) / 100;
     if (amount === 0) {
-      problem("The amount is zero.");
+      problem("zero");
       continue;
     }
 
     // Collapse runs of spaces, common in bank descriptions
     const name = cell(mapping.name).replace(/\s+/g, " ").slice(0, MAX_NAME_LENGTH);
     if (!name) {
-      problem("No description.");
+      problem("noDescription");
       continue;
     }
 

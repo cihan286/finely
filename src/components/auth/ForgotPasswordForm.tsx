@@ -17,9 +17,13 @@ import Field from "@/components/common/form/Field";
 import { Input } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import styles from "./AuthForm.module.css";
 
 export default function ForgotPasswordForm() {
+  const i18n = useI18n();
+  const t = i18n.m.auth;
   // Whether the request went through (then the confirmation replaces the form)
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export default function ForgotPasswordForm() {
 
     setLoading(false);
     if (error) {
-      setError(error.message ?? "Something went wrong. Please try again.");
+      setError(authErrorText(error, i18n, i18n.m.common.somethingWentWrong));
       return;
     }
     setSent(true);
@@ -50,10 +54,7 @@ export default function ForgotPasswordForm() {
   // used to find out which emails are registered.
   if (sent) {
     return (
-      <Message type="success">
-        If an account exists for that email, we&apos;ve sent a link to reset
-        your password. It expires in one hour.
-      </Message>
+      <Message type="success">{t.forgot.sent}</Message>
     );
   }
 
@@ -67,13 +68,13 @@ export default function ForgotPasswordForm() {
         </Message>
       )}
 
-      <Field label="Email">
+      <Field label={t.emailLabel}>
         <Input
           size="lg"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="you@company.com"
+          placeholder={t.emailPlaceholder}
           required
         />
       </Field>
@@ -82,7 +83,7 @@ export default function ForgotPasswordForm() {
         <Button
           type="submit"
           loading={loading}
-          text={loading ? "Sending" : "Send reset link"}
+          text={loading ? t.forgot.sending : t.forgot.send}
           size="sm"
           fullWidth
           disabled={loading}

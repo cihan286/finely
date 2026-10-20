@@ -32,6 +32,8 @@ import {
 import type { ActionState } from "@/lib/action-state";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
+import { fill, plural } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./BankConnections.module.css";
 
 const PLAID_SCRIPT = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
@@ -79,6 +81,7 @@ interface BankConnectionsProps {
 }
 
 export default function BankConnections({ canManage, connections }: BankConnectionsProps) {
+  const t = useI18n().m.settings.banks;
   const [message, setMessage] = useState<ActionState | null>(null);
   // What is in progress: "connect", or a connection's ID with what's done to it
   const [busy, setBusy] = useState<string | null>(null);
@@ -107,7 +110,7 @@ export default function BankConnections({ canManage, connections }: BankConnecti
     try {
       plaid = await loadPlaid();
     } catch {
-      setMessage({ error: "The bank window couldn't be loaded. Check your connection and try again." });
+      setMessage({ error: t.windowFailed });
       setBusy(null);
       return;
     }
@@ -124,9 +127,7 @@ export default function BankConnections({ canManage, connections }: BankConnecti
 
   const handleDisconnect = (connection: BankConnectionRow) => {
     if (
-      !window.confirm(
-        `Disconnect ${connection.institutionName}? Its accounts and transactions stay in Finely, but new ones will no longer arrive by themselves.`,
-      )
+      !window.confirm(fill(t.confirmDisconnect, { bank: connection.institutionName }))
     ) {
       return;
     }
@@ -143,13 +144,9 @@ export default function BankConnections({ canManage, connections }: BankConnecti
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>
-            Linked banks <span className={shared.count}>{connections.length}</span>
+            {t.title} <span className={shared.count}>{connections.length}</span>
           </h2>
-          <p className={shared.cardHint}>
-            Link your bank and its transactions arrive by themselves, once a
-            day. You log in at your bank in a window from Plaid; Finely never
-            sees your bank login and can&apos;t move money.
-          </p>
+          <p className={shared.cardHint}>{t.hint}</p>
         </div>
 
         {connections.length > 0 && (
@@ -163,10 +160,10 @@ export default function BankConnections({ canManage, connections }: BankConnecti
                   <span className={shared.name}>{connection.institutionName}</span>
                   <span className={connection.lastError ? styles.error : shared.email}>
                     {connection.lastError ??
-                      `${connection.accountCount} ${connection.accountCount === 1 ? "account" : "accounts"} · ${
+                      `${plural(connection.accountCount, t.accounts)} · ${
                         connection.lastSynced
-                          ? `up to date as of ${connection.lastSynced}`
-                          : "not synced yet"
+                          ? fill(t.upToDate, { time: connection.lastSynced })
+                          : t.notSynced
                       }`}
                   </span>
                 </div>
@@ -180,11 +177,11 @@ export default function BankConnections({ canManage, connections }: BankConnecti
                     >
                       {busy === `sync-${connection.id}` ? (
                         <>
-                          <Spinner size={12} /> Syncing
+                          <Spinner size={12} /> {t.syncing}
                         </>
                       ) : (
                         <>
-                          <RefreshCw size={12} /> Sync now
+                          <RefreshCw size={12} /> {t.syncNow}
                         </>
                       )}
                     </button>
@@ -196,10 +193,10 @@ export default function BankConnections({ canManage, connections }: BankConnecti
                     >
                       {busy === `disconnect-${connection.id}` ? (
                         <>
-                          <Spinner size={12} /> Disconnecting
+                          <Spinner size={12} /> {t.disconnecting}
                         </>
                       ) : (
-                        "Disconnect"
+                        t.disconnect
                       )}
                     </button>
                   </>
@@ -213,7 +210,7 @@ export default function BankConnections({ canManage, connections }: BankConnecti
           <Button
             variant="outline"
             size="sm"
-            text={busy === "connect" ? "Connecting" : "Connect a bank"}
+            text={busy === "connect" ? t.connecting : t.connect}
             icon={<Landmark size={16} />}
             loading={busy === "connect"}
             action={handleConnect}
@@ -221,9 +218,7 @@ export default function BankConnections({ canManage, connections }: BankConnecti
           />
         ) : (
           connections.length === 0 && (
-            <p className={styles.note}>
-              Only owners and admins can link a bank.
-            </p>
+            <p className={styles.note}>{t.onlyManagers}</p>
           )
         )}
       </section>

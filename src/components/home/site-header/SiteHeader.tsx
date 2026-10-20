@@ -13,39 +13,43 @@
 import Link from "next/link";
 import Button from "@/components/common/button/Button";
 import Logo from "@/components/common/logo/Logo";
+import LanguageSwitcher from "@/components/common/language-switcher/LanguageSwitcher";
+import { getMessages } from "@/i18n/server";
 import styles from "./SiteHeader.module.css";
 
-export default function SiteHeader({ signedIn = false }: { signedIn?: boolean }) {
+export default async function SiteHeader({ signedIn = false }: { signedIn?: boolean }) {
+  const { home, common } = await getMessages();
   return (
     <header className={styles.header}>
-      <Link href="/" className={styles.brand} aria-label="Finely home">
+      <Link href="/" className={styles.brand} aria-label={common.home}>
         <Logo />
       </Link>
 
-      <nav className={styles.links} aria-label="Main">
+      <nav className={styles.links} aria-label={home.nav.main}>
         <Link className={styles.link} href="/#features">
-          Features
+          {home.nav.features}
         </Link>
         <Link className={styles.link} href="/#pricing">
-          Pricing
+          {home.nav.pricing}
         </Link>
         <Link className={styles.link} href="/about">
-          About
+          {home.nav.about}
         </Link>
         <Link className={styles.link} href="/contact">
-          Contact
+          {home.nav.contact}
         </Link>
       </nav>
 
       <div className={styles.actions}>
+        <LanguageSwitcher />
         {signedIn ? (
-          <Button variant="primary" size="sm" text="Open dashboard" href="/dashboard" />
+          <Button variant="primary" size="sm" text={common.openDashboard} href="/dashboard" />
         ) : (
           <>
             <Link className={styles.link} href="/login">
-              Log in
+              {common.logIn}
             </Link>
-            <Button variant="primary" size="sm" text="Start for free" href="/signup" />
+            <Button variant="primary" size="sm" text={common.startForFree} href="/signup" />
           </>
         )}
       </div>

@@ -18,6 +18,9 @@ import Button from "@/components/common/button/Button";
 import { monthName, monthStart } from "@/lib/finance/budgets";
 import type { CardProgress } from "@/lib/finance/cards";
 import { formatCurrency } from "@/lib/format";
+import { fill, plural, type Locale } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
+import { getI18n } from "@/i18n/server";
 import type { Card, ISODate } from "@/types/finance";
 import CardDialog from "./CardDialog";
 import styles from "./CardsView.module.css";
@@ -41,14 +44,19 @@ interface CardsViewProps {
 }
 
 // "$120.50 left", "$20.00 over the limit", "No limit"
-function limitNote(card: CardProgress, currency: string): string {
-  if (card.remaining === null) return "No limit";
+function limitNote(
+  card: CardProgress,
+  currency: string,
+  locale: Locale,
+  t: Messages["cards"],
+): string {
+  if (card.remaining === null) return t.noLimit;
   return card.remaining < 0
-    ? `${formatCurrency(-card.remaining, { currency })} over the limit`
-    : `${formatCurrency(card.remaining, { currency })} left`;
+    ? fill(t.overLimit, { amount: formatCurrency(-card.remaining, { currency }, locale) })
+    : fill(t.left, { amount: formatCurrency(card.remaining, { currency }, locale) });
 }
 
-export default function CardsView({
+export default async function CardsView({
   organizationName,
   currency,
   today,
@@ -57,14 +65,17 @@ export default function CardsView({
   members,
   dialog,
 }: CardsViewProps) {
+  const { locale, m } = await getI18n();
+  const t = m.cards;
+  const month = monthName(today, locale);
+  const money = (value: number) => formatCurrency(value, { currency }, locale);
   return (
     <main className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Cards</h1>
+          <h1 className={styles.title}>{t.title}</h1>
           <p className={styles.subtitle}>
-            {organizationName}&apos;s payment cards, and what each spent in{" "}
-            {monthName(today)}.
+            {fill(t.subtitle, { company: organizationName, month })}
           </p>
         </div>
         {canManage && (
@@ -72,7 +83,7 @@ export default function CardsView({
             href={`${LIST_PATH}?new=1`}
             variant="primary"
             size="sm"
-            text="Add card"
+            text={t.add}
             icon={<Plus size={16} />}
           />
         )}
@@ -80,10 +91,7 @@ export default function CardsView({
 
       {cards.length === 0 ? (
         <p className={styles.empty}>
-          No cards yet.{" "}
-          {canManage
-            ? "Add the cards your bank issued to see who spends what. Finely only needs a name and the last four digits."
-            : "An owner or admin can add your company's payment cards here."}
+          {t.empty} {canManage ? t.emptyManage : t.emptyMember}
         </p>
       ) : (
         <div className={styles.grid}>
@@ -96,16 +104,16 @@ export default function CardsView({
               <div className={styles.plastic}>
                 <div className={styles.plasticTop}>
                   <span className={styles.cardName}>{card.name}</span>
-                  {card.archived && <span className={styles.badge}>Archived</span>}
+                  {card.archived && <span className={styles.badge}>{t.archived}</span>}
                 </div>
                 <div>
                   <div
                     className={styles.digits}
-                    aria-label={`Ending in ${card.last4}`}
+                    aria-label={fill(t.endingIn, { last4: card.last4 })}
                   >
                     •••• {card.last4}
                   </div>
-                  <div className={styles.holder}>{card.holder ?? "Shared card"}</div>
+                  <div className={styles.holder}>{card.holder ?? t.shared}</div>
                 </div>
               </div>
 
@@ -113,21 +121,21 @@ export default function CardsView({
               <div className={styles.spending}>
                 <div className={styles.spendingRow}>
                   <span className={styles.spent}>
-                    {formatCurrency(card.spent, { currency })}
-                    {card.monthlyLimit !== null &&
-                      ` of ${formatCurrency(card.monthlyLimit, { currency })}`}
+                    {card.monthlyLimit !== null
+                      ? fill(t.spentOf, { spent: money(card.spent), limit: money(card.monthlyLimit) })
+                      : money(card.spent)}
                   </span>
                   <span
                     className={`${styles.note} ${card.status && card.status !== "ok" ? styles[`note_${card.status}`] : ""}`}
                   >
-                    {limitNote(card, currency)}
+                    {limitNote(card, currency, locale, t)}
                   </span>
                 </div>
                 {card.ratio !== null && card.status !== null && (
                   <div
                     className={styles.barBg}
                     role="progressbar"
-                    aria-label={`${card.name} limit used`}
+                    aria-label={fill(t.limitUsed, { name: card.name })}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.min(Math.round(card.ratio * 100), 100)}
@@ -140,8 +148,8 @@ export default function CardsView({
                 )}
                 <span className={styles.note}>
                   {card.payments === 0
-                    ? `No payments in ${monthName(today)}`
-                    : `${card.payments} ${card.payments === 1 ? "payment" : "payments"} in ${monthName(today)}`}
+                    ? fill(t.noPayments, { month })
+                    : plural(card.payments, t.payments, { month })}
                 </span>
               </div>
 
@@ -149,18 +157,18 @@ export default function CardsView({
                 <Link
                   href={`/dashboard/transactions?card=${card.id}&from=${monthStart(today)}`}
                   className={styles.link}
-                  aria-label={`View payments of ${card.name}`}
+                  aria-label={fill(t.viewPaymentsLabel, { name: card.name })}
                 >
-                  View payments
+                  {t.viewPayments}
                 </Link>
                 {canManage && (
                   <Link
                     href={`${LIST_PATH}?edit=${card.id}`}
                     scroll={false}
                     className={styles.link}
-                    aria-label={`Edit ${card.name}`}
+                    aria-label={fill(t.editLabel, { name: card.name })}
                   >
-                    Edit
+                    {m.common.edit}
                   </Link>
                 )}
               </div>

@@ -11,8 +11,9 @@
 // logged in to /login.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import { exportAuditLog } from "@/lib/data/audit";
-import { DataError } from "@/lib/data/common";
+import { DataError, errorMessage } from "@/lib/data/common";
 import { activityCsv, exportFileName } from "@/lib/finance/export";
 
 export async function GET(request: Request) {
@@ -25,11 +26,11 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     // A member opened the address by hand
-    if (error instanceof DataError) return new Response(error.message, { status: 403 });
+    if (error instanceof DataError) return new Response(await errorMessage(error), { status: 403 });
     throw error;
   }
 
-  return new Response(activityCsv(result.rows), {
+  return new Response(activityCsv(result.rows, await getMessages()), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName("activity", result.today)}"`,

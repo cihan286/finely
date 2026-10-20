@@ -35,12 +35,11 @@ import { amountInputProps, formatCurrency } from "@/lib/format";
 import type { Category, CategoryIconKey } from "@/types/finance";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./CategorySettings.module.css";
 
-const GROUPS = [
-  { kind: "income", title: "Money in" },
-  { kind: "expense", title: "Money out" },
-] as const;
+const GROUPS = ["income", "expense"] as const;
 
 interface CategorySettingsProps {
   /** Whether you may change categories (owners and admins) */
@@ -55,6 +54,8 @@ export default function CategorySettings({
   categories,
   currency,
 }: CategorySettingsProps) {
+  const { m } = useI18n();
+  const t = m.settings.categories;
   const addFormRef = useRef<HTMLFormElement>(null);
   // The category being edited, if any
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,9 +77,7 @@ export default function CategorySettings({
     const formData = new FormData(e.currentTarget, e.nativeEvent.submitter);
     if (
       formData.get("intent") === "delete" &&
-      !window.confirm(
-        `Delete ${formData.get("name")}? Its transactions will become uncategorized.`,
-      )
+      !window.confirm(fill(t.confirmDelete, { name: String(formData.get("name")) }))
     ) {
       return;
     }
@@ -97,13 +96,8 @@ export default function CategorySettings({
       {canManage && (
         <section className={shared.card}>
           <div className={shared.cardHeader}>
-            <h2 className={shared.cardTitle}>Add a category</h2>
-            <p className={shared.cardHint}>
-              Categories show where money comes from and goes to on the
-              dashboard and in imports. Give a &ldquo;Money out&rdquo; category
-              a monthly budget to follow it on the dashboard and be told when
-              it&apos;s exceeded.
-            </p>
+            <h2 className={shared.cardTitle}>{t.add}</h2>
+            <p className={shared.cardHint}>{t.addHint}</p>
           </div>
           <form ref={addFormRef} className={styles.form} onSubmit={submit}>
             <input type="hidden" name="intent" value="add" />
@@ -113,7 +107,7 @@ export default function CategorySettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Add category"}
+              text={pending ? m.common.saving : t.addButton}
               icon={<Plus size={16} />}
               disabled={pending}
             />
@@ -124,16 +118,18 @@ export default function CategorySettings({
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>
-            Categories <span className={shared.count}>{categories.length}</span>
+            {t.title} <span className={shared.count}>{categories.length}</span>
           </h2>
         </div>
-        {GROUPS.map(({ kind, title }) => {
+        {GROUPS.map((kind) => {
           const group = categories.filter((c) => c.kind === kind);
           return (
             <div key={kind} className={styles.group}>
-              <h3 className={styles.groupTitle}>{title}</h3>
+              <h3 className={styles.groupTitle}>
+                {kind === "income" ? m.transactions.moneyIn : m.transactions.moneyOut}
+              </h3>
               {group.length === 0 ? (
-                <p className={styles.none}>None yet.</p>
+                <p className={styles.none}>{t.noneYet}</p>
               ) : (
                 <ul className={shared.list}>
                   {group.map((category) =>
@@ -147,7 +143,7 @@ export default function CategorySettings({
                             <Button
                               variant="outline"
                               size="sm"
-                              text="Cancel"
+                              text={m.common.cancel}
                               action={() => setEditingId(null)}
                               disabled={pending}
                             />
@@ -156,7 +152,7 @@ export default function CategorySettings({
                               variant="primary"
                               size="sm"
                               loading={pending}
-                              text={pending ? "Saving" : "Save"}
+                              text={pending ? m.common.saving : m.common.save}
                               disabled={pending}
                             />
                           </div>
@@ -200,6 +196,7 @@ function CategoryRow({
   onEdit: () => void;
   onDelete: (e: SubmitEvent<HTMLFormElement>) => void;
 }) {
+  const { locale, m } = useI18n();
   const Icon = CATEGORY_ICONS[category.iconKey]?.icon ?? CATEGORY_ICONS.more.icon;
   return (
     <li className={shared.row}>
@@ -213,7 +210,9 @@ function CategoryRow({
       <span className={`${shared.name} ${styles.name}`}>{category.name}</span>
       {category.budget !== null && (
         <span className={styles.budget}>
-          {formatCurrency(category.budget, { currency: currency })} a month
+          {fill(m.settings.categories.perMonth, {
+            amount: formatCurrency(category.budget, { currency }, locale),
+          })}
         </span>
       )}
       {canManage && (
@@ -224,14 +223,14 @@ function CategoryRow({
             onClick={onEdit}
             disabled={pending}
           >
-            Edit
+            {m.common.edit}
           </button>
           <form onSubmit={onDelete}>
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="id" value={category.id} />
             <input type="hidden" name="name" value={category.name} />
             <button type="submit" className={shared.rowAction} disabled={pending}>
-              Delete
+              {m.common.delete}
             </button>
           </form>
         </div>
@@ -249,41 +248,43 @@ function CategoryFields({
   currency: string;
 }) {
   // Only money going out can have a budget
+  const { m } = useI18n();
+  const t = m.settings.categories;
   const [kind, setKind] = useState<string>(category?.kind ?? "expense");
   return (
     <>
-      <Field label="Name" className={styles.nameField}>
+      <Field label={t.name} className={styles.nameField}>
         <Input
           name="name"
           defaultValue={category?.name}
-          placeholder="e.g. Travel"
+          placeholder={t.namePlaceholder}
           maxLength={60}
           required
         />
       </Field>
-      <Field label="Type">
+      <Field label={t.type}>
         <Select
           name="kind"
           value={kind}
           onChange={(e) => setKind(e.target.value)}
         >
-          <option value="expense">Money out</option>
-          <option value="income">Money in</option>
+          <option value="expense">{m.transactions.moneyOut}</option>
+          <option value="income">{m.transactions.moneyIn}</option>
         </Select>
       </Field>
-      <Field label="Icon">
+      <Field label={t.icon}>
         <Select
           name="iconKey"
           defaultValue={category?.iconKey ?? "more"}
         >
           {(Object.keys(CATEGORY_ICONS) as CategoryIconKey[]).map((key) => (
             <option key={key} value={key}>
-              {CATEGORY_ICONS[key].label}
+              {m.settings.icons[key]}
             </option>
           ))}
         </Select>
       </Field>
-      <Field label="Color">
+      <Field label={t.color}>
         <Input
           name="color"
           type="color"
@@ -292,12 +293,12 @@ function CategoryFields({
         />
       </Field>
       {kind === "expense" && (
-        <Field label={`Monthly budget (${currency})`} optional className={styles.budgetField}>
+        <Field label={fill(t.budget, { currency })} optional className={styles.budgetField}>
           <Input
             name="budget"
             type="number"
             {...amountInputProps(currency)}
-            placeholder="No budget"
+            placeholder={t.noBudget}
             defaultValue={category?.budget ?? ""}
           />
         </Field>

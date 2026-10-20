@@ -14,6 +14,9 @@
 
 "use server";
 
+import { fill, plural } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
+import { getMessages } from "@/i18n/server";
 import { refresh } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -77,10 +80,11 @@ export async function submitAccount(
       });
     }
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  return { error: null, success: `${name} was ${removing ? "removed" : "added"}.` };
+  const t = (await getMessages()).settings.accounts;
+  return { error: null, success: fill(removing ? t.removed : t.added, { name }) };
 }
 
 /**
@@ -99,29 +103,25 @@ export async function submitCompanySettings(
     try {
       await updateOverallBudget(typed === "" ? null : Number(typed));
     } catch (error) {
-      return { error: errorMessage(error) };
+      return { error: await errorMessage(error) };
     }
     refresh();
-    return {
-      error: null,
-      success:
-        typed === ""
-          ? "The overall budget was removed."
-          : "The overall monthly budget was saved.",
-    };
+    const t = (await getMessages()).settings.company;
+    return { error: null, success: typed === "" ? t.budgetRemoved : t.budgetSaved };
   }
   try {
     if (currency) await updateCurrency(currency);
     else await updateTimeZone(timeZone);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
+  const t = (await getMessages()).settings.company;
   return {
     error: null,
     success: currency
-      ? `The company's amounts are now shown in ${currency}.`
-      : `The company's timezone is now ${timeZone}.`,
+      ? fill(t.currencySaved, { currency })
+      : fill(t.timezoneSaved, { zone: timeZone.replaceAll("_", " ") }),
   };
 }
 
@@ -150,11 +150,12 @@ export async function submitCategory(
     else if (intent === "update") await updateCategory(id, input);
     else await createCategory(input);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  const done = { delete: "deleted", update: "saved" }[intent] ?? "added";
-  return { error: null, success: `${name} was ${done}.` };
+  const t = (await getMessages()).settings.categories;
+  const done = { delete: t.deleted, update: t.saved }[intent] ?? t.added;
+  return { error: null, success: fill(done, { name }) };
 }
 
 /**
@@ -181,18 +182,13 @@ export async function submitCategoryRule(
       categorized = await applyCategoryRule(await createCategoryRule(input));
     }
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  const done = { delete: "deleted", update: "saved" }[intent] ?? "added";
-  const caughtUp =
-    categorized === 0
-      ? ""
-      : ` It categorized ${categorized} ${categorized === 1 ? "transaction" : "transactions"} that had no category.`;
-  return {
-    error: null,
-    success: `The rule for “${matchText}” was ${done}.${caughtUp}`,
-  };
+  const t = (await getMessages()).settings.rules;
+  const done = { delete: t.deleted, update: t.saved }[intent] ?? t.added;
+  const caughtUp = categorized === 0 ? "" : ` ${plural(categorized, t.caughtUp)}`;
+  return { error: null, success: fill(done, { text: matchText }) + caughtUp };
 }
 
 /**
@@ -207,7 +203,7 @@ export async function submitOwnershipTransfer(
   try {
     await transferOwnership(formField(formData, "memberId"));
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
   redirect("/dashboard/settings?handedOver=1");
@@ -225,7 +221,7 @@ export async function submitCompanyDeletion(
   try {
     await deleteCompany(formField(formData, "confirmation"));
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
   redirect("/onboarding");
@@ -242,7 +238,7 @@ export async function submitAccountDeletion(
   try {
     await deleteOwnAccount(formField(formData, "confirmation"));
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // The logins are gone from the database; forget their cookies too, so the
   // browser doesn't keep presenting a login that no longer exists
@@ -266,23 +262,21 @@ export async function submitEmailPreferences(
       unusualCharges: formData.has("unusualCharges"),
     });
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  return { error: null, success: "Your email preferences were saved." };
+  return { error: null, success: (await getMessages()).settings.emails.saved };
 }
 
 // "3 transactions added, 1 updated" / "Nothing new"
-function syncSummary(result: SyncResult): string {
+function syncSummary(result: SyncResult, t: Messages["settings"]["banks"]): string {
   const parts = [
-    result.newAccounts > 0 &&
-      `${result.newAccounts} ${result.newAccounts === 1 ? "account" : "accounts"} added`,
-    result.added > 0 &&
-      `${result.added} ${result.added === 1 ? "transaction" : "transactions"} added`,
-    result.updated > 0 && `${result.updated} updated`,
-    result.removed > 0 && `${result.removed} removed`,
+    result.newAccounts > 0 && plural(result.newAccounts, t.accountsAdded),
+    result.added > 0 && plural(result.added, t.transactionsAdded),
+    result.updated > 0 && fill(t.updated, { count: result.updated }),
+    result.removed > 0 && fill(t.removed, { count: result.removed }),
   ].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "nothing new";
+  return parts.length > 0 ? parts.join(", ") : t.nothingNew;
 }
 
 /**
@@ -295,7 +289,7 @@ export async function createBankLink(): Promise<
   try {
     return { token: await createBankLinkToken(), error: null };
   } catch (error) {
-    return { token: null, error: errorMessage(error) };
+    return { token: null, error: await errorMessage(error) };
   }
 }
 
@@ -308,15 +302,16 @@ export async function completeBankLink(
   try {
     result = await connectBank(publicToken, institutionName);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
+  const t = (await getMessages()).settings.banks;
   return {
     error: null,
     success:
       result.newAccounts === 0
-        ? `${result.institutionName} is connected, but it has no everyday or savings account in your company's currency that Finely can keep.`
-        : `${result.institutionName} is connected: ${syncSummary(result)}. Transactions can take a few minutes to arrive the first time; press “Sync now” to check.`,
+        ? fill(t.connectedNone, { bank: result.institutionName })
+        : fill(t.connected, { bank: result.institutionName, summary: syncSummary(result, t) }),
   };
 }
 
@@ -328,10 +323,11 @@ export async function syncBank(id: string): Promise<ActionState> {
   } catch (error) {
     // The reason is also kept on the connection: show it there too
     refresh();
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  return { error: null, success: `Synced: ${syncSummary(result)}.` };
+  const t = (await getMessages()).settings.banks;
+  return { error: null, success: fill(t.synced, { summary: syncSummary(result, t) }) };
 }
 
 /** Stops syncing a bank; its accounts and transactions stay. */
@@ -339,13 +335,10 @@ export async function removeBankConnection(id: string): Promise<ActionState> {
   try {
     await disconnectBank(id);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   refresh();
-  return {
-    error: null,
-    success: "The bank was disconnected. Its accounts and transactions are still here.",
-  };
+  return { error: null, success: (await getMessages()).settings.banks.disconnected };
 }
 
 /**
@@ -366,7 +359,7 @@ export async function submitBilling(
             formField(formData, "interval") as BillingInterval,
           );
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   // Outside the try: redirect() works by throwing
   redirect(url);

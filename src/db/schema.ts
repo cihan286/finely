@@ -41,6 +41,9 @@ export const user = pgTable("user", {
     .notNull(),
   // The company they last worked in; their next login opens it
   lastOrganizationId: text("last_organization_id"),
+  // Their language ("en" or "tr"), for emails sent without a request (the
+  // weekly summary). Set at sign-up and by the language switcher.
+  locale: text("locale"),
 });
 
 // Active logins: one row per logged-in device, removed on log out or expiry.

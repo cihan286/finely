@@ -12,7 +12,8 @@
 // Insights file has several small tables, each under its own title line.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { BILL_REPEAT_LABELS } from "@/lib/finance/bills";
+import { fill } from "@/i18n/config";
+import { messagesFor, type Messages } from "@/i18n/messages";
 import { toCsv, type CsvCell } from "@/lib/finance/csv";
 import type { Insights } from "@/lib/finance/insights";
 import type { RecurringPayment } from "@/lib/finance/recurring";
@@ -33,19 +34,24 @@ export interface TransactionExportRow {
 }
 
 // 1234.5 -> "1234.50": a number for the spreadsheet, always with cents
+// (the same in every language, so spreadsheets read it as a number)
 const money = (amount: number) => amount.toFixed(2);
 
+// The files' words when no language is given
+const english = messagesFor("en");
+
 /** The transactions list as a CSV file, in the order given */
-export function transactionsCsv(rows: TransactionExportRow[]): string {
+export function transactionsCsv(rows: TransactionExportRow[], m: Messages = english): string {
+  const t = m.exports.transactions;
   return toCsv([
-    ["Date", "Description", "Category", "Account", "Amount", "Status", "Notes"],
+    t.headers,
     ...rows.map((row) => [
       row.day,
       row.name,
       row.category ?? "",
       row.account,
       money(row.amount),
-      row.status === "pending" ? "Pending" : "Completed",
+      row.status === "pending" ? t.pending : t.completed,
       row.notes ?? "",
     ]),
   ]);
@@ -58,29 +64,31 @@ export function insightsCsv(
   recurring: (RecurringPayment & { category: string | null })[],
   /** The company's currency, e.g. "USD" */
   currency = "USD",
+  m: Messages = english,
 ): string {
+  const t = m.exports.insights;
   const { totals } = insights;
   const tables: CsvCell[][][] = [
     [
-      ["Finely insights"],
-      ["Company", organizationName],
-      ["Period", `Last ${insights.period} months`],
-      ["Currency", currency],
-      ["Exported on", insights.today],
+      [t.title],
+      [t.company, organizationName],
+      [t.period, fill(t.lastMonths, { months: insights.period })],
+      [t.currency, currency],
+      [t.exportedOn, insights.today],
     ],
     [
-      ["Totals"],
-      ["Money in", money(totals.income)],
-      ["Money out", money(totals.expenses)],
-      ["Net", money(totals.net)],
+      [t.totals],
+      [t.moneyIn, money(totals.income)],
+      [t.moneyOut, money(totals.expenses)],
+      [t.net, money(totals.net)],
       [
-        "Savings rate",
+        t.savingsRate,
         totals.savingsRate === null ? "" : `${(totals.savingsRate * 100).toFixed(1)}%`,
       ],
     ],
     [
-      ["By month"],
-      ["Month", "Money in", "Money out", "Net"],
+      [t.byMonth],
+      [t.month, t.moneyIn, t.moneyOut, t.net],
       ...insights.monthly.map((m) => [
         m.month,
         money(m.income),
@@ -89,31 +97,31 @@ export function insightsCsv(
       ]),
     ],
     [
-      ["Spending by category"],
-      ["Category", "Spent"],
+      [t.byCategory],
+      [t.category, t.spent],
       ...insights.categories.map((c) => [c.category, money(c.amount)]),
     ],
     [
-      ["Top vendors"],
-      ["Vendor", "Payments", "Spent"],
+      [t.topVendors],
+      [t.vendor, t.payments, t.spent],
       ...insights.vendors.map((v) => [v.name, v.count, money(v.amount)]),
     ],
     [
-      ["Regular payments (from the last 13 months; yearly ones from the last 26)"],
-      ["Name", "Direction", "Category", "How often", "Usual amount", "Per month", "Next expected"],
+      [t.regular],
+      t.regularHeaders,
       ...recurring.map((r) => [
         r.name,
-        r.direction === "in" ? "Money in" : "Money out",
+        r.direction === "in" ? t.moneyIn : t.moneyOut,
         r.category ?? "",
-        BILL_REPEAT_LABELS[r.cadence],
+        m.bills.repeats[r.cadence],
         money(r.amount),
         money(r.monthlyAmount),
         r.nextDay,
       ]),
     ],
     [
-      ["Unusual charges (last 30 days)"],
-      ["Date", "Vendor", "Charged", "Usual", "Above usual"],
+      [t.unusual],
+      t.unusualHeaders,
       ...insights.unusualCharges.map((u) => [
         u.day,
         u.name,
@@ -128,16 +136,17 @@ export function insightsCsv(
 }
 
 /** The bills as a CSV file, in the order given */
-export function billsCsv(bills: Bill[]): string {
+export function billsCsv(bills: Bill[], m: Messages = english): string {
+  const t = m.exports.bills;
   return toCsv([
-    ["Name", "Amount", "Due date", "Repeats", "Category", "Status", "Paid on", "Notes"],
+    t.headers,
     ...bills.map((bill) => [
       bill.name,
       money(bill.amount),
       bill.dueDate,
-      BILL_REPEAT_LABELS[bill.repeat],
+      m.bills.repeats[bill.repeat],
       bill.category ?? "",
-      bill.paidDay ? "Paid" : "Unpaid",
+      bill.paidDay ? t.paid : t.unpaid,
       bill.paidDay ?? "",
       bill.notes ?? "",
     ]),
@@ -149,10 +158,11 @@ export function budgetsCsv(
   /** Any day of the month the figures are about */
   today: ISODate,
   budgets: BudgetProgress[],
+  m: Messages = english,
 ): string {
-  const STATUS = { ok: "Within budget", near: "Nearly used up", over: "Over budget" };
+  const t = m.exports.budgets;
   return toCsv([
-    ["Month", "Category", "Budget", "Spent", "Left", "Used", "Status"],
+    t.headers,
     ...budgets.map((budget) => [
       today.slice(0, 7),
       budget.name,
@@ -160,7 +170,7 @@ export function budgetsCsv(
       money(budget.spent),
       money(budget.remaining),
       `${(budget.ratio * 100).toFixed(1)}%`,
-      STATUS[budget.status],
+      t[budget.status],
     ]),
   ]);
 }
@@ -176,9 +186,9 @@ export interface ActivityExportRow {
 }
 
 /** The activity log as a CSV file, in the order given */
-export function activityCsv(rows: ActivityExportRow[]): string {
+export function activityCsv(rows: ActivityExportRow[], m: Messages = english): string {
   return toCsv([
-    ["When", "Who", "About", "What happened"],
+    m.exports.activity.headers,
     ...rows.map((row) => [row.when, row.actor, row.area, row.summary]),
   ]);
 }

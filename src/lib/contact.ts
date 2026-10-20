@@ -10,6 +10,9 @@
 // escapes it.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { fill } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
+
 export interface ContactMessage {
   name: string;
   email: string;
@@ -23,26 +26,28 @@ export const CONTACT_LIMITS = { name: 100, email: 254, company: 100, message: 40
 /** The tidied message, or the problem to show the person. */
 export function parseContactMessage(
   input: Record<keyof ContactMessage, string>,
+  /** The words of the page's language: m.site.contact */
+  t: Messages["site"]["contact"],
 ): { message: ContactMessage } | { error: string } {
   const name = input.name.trim();
   const email = input.email.trim();
   const company = input.company.trim();
   const message = input.message.trim();
 
-  if (!name) return { error: "Please tell us your name." };
+  if (!name) return { error: t.nameMissing };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { error: "Please enter a valid email address, so we can reply." };
+    return { error: t.emailInvalid };
   }
-  if (!message) return { error: "Please write a message." };
+  if (!message) return { error: t.messageMissing };
   for (const [field, label] of [
-    ["name", "Your name"],
-    ["email", "Your email address"],
-    ["company", "The company name"],
-    ["message", "Your message"],
+    ["name", t.fieldName],
+    ["email", t.fieldEmail],
+    ["company", t.fieldCompany],
+    ["message", t.fieldMessage],
   ] as const) {
     const max = CONTACT_LIMITS[field];
     if ({ name, email, company, message }[field].length > max) {
-      return { error: `${label} can be at most ${max} characters.` };
+      return { error: fill(t.tooLong, { field: label, max }) };
     }
   }
   return { message: { name, email, company, message } };

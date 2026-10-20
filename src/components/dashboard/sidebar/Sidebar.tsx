@@ -19,6 +19,8 @@ import { authClient } from "@/lib/auth-client";
 import Spinner from "@/components/common/spinner/Spinner";
 import styles from "./Sidebar.module.css";
 import Logo from "@/components/common/logo/Logo";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 import {
   LayoutDashboard,
   ArrowRightLeft,
@@ -29,18 +31,18 @@ import {
   LogOut,
 } from "lucide-react";
 
-// The menu entries: address, label and icon
-const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  {
-    href: "/dashboard/transactions",
-    label: "Transactions",
-    icon: ArrowRightLeft,
-  },
-  { href: "/dashboard/bills", label: "Bills", icon: Receipt },
-  { href: "/dashboard/cards", label: "Cards", icon: CreditCard },
-  { href: "/dashboard/insights", label: "Insights", icon: PieChart },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+// The menu entries: address, label (in the menu's words) and icon
+const NAV_LINKS: {
+  href: string;
+  label: keyof Messages["shell"]["nav"];
+  icon: typeof LayoutDashboard;
+}[] = [
+  { href: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/transactions", label: "transactions", icon: ArrowRightLeft },
+  { href: "/dashboard/bills", label: "bills", icon: Receipt },
+  { href: "/dashboard/cards", label: "cards", icon: CreditCard },
+  { href: "/dashboard/insights", label: "insights", icon: PieChart },
+  { href: "/dashboard/settings", label: "settings", icon: Settings },
 ];
 
 // "/dashboard" only matches itself; sections also match their sub-pages.
@@ -50,6 +52,7 @@ function isActive(pathname: string, href: string) {
 }
 
 export default function Sidebar() {
+  const { m } = useI18n();
   // Whether the menu is currently wide (showing labels)
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
@@ -95,7 +98,7 @@ export default function Sidebar() {
             key={href}
             href={href}
             icon={<Icon size={20} />}
-            label={label}
+            label={m.shell.nav[label]}
             isExpanded={isExpanded}
             active={isActive(pathname, href)}
           />
@@ -112,7 +115,7 @@ export default function Sidebar() {
         >
           <NavItemContent
             icon={loggingOut ? <Spinner size={20} /> : <LogOut size={20} />}
-            label={loggingOut ? "Logging out" : "Log out"}
+            label={loggingOut ? m.shell.nav.loggingOut : m.common.logOut}
             isExpanded={isExpanded}
           />
         </button>

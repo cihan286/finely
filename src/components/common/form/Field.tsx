@@ -15,6 +15,7 @@
 "use client";
 
 import { createContext, useContext, useId, type ReactNode } from "react";
+import { useI18n } from "@/i18n/client";
 import styles from "./Form.module.css";
 
 interface FieldContextValue {
@@ -48,6 +49,7 @@ export default function Field({
   className,
   children,
 }: FieldProps) {
+  const { m } = useI18n();
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
 
@@ -56,7 +58,7 @@ export default function Field({
       <div className={styles.labelRow}>
         <label htmlFor={id} className={styles.label}>
           {label}
-          {optional && <span className={styles.optional}> (optional)</span>}
+          {optional && <span className={styles.optional}> {m.common.optional}</span>}
         </label>
         {labelAside}
       </div>

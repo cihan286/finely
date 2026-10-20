@@ -43,6 +43,21 @@ export type CurrencyCode = keyof typeof CURRENCIES;
 
 export const DEFAULT_CURRENCY: CurrencyCode = "USD";
 
+/**
+ * A currency's name in a language ("Turkish lira", in Turkish "Türk Lirası"),
+ * from the browser's or server's own list; the English name above if it
+ * has none.
+ */
+export function currencyName(code: string, intlLocale: string): string {
+  try {
+    const name = new Intl.DisplayNames([intlLocale], { type: "currency" }).of(code);
+    if (name && name !== code) return name;
+  } catch {
+    // An old system without Intl.DisplayNames
+  }
+  return CURRENCIES[code as CurrencyCode] ?? code;
+}
+
 /** Whether this is a currency a company can choose */
 export function isCurrency(value: unknown): value is CurrencyCode {
   return typeof value === "string" && Object.hasOwn(CURRENCIES, value);

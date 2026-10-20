@@ -18,12 +18,11 @@ import { Download, Plus, Repeat, Search } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { daysBetween } from "@/lib/dates";
-import {
-  BILL_REPEAT_LABELS,
-  billStatus,
-  summarizeBills,
-} from "@/lib/finance/bills";
+import { billStatus, summarizeBills } from "@/lib/finance/bills";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { fill, plural } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
+import { getI18n } from "@/i18n/server";
 import type {
   Account,
   Bill,
@@ -82,15 +81,15 @@ interface BillsViewProps {
 }
 
 // "Due today", "Due in 3 days", "5 days overdue"
-function dueText(dueDate: ISODate, today: ISODate): string {
+function dueText(dueDate: ISODate, today: ISODate, t: Messages["bills"]): string {
   const days = daysBetween(today, dueDate);
-  if (days === 0) return "Due today";
-  if (days === 1) return "Due tomorrow";
-  if (days > 1) return `Due in ${days} days`;
-  return `${-days} ${days === -1 ? "day" : "days"} overdue`;
+  if (days === 0) return t.dueToday;
+  if (days === 1) return t.dueTomorrow;
+  if (days > 1) return fill(t.dueIn, { days });
+  return plural(-days, t.overdueBy);
 }
 
-export default function BillsView({
+export default async function BillsView({
   organizationName,
   currency,
   today,
@@ -108,6 +107,9 @@ export default function BillsView({
   suggestions,
   dialog,
 }: BillsViewProps) {
+  const { locale, m } = await getI18n();
+  const t = m.bills;
+  const money = (value: number) => formatCurrency(value, { currency }, locale);
   const summary = summarizeBills(unpaid, today);
   const categoryColors = new Map(categories.map((c) => [c.id, c.color]));
 
@@ -123,7 +125,7 @@ export default function BillsView({
         }}
         aria-hidden="true"
       />
-      {bill.category ?? "Uncategorized"}
+      {bill.category ?? t.uncategorized}
     </span>
   );
 
@@ -131,10 +133,8 @@ export default function BillsView({
     <main className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Bills</h1>
-          <p className={styles.subtitle}>
-            What {organizationName} has to pay, and when.
-          </p>
+          <h1 className={styles.title}>{t.title}</h1>
+          <p className={styles.subtitle}>{fill(t.subtitle, { company: organizationName })}</p>
         </div>
         <div className={styles.headerActions}>
           {/* Every bill, paid ones included */}
@@ -144,7 +144,7 @@ export default function BillsView({
               download
               variant="outline"
               size="sm"
-              text="Export CSV"
+              text={t.exportCsv}
               icon={<Download size={16} />}
             />
           )}
@@ -152,36 +152,30 @@ export default function BillsView({
             href={`${LIST_PATH}?new=1`}
             variant="primary"
             size="sm"
-            text="Add bill"
+            text={t.add}
             icon={<Plus size={16} />}
           />
         </div>
       </div>
 
       {undone && (
-        <Message type="success">
-          The payment was undone: the bill is back among what&apos;s still owed.
-        </Message>
+        <Message type="success">{t.undone}</Message>
       )}
 
       {paidResult && (
         <Message type="success">
-          {paidResult.linked
-            ? "The bill was marked as paid with the payment that was already in your transactions."
-            : "The bill was marked as paid and the payment was added to your transactions."}
+          {paidResult.linked ? t.paidLinked : t.paidAdded}
           {paidResult.nextDueDate &&
-            ` The next one is due ${formatDate(paidResult.nextDueDate)}.`}
+            ` ${fill(t.nextDue, { date: formatDate(paidResult.nextDueDate, locale) })}`}
         </Message>
       )}
 
       {/* Regular payments found in the history that could be bills */}
       {suggestions > 0 && (
         <Message type="info">
-          Finely spotted {suggestions} regular{" "}
-          {suggestions === 1 ? "payment that isn't a bill" : "payments that aren't bills"}{" "}
-          yet.{" "}
+          {plural(suggestions, t.suggestions)}{" "}
           <Link href="/dashboard/insights#recurring" className={styles.messageLink}>
-            See {suggestions === 1 ? "it" : "them"}
+            {plural(suggestions, t.seeThem)}
           </Link>
         </Message>
       )}
@@ -192,8 +186,8 @@ export default function BillsView({
         <input
           name="q"
           type="search"
-          placeholder="Search bills by name, notes or category"
-          aria-label="Search bills"
+          placeholder={t.searchPlaceholder}
+          aria-label={t.search}
           key={search}
           defaultValue={search}
           maxLength={100}
@@ -202,9 +196,9 @@ export default function BillsView({
       </Form>
       {search && (
         <p className={styles.searchNote}>
-          Showing bills that match “{search}”.{" "}
+          {fill(t.matching, { search })}{" "}
           <Link href={LIST_PATH} className={styles.viewLink}>
-            Show all bills
+            {t.showAll}
           </Link>
         </p>
       )}
@@ -212,62 +206,52 @@ export default function BillsView({
       {/* Totals of what's still owed (of everything, so not while searching) */}
       <div className={styles.tiles} hidden={Boolean(search)}>
         <div className={styles.tile}>
-          <span className={styles.tileLabel}>Overdue</span>
+          <span className={styles.tileLabel}>{t.overdue}</span>
           <span
             className={`${styles.tileValue} ${summary.overdue.count > 0 ? styles.danger : ""}`}
           >
-            {formatCurrency(summary.overdue.amount, { currency: currency })}
+            {money(summary.overdue.amount)}
           </span>
-          <span className={styles.tileNote}>
-            {summary.overdue.count} {summary.overdue.count === 1 ? "bill" : "bills"}
-          </span>
+          <span className={styles.tileNote}>{plural(summary.overdue.count, t.billCount)}</span>
         </div>
         <div className={styles.tile}>
-          <span className={styles.tileLabel}>Due in the next 7 days</span>
+          <span className={styles.tileLabel}>{t.dueSoon}</span>
           <span className={styles.tileValue}>
-            {formatCurrency(summary.dueSoon.amount, { currency: currency })}
+            {money(summary.dueSoon.amount)}
           </span>
-          <span className={styles.tileNote}>
-            {summary.dueSoon.count} {summary.dueSoon.count === 1 ? "bill" : "bills"}
-          </span>
+          <span className={styles.tileNote}>{plural(summary.dueSoon.count, t.billCount)}</span>
         </div>
         <div className={styles.tile}>
-          <span className={styles.tileLabel}>Owed in total</span>
+          <span className={styles.tileLabel}>{t.owed}</span>
           <span className={styles.tileValue}>
-            {formatCurrency(summary.unpaid.amount, { currency: currency })}
+            {money(summary.unpaid.amount)}
           </span>
-          <span className={styles.tileNote}>
-            {summary.unpaid.count} {summary.unpaid.count === 1 ? "bill" : "bills"}
-          </span>
+          <span className={styles.tileNote}>{plural(summary.unpaid.count, t.billCount)}</span>
         </div>
       </div>
 
       {/* Bills still to pay */}
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>To pay</h2>
+        <h2 className={styles.cardTitle}>{t.toPay}</h2>
         {unpaid.length === 0 ? (
           <p className={styles.noResults}>
-            {search
-              ? "No unpaid bill matches your search."
-              : paid.length === 0
-                ? "No bills yet. Add rent, subscriptions or invoices with “Add bill” to see what's coming up."
-                : "Nothing to pay right now."}
+            {search ? t.noUnpaidMatch : paid.length === 0 ? t.empty : t.nothingToPay}
           </p>
         ) : (
           <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col">Due</th>
-                  <th scope="col">Bill</th>
+                  <th scope="col">{t.table.due}</th>
+                  <th scope="col">{t.table.bill}</th>
                   <th scope="col" className={styles.mediumUp}>
-                    Category
+                    {t.table.category}
                   </th>
                   <th scope="col" className={styles.amountCell}>
-                    Amount
+                    {t.table.amount}
                   </th>
                   <th scope="col">
-                    <span className={styles.srOnly}>Pay</span>
+                    <span className={styles.srOnly}>{t.table.pay}</span>
                   </th>
                 </tr>
               </thead>
@@ -278,11 +262,11 @@ export default function BillsView({
                     <tr key={bill.id} className={styles.row}>
                       <td>
                         <span className={styles.due}>
-                          {formatDate(bill.dueDate)}
+                          {formatDate(bill.dueDate, locale)}
                           <span
                             className={`${styles.dueNote} ${status === "upcoming" ? "" : styles[status]}`}
                           >
-                            {dueText(bill.dueDate, today)}
+                            {dueText(bill.dueDate, today, t)}
                           </span>
                         </span>
                       </td>
@@ -298,29 +282,24 @@ export default function BillsView({
                         {bill.repeat !== "none" && (
                           <span className={styles.repeat}>
                             <Repeat size={12} aria-hidden="true" />
-                            {BILL_REPEAT_LABELS[bill.repeat]}
+                            {t.repeats[bill.repeat]}
                           </span>
                         )}
                         {/* "Mark as paid" offers that payment */}
                         {possiblyPaid.includes(bill.id) && (
-                          <span className={styles.maybePaid}>
-                            A payment of this amount is already in your
-                            transactions
-                          </span>
+                          <span className={styles.maybePaid}>{t.maybePaid}</span>
                         )}
                       </td>
                       <td className={styles.mediumUp}>{categoryCell(bill)}</td>
-                      <td className={styles.amountCell}>
-                        {formatCurrency(bill.amount, { currency: currency })}
-                      </td>
+                      <td className={styles.amountCell}>{money(bill.amount)}</td>
                       <td className={styles.actionCell}>
                         <Link
                           href={`${LIST_PATH}?pay=${bill.id}`}
                           scroll={false}
                           className={styles.payLink}
-                          aria-label={`Mark as paid: ${bill.name}`}
+                          aria-label={fill(t.markAsPaidLabel, { name: bill.name })}
                         >
-                          Mark as paid
+                          {t.markAsPaid}
                         </Link>
                       </td>
                     </tr>
@@ -336,18 +315,18 @@ export default function BillsView({
       {paid.length > 0 && (
         <section className={styles.card}>
           <div className={styles.cardTitleRow}>
-            <h2 className={styles.cardTitle}>{allPaid ? "Paid" : "Recently paid"}</h2>
+            <h2 className={styles.cardTitle}>{allPaid ? t.paidTitle : t.recentlyPaid}</h2>
             {morePaid && (
               <Link
                 href={`${LIST_PATH}?history=1${search ? `&q=${encodeURIComponent(search)}` : ""}`}
                 className={styles.viewLink}
               >
-                Show all paid bills
+                {t.showAllPaid}
               </Link>
             )}
             {allPaid && (
               <Link href={LIST_PATH} className={styles.viewLink}>
-                Show the latest only
+                {t.showLatest}
               </Link>
             )}
           </div>
@@ -355,16 +334,16 @@ export default function BillsView({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col">Paid</th>
-                  <th scope="col">Bill</th>
+                  <th scope="col">{t.table.paid}</th>
+                  <th scope="col">{t.table.bill}</th>
                   <th scope="col" className={styles.mediumUp}>
-                    Category
+                    {t.table.category}
                   </th>
                   <th scope="col" className={styles.amountCell}>
-                    Amount
+                    {t.table.amount}
                   </th>
                   <th scope="col">
-                    <span className={styles.srOnly}>Payment</span>
+                    <span className={styles.srOnly}>{t.table.payment}</span>
                   </th>
                 </tr>
               </thead>
@@ -372,15 +351,13 @@ export default function BillsView({
                 {paid.map((bill) => (
                   <tr key={bill.id}>
                     <td className={styles.muted}>
-                      {bill.paidDay && formatDate(bill.paidDay)}
+                      {bill.paidDay && formatDate(bill.paidDay, locale)}
                     </td>
                     <td className={styles.nameCell}>
                       <span className={styles.paidName}>{bill.name}</span>
                     </td>
                     <td className={styles.mediumUp}>{categoryCell(bill)}</td>
-                    <td className={styles.amountCell}>
-                      {formatCurrency(bill.amount, { currency: currency })}
-                    </td>
+                    <td className={styles.amountCell}>{money(bill.amount)}</td>
                     <td className={styles.actionCell}>
                       <span className={styles.rowLinks}>
                         {/* Gone if the transaction was deleted since */}
@@ -388,18 +365,18 @@ export default function BillsView({
                           <Link
                             href={`/dashboard/transactions?edit=${bill.transactionId}`}
                             className={styles.viewLink}
-                            aria-label={`View payment of ${bill.name}`}
+                            aria-label={fill(t.viewPaymentLabel, { name: bill.name })}
                           >
-                            View payment
+                            {t.viewPayment}
                           </Link>
                         )}
                         {canManage && (
                           <Link
                             href={`${LIST_PATH}?undo=${bill.id}`}
                             className={styles.viewLink}
-                            aria-label={`Undo the payment of ${bill.name}`}
+                            aria-label={fill(t.undoLabel, { name: bill.name })}
                           >
-                            Undo
+                            {t.undo}
                           </Link>
                         )}
                       </span>

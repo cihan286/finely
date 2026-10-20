@@ -20,7 +20,7 @@ export async function startDemoAction(timeZone: string): Promise<ActionState> {
   try {
     await startDemo(timeZone);
   } catch (error) {
-    return { error: errorMessage(error) };
+    return { error: await errorMessage(error) };
   }
   redirect("/dashboard");
 }

@@ -20,6 +20,8 @@
 
 import { localDay } from "@/lib/dates";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { DEFAULT_LOCALE, fill, plural, type Locale } from "@/i18n/config";
+import { messagesFor, type Messages } from "@/i18n/messages";
 import { ALL_SPENDING, monthName, monthStart } from "@/lib/finance/budgets";
 import type { UnusualCharge } from "@/lib/finance/insights";
 import type { ISODate, Notification } from "@/types/finance";
@@ -86,8 +88,6 @@ export interface NotificationFacts {
 const budgetHref = (categoryId: string, today: ISODate) =>
   `/dashboard/transactions?${categoryId === ALL_SPENDING ? "" : `category=${categoryId}&`}from=${monthStart(today)}`;
 
-const plural = (count: number, one: string, many: string) =>
-  count === 1 ? `1 ${one}` : `${count} ${many}`;
 
 /** The company's notifications, newest first. */
 export function buildNotifications(
@@ -99,15 +99,25 @@ export function buildNotifications(
   today: ISODate,
   /** The company's currency, for the amounts in the texts */
   currency = "USD",
+  /** The reader's language */
+  locale: Locale = DEFAULT_LOCALE,
 ): Notification[] {
+  const t: Messages["notifications"] = messagesFor(locale).notifications;
+  const money = (amount: number) => formatCurrency(amount, { currency }, locale);
+  const month = monthName(today, locale);
   const items: (Omit<Notification, "day" | "read"> & { at: Date })[] = [];
 
   for (const charge of facts.unusualCharges) {
     items.push({
       id: `unusual-${charge.id}`,
       type: "alert",
-      title: "Unusually high charge",
-      description: `${charge.name} charged ${formatCurrency(charge.amount, { currency: currency })}, ${charge.percentAbove}% above its usual ${formatCurrency(charge.usual, { currency: currency })}.`,
+      title: t.unusualTitle,
+      description: fill(t.unusual, {
+        name: charge.name,
+        amount: money(charge.amount),
+        percent: charge.percentAbove,
+        usual: money(charge.usual),
+      }),
       href: `/dashboard/transactions?edit=${charge.id}`,
       at: charge.at,
     });
@@ -117,8 +127,8 @@ export function buildNotifications(
     items.push({
       id: `overdrawn-${account.id}`,
       type: "alert",
-      title: "Account below zero",
-      description: `${account.name} is at ${formatCurrency(account.balance, { currency: currency })}.`,
+      title: t.overdrawnTitle,
+      description: fill(t.overdrawn, { name: account.name, balance: money(account.balance) }),
       href: `/dashboard/transactions?account=${account.id}`,
       at: account.at,
     });
@@ -129,8 +139,8 @@ export function buildNotifications(
     items.push({
       id: "cash-shortfall",
       type: "alert",
-      title: "Cash may run short",
-      description: `With the bills and regular payments expected, your balance could drop to ${formatCurrency(balance, { currency: currency })} by ${formatDate(day)}.`,
+      title: t.shortfallTitle,
+      description: fill(t.shortfall, { balance: money(balance), date: formatDate(day, locale) }),
       href: "/dashboard#forecast",
       at: facts.cashShortfall.at,
     });
@@ -141,8 +151,13 @@ export function buildNotifications(
       // One per month: next month's is a new notification
       id: `budget-${category.categoryId}-${today.slice(0, 7)}`,
       type: "alert",
-      title: "Over budget",
-      description: `${category.name} is ${formatCurrency(category.spent - category.budget, { currency: currency })} over its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}.`,
+      title: t.overBudgetTitle,
+      description: fill(t.overBudget, {
+        name: category.name,
+        over: money(category.spent - category.budget),
+        budget: money(category.budget),
+        month,
+      }),
       href: budgetHref(category.categoryId, today),
       at: category.at,
     });
@@ -153,8 +168,14 @@ export function buildNotifications(
       // Its own ID: going over later is a new notification
       id: `budget-near-${category.categoryId}-${today.slice(0, 7)}`,
       type: "reminder",
-      title: "Budget nearly used up",
-      description: `${category.name} has used ${Math.floor((category.spent / category.budget) * 100)}% of its ${formatCurrency(category.budget, { currency: currency })} budget for ${monthName(today)}: ${formatCurrency(category.budget - category.spent, { currency: currency })} left.`,
+      title: t.nearBudgetTitle,
+      description: fill(t.nearBudget, {
+        name: category.name,
+        percent: Math.floor((category.spent / category.budget) * 100),
+        budget: money(category.budget),
+        month,
+        left: money(category.budget - category.spent),
+      }),
       href: budgetHref(category.categoryId, today),
       at: category.at,
     });
@@ -165,8 +186,14 @@ export function buildNotifications(
       // One per month: next month's is a new notification
       id: `card-${card.id}-${today.slice(0, 7)}`,
       type: "alert",
-      title: "Card over its limit",
-      description: `${card.name} (•••• ${card.last4}) has spent ${formatCurrency(card.spent, { currency: currency })} of its ${formatCurrency(card.limit, { currency: currency })} limit for ${monthName(today)}.`,
+      title: t.cardTitle,
+      description: fill(t.card, {
+        name: card.name,
+        last4: card.last4,
+        spent: money(card.spent),
+        limit: money(card.limit),
+        month,
+      }),
       href: `/dashboard/transactions?card=${card.id}&from=${monthStart(today)}`,
       at: card.at,
     });
@@ -177,8 +204,8 @@ export function buildNotifications(
     items.push({
       id: "bills-overdue",
       type: "alert",
-      title: count === 1 ? "Bill overdue" : "Bills overdue",
-      description: `${plural(count, "bill is", "bills are")} past ${count === 1 ? "its" : "their"} due date, ${formatCurrency(amount, { currency: currency })} in total.`,
+      title: plural(count, t.overdueTitle),
+      description: plural(count, t.overdue, { amount: money(amount) }),
       href: "/dashboard/bills",
       at: facts.overdueBills.at,
     });
@@ -189,8 +216,8 @@ export function buildNotifications(
     items.push({
       id: "bills-due-soon",
       type: "reminder",
-      title: count === 1 ? "Bill due soon" : "Bills due soon",
-      description: `${plural(count, "bill is", "bills are")} due within a week, ${formatCurrency(amount, { currency: currency })} in total.`,
+      title: plural(count, t.dueSoonTitle),
+      description: plural(count, t.dueSoon, { amount: money(amount) }),
       href: "/dashboard/bills",
       at: facts.billsDueSoon.at,
     });
@@ -201,8 +228,8 @@ export function buildNotifications(
     items.push({
       id: "bills-maybe-paid",
       type: "reminder",
-      title: count === 1 ? "Bill possibly paid already" : "Bills possibly paid already",
-      description: `${plural(count, "unpaid bill has", "unpaid bills have")} a payment of the same amount in your transactions. Mark ${count === 1 ? "it" : "them"} as paid with that payment if that's ${count === 1 ? "it" : "them"}.`,
+      title: plural(count, t.maybePaidTitle),
+      description: plural(count, t.maybePaid),
       href: billId ? `/dashboard/bills?pay=${billId}` : "/dashboard/bills",
       at: facts.billsMaybePaid.at,
     });
@@ -213,8 +240,8 @@ export function buildNotifications(
     items.push({
       id: "stale-pending",
       type: "reminder",
-      title: "Payments still pending",
-      description: `${plural(count, "payment has", "payments have")} been pending for more than a week. Mark ${count === 1 ? "it" : "them"} completed once ${count === 1 ? "it has" : "they've"} gone through.`,
+      title: t.pendingTitle,
+      description: plural(count, t.pending),
       href: "/dashboard/transactions",
       at: facts.stalePending.at,
     });
@@ -225,8 +252,8 @@ export function buildNotifications(
     items.push({
       id: "uncategorized",
       type: "reminder",
-      title: "Transactions without a category",
-      description: `${plural(count, "transaction has", "transactions have")} no category, so ${count === 1 ? "it's" : "they're"} missing from the spending breakdowns.`,
+      title: t.uncategorizedTitle,
+      description: plural(count, t.uncategorized),
       href: "/dashboard/transactions?category=none",
       at: facts.uncategorized.at,
     });

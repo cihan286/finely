@@ -30,6 +30,9 @@ import {
 } from "@/lib/finance/plans";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import { rich } from "@/i18n/rich";
 import styles from "./BillingSettings.module.css";
 
 interface BillingSettingsProps {
@@ -40,7 +43,7 @@ interface BillingSettingsProps {
   memberLimit: number | null;
   memberCount: number;
   /** A note about the subscription's state, e.g. a failed payment */
-  note: string | null;
+  note: "cancelled" | "pastDue" | "trialing" | null;
   /** When the paid period ends or renews, as text; null without one */
   periodEnd: string | null;
   /** Whether "Manage billing" has somewhere to go */
@@ -61,6 +64,7 @@ export default function BillingSettings({
   hasCustomer,
   justPaid,
 }: BillingSettingsProps) {
+  const t = useI18n().m.settings.billing;
   const [state, dispatch, pending] = useActionState(submitBilling, initialActionState);
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const full = memberLimit !== null && memberCount >= memberLimit;
@@ -76,35 +80,33 @@ export default function BillingSettings({
       {state.error && <Message type="error">{state.error}</Message>}
       {justPaid && (
         <Message type="success">
-          {plan === "free"
-            ? "Thank you! Your plan is updated as soon as Stripe confirms the payment, usually within a minute. Reload the page if it still shows the old plan."
-            : `Thank you! ${PLANS[plan].name} is active for your company.`}
+          {plan === "free" ? t.thanksPending : fill(t.thanks, { plan: PLANS[plan].name })}
         </Message>
       )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Plan &amp; billing</h2>
-          <p className={shared.cardHint}>
-            The plan decides how many people can be on the team.
-          </p>
+          <h2 className={shared.cardTitle}>{t.title}</h2>
+          <p className={shared.cardHint}>{t.hint}</p>
         </div>
 
         <div className={styles.current}>
           <span className={styles.plan}>{PLANS[plan].name}</span>
           <span className={full ? styles.full : styles.usage}>
-            {memberCount} of {memberLimit ?? "unlimited"} team members
-            {full && ": no room for another one"}
+            {fill(t.usage, { count: memberCount, limit: memberLimit ?? t.unlimited })}
+            {full && t.full}
           </span>
-          {periodEnd && <span className={styles.usage}>Current period ends {periodEnd}</span>}
-          {note && <span className={styles.note}>{note}</span>}
+          {periodEnd && (
+            <span className={styles.usage}>{fill(t.periodEnds, { date: periodEnd })}</span>
+          )}
+          {note && <span className={styles.note}>{t.notes[note]}</span>}
         </div>
 
         {!isOwner ? (
-          <p className={styles.usage}>Only the company&apos;s owner can change the plan.</p>
+          <p className={styles.usage}>{t.ownerOnly}</p>
         ) : plan === "free" ? (
           <>
             {/* Monthly / yearly prices */}
-            <div className={styles.toggle} role="group" aria-label="Billing period">
+            <div className={styles.toggle} role="group" aria-label={t.period}>
               {(["monthly", "yearly"] as const).map((option) => (
                 <button
                   key={option}
@@ -113,7 +115,7 @@ export default function BillingSettings({
                   onClick={() => setInterval(option)}
                   aria-pressed={interval === option}
                 >
-                  {option === "monthly" ? "Monthly" : "Yearly"}
+                  {option === "monthly" ? t.monthly : t.yearly}
                 </button>
               ))}
             </div>
@@ -127,16 +129,17 @@ export default function BillingSettings({
                     <span className={styles.optionPrice}>
                       ${price}
                       <span className={styles.usage}>
-                        /month{interval === "yearly" && ", billed yearly"}
+                        {t.perMonth}
+                        {interval === "yearly" && t.billedYearly}
                       </span>
                     </span>
                     <span className={styles.usage}>
-                      Up to {PLANS[key].members} team members
+                      {fill(t.upTo, { count: PLANS[key].members })}
                     </span>
                     <Button
                       variant={key === "growth" ? "primary" : "outline"}
                       size="sm"
-                      text={`Choose ${PLANS[key].name}`}
+                      text={fill(t.choose, { plan: PLANS[key].name })}
                       action={() => go({ plan: key, interval })}
                       disabled={pending}
                     />
@@ -145,11 +148,13 @@ export default function BillingSettings({
               })}
             </div>
             <p className={styles.usage}>
-              Need more than 25 people?{" "}
-              <Link href="/contact" className={styles.link}>
-                Talk to us about Enterprise
-              </Link>
-              .
+              {rich(t.enterprise, {
+                link: (text) => (
+                  <Link href="/contact" className={styles.link}>
+                    {text}
+                  </Link>
+                ),
+              })}
             </p>
           </>
         ) : (
@@ -158,15 +163,12 @@ export default function BillingSettings({
               <Button
                 variant="outline"
                 size="sm"
-                text={pending ? "Opening" : "Manage billing"}
+                text={pending ? t.opening : t.manage}
                 loading={pending}
                 action={() => go({ intent: "portal" })}
                 disabled={pending}
               />
-              <p className={styles.hint}>
-                Change plan or payment method, cancel, and find your invoices,
-                on a page from Stripe.
-              </p>
+              <p className={styles.hint}>{t.manageHint}</p>
             </div>
           )
         )}

@@ -26,14 +26,6 @@ import type { BillRepeat, ISODate } from "@/types/finance";
 export const DUE_SOON_DAYS = 7;
 
 /** How each repeat is shown on screen */
-export const BILL_REPEAT_LABELS: Record<BillRepeat, string> = {
-  none: "Doesn't repeat",
-  weekly: "Every week",
-  biweekly: "Every 2 weeks",
-  monthly: "Every month",
-  quarterly: "Every 3 months",
-  yearly: "Every year",
-};
 
 export type BillStatus = "overdue" | "dueSoon" | "upcoming";
 

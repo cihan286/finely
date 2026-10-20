@@ -21,6 +21,8 @@ import { initialActionState } from "@/lib/action-state";
 import type { EmailPreferences } from "@/types/finance";
 // The settings sections share their card and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./EmailSettings.module.css";
 
 interface EmailSettingsProps {
@@ -38,6 +40,8 @@ export default function EmailSettings({
   emailVerified,
   preferences,
 }: EmailSettingsProps) {
+  const { m } = useI18n();
+  const t = m.settings.emails;
   const [state, dispatch, pending] = useActionState(
     submitEmailPreferences,
     initialActionState,
@@ -58,18 +62,11 @@ export default function EmailSettings({
       )}
       <section className={shared.card}>
         <div className={shared.cardHeader}>
-          <h2 className={shared.cardTitle}>Email notifications</h2>
-          <p className={shared.cardHint}>
-            What Finely emails you ({email}) about {organizationName}. Only
-            you are affected; your teammates choose for themselves.
-          </p>
+          <h2 className={shared.cardTitle}>{t.title}</h2>
+          <p className={shared.cardHint}>{fill(t.hint, { email, company: organizationName })}</p>
         </div>
         {!emailVerified && (
-          <p className={styles.note}>
-            These emails are only sent to verified addresses. Verify yours
-            with the link we emailed you (or the reminder at the top of the
-            page) to start getting them.
-          </p>
+          <p className={styles.note}>{t.unverified}</p>
         )}
         <form className={styles.form} onSubmit={handleSubmit}>
           <label className={styles.option}>
@@ -79,12 +76,8 @@ export default function EmailSettings({
               defaultChecked={preferences.weeklyDigest}
             />
             <span>
-              <strong>Weekly summary</strong>
-              <span className={styles.description}>
-                Every Monday: what came in and went out last week, what&apos;s
-                in the bank, and what needs a look. Skipped in weeks when
-                nothing happened.
-              </span>
+              <strong>{t.weekly}</strong>
+              <span className={styles.description}>{t.weeklyText}</span>
             </span>
           </label>
           <label className={styles.option}>
@@ -94,11 +87,8 @@ export default function EmailSettings({
               defaultChecked={preferences.unusualCharges}
             />
             <span>
-              <strong>Unusual charges</strong>
-              <span className={styles.description}>
-                Right away, when a new charge is at least 50% above what that
-                vendor usually charges.
-              </span>
+              <strong>{t.unusual}</strong>
+              <span className={styles.description}>{t.unusualText}</span>
             </span>
           </label>
           <div>
@@ -107,7 +97,7 @@ export default function EmailSettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Save"}
+              text={pending ? m.common.saving : m.common.save}
               disabled={pending}
             />
           </div>

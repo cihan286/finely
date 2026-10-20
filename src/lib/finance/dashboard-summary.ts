@@ -13,6 +13,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addDays } from "@/lib/dates";
+import { DEFAULT_LOCALE, fill, intlLocale, type Locale } from "@/i18n/config";
+import { messagesFor } from "@/i18n/messages";
 import type {
   Account,
   Cashflow,
@@ -56,7 +58,15 @@ export interface DashboardSummary {
   accounts: Account[];
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "Oct 8" and "Oct" on the chart, in the page's language
+const dayLabel = (day: ISODate, locale: Locale) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { month: "short", day: "numeric", timeZone: "UTC" }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
+const monthLabel = (month: string, locale: Locale) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { month: "short", timeZone: "UTC" }).format(
+    new Date(`${month}-01T00:00:00Z`),
+  );
 
 // Color for spending without a category, and for "N more categories"
 const NEUTRAL_COLOR = "#94a3b8";
@@ -89,13 +99,16 @@ export function buildDashboardSummary({
   categorySpending,
   accounts,
   recentTransactions,
+  locale = DEFAULT_LOCALE,
 }: {
   today: ISODate;
   daily: DailyTotals[];
   categorySpending: CategorySpending[];
   accounts: Account[];
   recentTransactions: TransactionDetails[];
+  locale?: Locale;
 }): DashboardSummary {
+  const m = messagesFor(locale).dashboard;
   const { last30Start, previous30Start, tomorrow } = dashboardWindows(today);
 
   const byDay = new Map(daily.map((d) => [d.day, d]));
@@ -115,10 +128,9 @@ export function buildDashboardSummary({
   // Chart: one point per day for the last 30 days...
   const last30Days: CashflowPoint[] = Array.from({ length: 30 }, (_, i) => {
     const day = addDays(last30Start, i);
-    const [, month, date] = day.split("-").map(Number);
     return {
       date: day,
-      label: `${MONTHS[month - 1]} ${date}`,
+      label: dayLabel(day, locale),
       income: round2(byDay.get(day)?.income ?? 0),
       expenses: round2(byDay.get(day)?.expenses ?? 0),
     };
@@ -129,7 +141,7 @@ export function buildDashboardSummary({
     { length: Number(today.slice(5, 7)) },
     (_, i) => {
       const month = `${year}-${String(i + 1).padStart(2, "0")}`;
-      return { label: MONTHS[i], ...sumDays((day) => day.startsWith(month)) };
+      return { label: monthLabel(month, locale), ...sumDays((day) => day.startsWith(month)) };
     },
   );
 
@@ -141,7 +153,7 @@ export function buildDashboardSummary({
   const metrics: Metric[] = [
     {
       id: "balance",
-      title: "Total Balance",
+      title: m.metrics.balance,
       value: totalBalance,
       // The balance 30 days ago: today's minus what changed since
       previousValue: round2(totalBalance - net),
@@ -151,7 +163,7 @@ export function buildDashboardSummary({
     },
     {
       id: "income",
-      title: "Income (30 days)",
+      title: m.metrics.income,
       value: current.income,
       previousValue: previous.income,
       format: "currency",
@@ -160,7 +172,7 @@ export function buildDashboardSummary({
     },
     {
       id: "expenses",
-      title: "Expenses (30 days)",
+      title: m.metrics.expenses,
       value: current.expenses,
       previousValue: previous.expenses,
       format: "currency",
@@ -169,7 +181,7 @@ export function buildDashboardSummary({
     },
     {
       id: "net",
-      title: "Net Cash Flow (30 days)",
+      title: m.metrics.net,
       value: net,
       previousValue: round2(previous.income - previous.expenses),
       format: "currency",
@@ -182,7 +194,7 @@ export function buildDashboardSummary({
     today,
     metrics,
     cashflow: { last30Days, thisYear },
-    expenseCategories: topCategories(categorySpending),
+    expenseCategories: topCategories(categorySpending, 4, locale),
     expensesTotal: current.expenses,
     recentTransactions,
     accounts,
@@ -196,11 +208,13 @@ export function buildDashboardSummary({
 export function topCategories(
   spending: CategorySpending[],
   top = 4,
+  locale: Locale = DEFAULT_LOCALE,
 ): ExpenseCategory[] {
+  const m = messagesFor(locale).dashboard;
   const categories: ExpenseCategory[] = spending
     .map((s) => ({
       id: s.categoryId ?? "uncategorized",
-      category: s.name ?? "Uncategorized",
+      category: s.name ?? m.uncategorized,
       amount: round2(s.amount),
       iconKey: (s.iconKey ?? "more") as CategoryIconKey,
       color: s.color ?? NEUTRAL_COLOR,
@@ -213,7 +227,7 @@ export function topCategories(
     ...categories.slice(0, top),
     {
       id: "everything-else",
-      category: `${rest.length} more categories`,
+      category: fill(m.moreCategories, { count: rest.length }),
       amount: round2(rest.reduce((sum, c) => sum + c.amount, 0)),
       iconKey: "more",
       color: NEUTRAL_COLOR,

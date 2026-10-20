@@ -1,0 +1,46 @@
+.switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.option {
+  min-width: 2.25rem;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.option:hover:not([aria-pressed="true"]) {
+  background: var(--hover);
+  color: var(--foreground);
+}
+
+.option[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: default;
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.switcher[aria-busy="true"] .option {
+  cursor: progress;
+}

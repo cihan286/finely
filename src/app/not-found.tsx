@@ -15,28 +15,31 @@ import Button from "@/components/common/button/Button";
 import Footer from "@/components/common/footer/Footer";
 import SiteHeader from "@/components/home/site-header/SiteHeader";
 import { getSession } from "@/lib/session";
+import { getMessages } from "@/i18n/server";
 import styles from "./(site)/site.module.css";
 
-export const metadata: Metadata = { title: "Page not found" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).site.notFound.title };
+}
 
 export default async function NotFound() {
   const signedIn = Boolean(await getSession());
+  const { site } = await getMessages();
+  const t = site.notFound;
   return (
     <>
       <SiteHeader signedIn={signedIn} />
       <main className={styles.page}>
-        <p className={styles.label}>Error 404</p>
-        <h1 className={styles.title}>This page doesn&apos;t exist</h1>
-        <p className={styles.intro}>
-          The link may be old or mistyped, or the page may have moved.
-        </p>
+        <p className={styles.label}>{t.label}</p>
+        <h1 className={styles.title}>{t.heading}</h1>
+        <p className={styles.intro}>{t.intro}</p>
         <div className={styles.cta}>
           {signedIn ? (
-            <Button variant="primary" text="Open your dashboard" href="/dashboard" />
+            <Button variant="primary" text={t.openDashboard} href="/dashboard" />
           ) : (
-            <Button variant="primary" text="Go to the home page" href="/" />
+            <Button variant="primary" text={t.goHome} href="/" />
           )}
-          <Button variant="secondary" text="Contact us" href="/contact" />
+          <Button variant="secondary" text={site.about.contactUs} href="/contact" />
         </div>
       </main>
       <Footer signedIn={signedIn} />

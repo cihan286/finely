@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata } from "next";
+import { getMessages } from "@/i18n/server";
 import CardsView from "@/components/dashboard/cards/CardsView";
 import { getCard, listCards } from "@/lib/data/cards";
 import { getCompanyLocale } from "@/lib/data/common";
@@ -18,9 +19,9 @@ import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 
 // Browser tab title: "Cards | Finely"
-export const metadata: Metadata = {
-  title: "Cards",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).cards.title };
+}
 
 // One value from the address: the first if repeated, "" if missing
 const single = (value: string | string[] | undefined) =>

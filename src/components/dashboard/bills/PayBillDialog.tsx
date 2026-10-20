@@ -33,6 +33,8 @@ import { nextDueDate } from "@/lib/finance/bills";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Account, Bill, BillPaymentCandidate } from "@/types/finance";
 // The windows of the dashboard share how their fields are arranged
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import forms from "../transactions/forms.module.css";
 import styles from "./BillDialog.module.css";
 
@@ -55,12 +57,13 @@ interface PayBillDialogProps {
 }
 
 export default function PayBillDialog(props: PayBillDialogProps) {
+  const t = useI18n().m.bills;
   const [state, dispatch, pending] = useActionState(
     submitBillPayment,
     initialActionState,
   );
   return (
-    <Dialog title="Mark as paid" closeHref={props.closeHref} busy={pending}>
+    <Dialog title={t.markAsPaid} closeHref={props.closeHref} busy={pending}>
       <PayBillForm
         {...props}
         error={state.error}
@@ -90,6 +93,10 @@ function PayBillForm({
   submit,
 }: PayBillFormProps) {
   const close = useCloseDialog();
+  const { locale, m } = useI18n();
+  const words = m.bills;
+  const t = words.pay;
+  const date = (day: string) => formatDate(day, locale);
   const next = nextDueDate(bill.dueDate, bill.repeat);
   // The transaction that is the payment; "" = record a new one. When one
   // looks like it, that's the likelier truth.
@@ -109,14 +116,16 @@ function PayBillForm({
       {/* What's being paid */}
       <div className={styles.summary}>
         <span className={styles.summaryName}>{bill.name}</span>
-        <span className={styles.summaryAmount}>{formatCurrency(bill.amount, { currency: currency })}</span>
-        <span className={styles.summaryNote}>Due {formatDate(bill.dueDate)}</span>
+        <span className={styles.summaryAmount}>
+          {formatCurrency(bill.amount, { currency }, locale)}
+        </span>
+        <span className={styles.summaryNote}>{fill(t.due, { date: date(bill.dueDate) })}</span>
       </div>
 
       {candidates.length > 0 && (
         <Field
-          label="Payment"
-          hint="A transaction of this amount is already there. Choosing it keeps the payment from being counted twice."
+          label={t.payment}
+          hint={t.paymentHint}
         >
           <Select
             name="transactionId"
@@ -125,30 +134,28 @@ function PayBillForm({
           >
             {candidates.map((c) => (
               <option key={c.id} value={c.id}>
-                Already there: {c.name} · {formatDate(c.day)} · {c.account}
+                {fill(t.alreadyThere, { name: c.name, date: date(c.day), account: c.account })}
               </option>
             ))}
-            <option value="">Record a new payment</option>
+            <option value="">{t.recordNew}</option>
           </Select>
         </Field>
       )}
 
       {existingId ? (
         <p className={styles.note}>
-          Nothing is added to the transactions.
-          {next && ` The next bill will be due ${formatDate(next)}.`}
+          {t.nothingAdded}
+          {next && ` ${fill(t.nextBill, { date: date(next) })}`}
         </p>
       ) : accounts.length === 0 ? (
         // The payment needs an account to leave from
         <Message type="info">
-          {canManage
-            ? "Add a bank account in Settings first: the payment is recorded in the account it was paid from."
-            : "Your company has no bank account in Finely yet. Ask an owner or admin to add one in Settings."}
+          {canManage ? t.addAccountFirst : t.noAccountMember}
         </Message>
       ) : (
         <>
           <div className={forms.grid}>
-            <Field label="Paid from">
+            <Field label={t.paidFrom}>
               <Select name="accountId" defaultValue={accounts[0].id} required>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -158,15 +165,14 @@ function PayBillForm({
                 ))}
               </Select>
             </Field>
-            <Field label="Paid on">
+            <Field label={t.paidOn}>
               <Input name="date" type="date" defaultValue={today} required />
             </Field>
           </div>
 
           <p className={styles.note}>
-            This adds a payment of {formatCurrency(bill.amount, { currency: currency })} to the
-            account&apos;s transactions.
-            {next && ` The next bill will be due ${formatDate(next)}.`}
+            {fill(t.addsPayment, { amount: formatCurrency(bill.amount, { currency }, locale) })}
+            {next && ` ${fill(t.nextBill, { date: date(next) })}`}
           </p>
         </>
       )}
@@ -176,7 +182,7 @@ function PayBillForm({
           <Button
             variant="outline"
             size="sm"
-            text="Cancel"
+            text={m.common.cancel}
             action={close}
             disabled={pending}
           />
@@ -186,7 +192,7 @@ function PayBillForm({
                 href="/dashboard/settings#accounts"
                 variant="primary"
                 size="sm"
-                text="Add a bank account"
+                text={t.addAccount}
               />
             )
           ) : (
@@ -195,7 +201,7 @@ function PayBillForm({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Mark as paid"}
+              text={pending ? m.common.saving : words.markAsPaid}
               disabled={pending}
             />
           )}

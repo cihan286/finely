@@ -23,15 +23,16 @@ import {
 } from "lucide-react";
 import type { CategoryIconKey } from "@/types/finance";
 
-export const CATEGORY_ICONS: Record<CategoryIconKey, { icon: LucideIcon; label: string }> = {
-  income: { icon: TrendingUp, label: "Income" },
-  users: { icon: Users, label: "People" },
-  building: { icon: Building2, label: "Building" },
-  laptop: { icon: Laptop, label: "Computer" },
-  megaphone: { icon: Megaphone, label: "Marketing" },
-  plane: { icon: Plane, label: "Travel" },
-  utensils: { icon: UtensilsCrossed, label: "Meals" },
-  receipt: { icon: Receipt, label: "Taxes & fees" },
-  briefcase: { icon: Briefcase, label: "Services" },
-  more: { icon: MoreHorizontal, label: "Other" },
+// Each icon's name is in the page's words: m.settings.icons
+export const CATEGORY_ICONS: Record<CategoryIconKey, { icon: LucideIcon }> = {
+  income: { icon: TrendingUp },
+  users: { icon: Users },
+  building: { icon: Building2 },
+  laptop: { icon: Laptop },
+  megaphone: { icon: Megaphone },
+  plane: { icon: Plane },
+  utensils: { icon: UtensilsCrossed },
+  receipt: { icon: Receipt },
+  briefcase: { icon: Briefcase },
+  more: { icon: MoreHorizontal },
 };

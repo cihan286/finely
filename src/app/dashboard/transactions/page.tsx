@@ -30,11 +30,12 @@ import { listCards } from "@/lib/data/cards";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
+import { getMessages } from "@/i18n/server";
 
 // Browser tab title: "Transactions | Finely"
-export const metadata: Metadata = {
-  title: "Transactions",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).transactions.title };
+}
 
 const PAGE_SIZE = 25;
 

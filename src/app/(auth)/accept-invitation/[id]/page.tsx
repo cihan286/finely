@@ -22,12 +22,14 @@ import ResendVerificationButton from "@/components/auth/ResendVerificationButton
 import SwitchAccountButton from "@/components/auth/SwitchAccountButton";
 import styles from "@/components/auth/AuthForm.module.css";
 import { auth } from "@/lib/auth";
-import { roleLabel } from "@/lib/roles";
+import { fill } from "@/i18n/config";
+import { bold, rich } from "@/i18n/rich";
+import { getMessages } from "@/i18n/server";
 import { getSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Join your team",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).auth.invitation.title };
+}
 
 export default async function AcceptInvitationPage({
   params,
@@ -37,30 +39,29 @@ export default async function AcceptInvitationPage({
   const { id } = await params;
   const here = `/accept-invitation/${id}`;
   const session = await getSession();
+  const { auth: words, common } = await getMessages();
+  const t = words.invitation;
 
   // Not logged in: log in or sign up first, then come back here
   if (!session) {
     return (
       <>
         <div className={styles.header}>
-          <h1 className={styles.title}>You&apos;re invited</h1>
-          <p className={styles.subtitle}>
-            Log in or create an account to join your team on Finely. Use the
-            email address the invitation was sent to.
-          </p>
+          <h1 className={styles.title}>{t.invited}</h1>
+          <p className={styles.subtitle}>{t.invitedText}</p>
         </div>
         <div className={styles.form}>
           <Link
             href={`/login?next=${encodeURIComponent(here)}`}
             className={styles.primaryLink}
           >
-            Log in
+            {common.logIn}
           </Link>
           <Link
             href={`/signup?next=${encodeURIComponent(here)}`}
             className={styles.secondaryLink}
           >
-            Create an account
+            {words.login.createAccount}
           </Link>
         </div>
       </>
@@ -73,15 +74,13 @@ export default async function AcceptInvitationPage({
     return (
       <>
         <div className={styles.header}>
-          <h1 className={styles.title}>Verify your email to join your team</h1>
+          <h1 className={styles.title}>{t.verifyTitle}</h1>
           <p className={styles.subtitle}>
-            We sent a verification link to <strong>{session.user.email}</strong>.
-            Click it, and you&apos;ll come right back here to accept the
-            invitation.
+            {rich(fill(t.verifyText, { email: session.user.email }), bold)}
           </p>
         </div>
         <p className={styles.footer}>
-          Didn&apos;t get it?{" "}
+          {t.didntGetIt}{" "}
           <ResendVerificationButton
             email={session.user.email}
             callbackURL={here}
@@ -107,18 +106,16 @@ export default async function AcceptInvitationPage({
     return (
       <>
         <div className={styles.header}>
-          <h1 className={styles.title}>Invitation not available</h1>
+          <h1 className={styles.title}>{t.unavailable}</h1>
           <p className={styles.subtitle}>
-            This invitation has expired, was already used, or was sent to a
-            different email address. You&apos;re logged in as{" "}
-            <strong>{session.user.email}</strong>.
+            {rich(fill(t.unavailableText, { email: session.user.email }), bold)}
           </p>
         </div>
         <p className={styles.footer}>
           <SwitchAccountButton next={here} />
           {" · "}
           <Link href="/dashboard" className={styles.link}>
-            Go to dashboard
+            {t.goToDashboard}
           </Link>
         </p>
       </>
@@ -126,16 +123,19 @@ export default async function AcceptInvitationPage({
   }
 
   // "member" -> "a member", "admin" -> "an admin"
-  const role = roleLabel(invitation.role).toLowerCase();
-  const roleWithArticle = `${/^[aeiou]/.test(role) ? "an" : "a"} ${role}`;
+  const roles: Record<string, string> = words.roleWithArticle;
+  const role = roles[invitation.role] ?? invitation.role;
 
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Join {invitation.organizationName}</h1>
+        <h1 className={styles.title}>{fill(t.join, { company: invitation.organizationName })}</h1>
         <p className={styles.subtitle}>
-          {invitation.inviterEmail} invited you to join{" "}
-          {invitation.organizationName} on Finely as {roleWithArticle}.
+          {fill(t.joinText, {
+            inviter: invitation.inviterEmail,
+            company: invitation.organizationName,
+            role,
+          })}
         </p>
       </div>
       <InvitationActions invitationId={invitation.id} />

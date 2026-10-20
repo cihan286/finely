@@ -14,6 +14,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The largest file accepted: Vercel refuses requests over 4.5 MB */
+import { DEFAULT_LOCALE, intlLocale, type Locale } from "@/i18n/config";
+
 export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 
 /** The most files one transaction can have */
@@ -69,9 +71,13 @@ export function cleanFileName(name: string): string {
   return base.slice(0, 120 - ending.length) + ending;
 }
 
-/** 2048 -> "2 KB", 1572864 -> "1.5 MB" */
-export function formatFileSize(bytes: number): string {
+/** 2048 -> "2 KB", 1572864 -> "1.5 MB" (in Turkish "1,5 MB") */
+export function formatFileSize(bytes: number, locale: Locale = DEFAULT_LOCALE): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const megabytes = new Intl.NumberFormat(intlLocale(locale), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(bytes / (1024 * 1024));
+  return `${megabytes} MB`;
 }

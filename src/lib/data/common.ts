@@ -22,21 +22,56 @@ import { requireOrganization } from "@/lib/session";
 import { currencyDecimals } from "@/lib/format";
 import { canManageFinances } from "@/lib/roles";
 import type { ISODate } from "@/types/finance";
+import { DEFAULT_LOCALE, fill, type Locale } from "@/i18n/config";
+import { messagesFor, type Messages } from "@/i18n/messages";
+import { getLocale } from "@/i18n/server";
 
-/** A problem the person can fix, with a message that's safe to show them. */
+/** Which sentence of i18n/messages/<language>/errors.ts a DataError is */
+export type ErrorKey = keyof Messages["errors"];
+/** The name of a form field, in i18n/messages/<language>/errors.ts */
+export type FieldKey = keyof Messages["fields"];
+/**
+ * What fills an error's {placeholders}. `field` is a FieldKey, translated
+ * too; a function is called with the language (for numbers like "1.5 MB").
+ */
+export type ErrorValues = Record<string, string | number | ((locale: Locale) => string)>;
+
+/**
+ * A problem the person can fix, with a message that's safe to show them.
+ * Its `message` is in English (for logs and tests); message(locale) gives
+ * it in the person's language.
+ */
 export class DataError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(
+    readonly key: ErrorKey,
+    readonly values: ErrorValues = {},
+  ) {
+    super("");
     this.name = "DataError";
+    this.message = this.in(DEFAULT_LOCALE);
+  }
+
+  /** The message in a language */
+  in(locale: Locale): string {
+    const m = messagesFor(locale);
+    const filled: Record<string, string | number> = {};
+    for (const [name, value] of Object.entries(this.values)) {
+      filled[name] = typeof value === "function" ? value(locale) : value;
+    }
+    if (typeof filled.field === "string" && filled.field in m.fields) {
+      filled.field = m.fields[filled.field as FieldKey];
+    }
+    return fill(m.errors[this.key], filled);
   }
 }
 
 /**
- * For server actions: the message to show for a DataError. Any other error
- * (a bug, or Next.js redirecting to /login) is passed on unchanged.
+ * For server actions and routes: the message to show for a DataError, in
+ * the person's language. Any other error (a bug, or Next.js redirecting to
+ * /login) is passed on unchanged.
  */
-export function errorMessage(error: unknown): string {
-  if (error instanceof DataError) return error.message;
+export async function errorMessage(error: unknown): Promise<string> {
+  if (error instanceof DataError) return error.in(await getLocale());
   throw error;
 }
 
@@ -68,7 +103,7 @@ export const getCompanyLocale = cache(async (organizationId: string) => {
  */
 export async function refuseInDemo(organizationId: string) {
   if ((await getCompanyLocale(organizationId)).isDemo) {
-    throw new DataError("This isn't available in the demo. Sign up to use it with your own company.");
+    throw new DataError("notInDemo");
   }
 }
 
@@ -85,7 +120,7 @@ export async function getCompanyTimeZone(organizationId: string): Promise<string
 export async function getFinanceContext({ manage = false } = {}) {
   const { user, organization, role } = await requireOrganization();
   if (manage && !canManageFinances(role)) {
-    throw new DataError("Only owners and admins can do this.");
+    throw new DataError("ownersAndAdminsOnly");
   }
   return {
     userId: user.id,
@@ -117,23 +152,23 @@ export function isUniqueViolation(error: unknown): boolean {
 /* ------------------------------------------------------------------ */
 
 /** Trimmed text of at most `max` characters; empty text is an error. */
-export function requiredText(value: unknown, field: string, max = 120): string {
+export function requiredText(value: unknown, field: FieldKey, max = 120): string {
   const text = optionalText(value, field, max);
-  if (!text) throw new DataError(`${field} is required.`);
+  if (!text) throw new DataError("required", { field });
   return text;
 }
 
 /** Trimmed text of at most `max` characters, or null when empty. */
 export function optionalText(
   value: unknown,
-  field: string,
+  field: FieldKey,
   max = 1000,
 ): string | null {
   if (value === null || value === undefined) return null;
-  if (typeof value !== "string") throw new DataError(`${field} is invalid.`);
+  if (typeof value !== "string") throw new DataError("invalid", { field });
   const text = value.trim();
   if (text.length > max) {
-    throw new DataError(`${field} can be at most ${max} characters.`);
+    throw new DataError("tooLong", { field, max });
   }
   return text || null;
 }
@@ -142,10 +177,10 @@ export function optionalText(
 export function oneOf<const T extends readonly string[]>(
   value: unknown,
   allowed: T,
-  field: string,
+  field: FieldKey,
 ): T[number] {
   if (typeof value === "string" && allowed.includes(value)) return value;
-  throw new DataError(`${field} is invalid.`);
+  throw new DataError("invalid", { field });
 }
 
 // The largest amount a money column can hold (numeric(14,2))
@@ -155,20 +190,20 @@ const MAX_AMOUNT = 999_999_999_999.99;
  * An amount of money, rounded to what the currency can express: whole cents,
  * or whole units for currencies without cents (yen, won)
  */
-export function money(value: unknown, field: string, currency = "USD"): number {
+export function money(value: unknown, field: FieldKey, currency = "USD"): number {
   const amount = typeof value === "string" ? Number(value) : value;
   if (typeof amount !== "number" || !Number.isFinite(amount)) {
-    throw new DataError(`${field} must be a number.`);
+    throw new DataError("notANumber", { field });
   }
   if (Math.abs(amount) > MAX_AMOUNT) {
-    throw new DataError(`${field} is too large.`);
+    throw new DataError("tooLarge", { field });
   }
   const factor = 10 ** Math.min(currencyDecimals(currency), 2);
   return Math.round(amount * factor) / factor;
 }
 
 /** A calendar day, e.g. "2026-10-01" */
-export function isoDay(value: unknown, field: string): ISODate {
+export function isoDay(value: unknown, field: FieldKey): ISODate {
   if (
     typeof value !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
@@ -176,16 +211,16 @@ export function isoDay(value: unknown, field: string): ISODate {
     Number.isNaN(Date.parse(`${value}T00:00:00Z`)) ||
     new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value
   ) {
-    throw new DataError(`${field} must be a valid date.`);
+    throw new DataError("notADate", { field });
   }
   return value;
 }
 
 /** A date (and optional time) in ISO format, e.g. "2026-10-01T14:41:00" */
-export function dateTime(value: unknown, field: string): Date {
+export function dateTime(value: unknown, field: FieldKey): Date {
   const date = typeof value === "string" ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) {
-    throw new DataError(`${field} must be a valid date.`);
+    throw new DataError("notADate", { field });
   }
   return date;
 }

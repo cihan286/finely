@@ -20,6 +20,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 import { useField } from "./Field";
 import styles from "./Form.module.css";
 
@@ -77,6 +78,7 @@ export function Textarea({
 
 /** An input for passwords, with an eye button to show or hide what was typed */
 export function PasswordInput({ className, ...props }: Omit<InputProps, "type">) {
+  const { m } = useI18n();
   const [visible, setVisible] = useState(false);
   return (
     <div className={styles.passwordWrap}>
@@ -89,7 +91,7 @@ export function PasswordInput({ className, ...props }: Omit<InputProps, "type">)
         type="button"
         className={styles.toggle}
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Hide password" : "Show password"}
+        aria-label={visible ? m.common.hidePassword : m.common.showPassword}
         aria-pressed={visible}
       >
         {visible ? <EyeOff size={18} /> : <Eye size={18} />}

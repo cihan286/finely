@@ -20,9 +20,13 @@ import Link from "next/link";
 import PhoneMockup from "../phone-mockup/PhoneMockup";
 import DemoButton from "../demo-button/DemoButton";
 import Logo from "@/components/common/logo/Logo";
+import LanguageSwitcher from "@/components/common/language-switcher/LanguageSwitcher";
+import { useI18n } from "@/i18n/client";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
+  const { m } = useI18n();
+  const t = m.home;
   // Whether the mobile menu is open
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Whether the menu has been used yet. Until then it has no open/close
@@ -49,18 +53,20 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
         {/* Section links, shown on wide screens only */}
         <div className={styles.navigationLinks}>
           <Link className={styles.navLink} href="#features">
-            Features
+            {t.nav.features}
           </Link>
           <Link className={styles.navLink} href="#pricing">
-            Pricing
+            {t.nav.pricing}
           </Link>
           <Link className={styles.navLink} href="/about">
-            About
+            {t.nav.about}
           </Link>
         </div>
 
         {/* Sign-up / log-in buttons, plus the ☰ button on small screens */}
         <div className={styles.navActions}>
+          {/* EN / TR: on every screen size, next to the menu button on phones */}
+          <LanguageSwitcher />
           <div className={`${styles.authCtas} ${styles.desktopAuth}`}>
             <AuthButtons signedIn={signedIn} />
           </div>
@@ -68,7 +74,7 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
           <button
             className={styles.mobileMenuToggle}
             onClick={handleMenuToggle}
-            aria-label="Toggle mobile menu"
+            aria-label={t.nav.toggleMenu}
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -90,21 +96,21 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
           href="#features"
           onClick={handleMenuClose}
         >
-          Features
+          {t.nav.features}
         </Link>
         <Link
           className={styles.mobileNavLink}
           href="#pricing"
           onClick={handleMenuClose}
         >
-          Pricing
+          {t.nav.pricing}
         </Link>
         <Link
           className={styles.mobileNavLink}
           href="/about"
           onClick={handleMenuClose}
         >
-          About
+          {t.nav.about}
         </Link>
         <div className={`${styles.authCtas} ${styles.mobileAuth}`}>
           <AuthButtons signedIn={signedIn} />
@@ -114,15 +120,10 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
       {/* Headline and buttons on the left, phone picture on the right */}
       <div className={styles.columns}>
         <div className={styles.leftColumn}>
-          <h1 className={styles.headline}>
-            Financial clarity for modern businesses.
-          </h1>
-          <p className={styles.subHeadline}>
-            Take control of your cash flow. Automate your daily expense tracking
-            and turn complex financial data into actionable insights.
-          </p>
+          <h1 className={styles.headline}>{t.hero.headline}</h1>
+          <p className={styles.subHeadline}>{t.hero.subHeadline}</p>
           <div className={styles.ctas}>
-            <Button variant="primary" text="Get Started" href="/signup" />
+            <Button variant="primary" text={t.hero.getStarted} href="/signup" />
             {/* A ready-made company to look around in, no sign-up needed */}
             <DemoButton />
           </div>
@@ -138,11 +139,12 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
 // "Start for free" and "Log in", or, for someone already logged in, a way
 // back to their dashboard
 function AuthButtons({ signedIn }: { signedIn: boolean }) {
+  const { m } = useI18n();
   if (signedIn) {
     return (
       <Button
         variant="primary"
-        text="Open dashboard"
+        text={m.common.openDashboard}
         href="/dashboard"
         icon={<ArrowRight size="1em" />}
         iconPosition="right"
@@ -151,10 +153,10 @@ function AuthButtons({ signedIn }: { signedIn: boolean }) {
   }
   return (
     <>
-      <Button variant="primary" text="Start for free" href="/signup" />
+      <Button variant="primary" text={m.common.startForFree} href="/signup" />
       <Button
         variant="secondary"
-        text="Log in"
+        text={m.common.logIn}
         href="/login"
         icon={<ArrowRight size="1em" />}
         iconPosition="right"

@@ -19,6 +19,8 @@ import Field from "@/components/common/form/Field";
 import { Input, PasswordInput } from "@/components/common/form/controls";
 import Message from "@/components/common/form/Message";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText } from "@/i18n/auth-errors";
+import { useI18n } from "@/i18n/client";
 import GoogleButton from "./GoogleButton";
 import styles from "./AuthForm.module.css";
 
@@ -36,6 +38,8 @@ export default function LoginForm({
   next = "/dashboard",
 }: LoginFormProps) {
   const router = useRouter();
+  const i18n = useI18n();
+  const { auth: t, common } = i18n.m;
   // The error message to show (e.g. "Invalid email or password"), if any
   const [error, setError] = useState<string | null>(null);
   // True while waiting for the server; the button shows "Logging in…"
@@ -55,7 +59,7 @@ export default function LoginForm({
     });
 
     if (error) {
-      setError(error.message ?? "Could not log in. Please try again.");
+      setError(authErrorText(error, i18n, t.login.failed));
       setLoading(false);
       return;
     }
@@ -71,11 +75,11 @@ export default function LoginForm({
       {googleEnabled && (
         <>
           <GoogleButton
-            label="Continue with Google"
+            label={t.login.continueWithGoogle}
             onError={setError}
             callbackURL={next}
           />
-          <div className={styles.divider}>or</div>
+          <div className={styles.divider}>{t.or}</div>
         </>
       )}
 
@@ -89,24 +93,24 @@ export default function LoginForm({
           </Message>
         )}
 
-        <Field label="Email">
+        <Field label={t.emailLabel}>
           <Input
             size="lg"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t.emailPlaceholder}
             required
           />
         </Field>
         <Field
-          label="Password"
+          label={t.passwordLabel}
           labelAside={
             <Link
               href="/forgot-password"
               className={`${styles.link} ${styles.smallLink}`}
             >
-              Forgot password?
+              {t.login.forgotPassword}
             </Link>
           }
         >
@@ -122,7 +126,7 @@ export default function LoginForm({
           <Button
             type="submit"
             loading={loading}
-            text={loading ? "Logging in" : "Log in"}
+            text={loading ? t.login.loggingIn : common.logIn}
             size="sm"
             fullWidth
             disabled={loading}

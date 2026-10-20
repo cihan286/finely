@@ -13,6 +13,7 @@
 // gives the same data (demo-data.test.ts relies on it).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { messagesFor, type Messages } from "@/i18n/messages";
 import { addDays, daysBetween } from "@/lib/dates";
 import type { AccountType, BillRepeat, ISODate, TransactionStatus } from "@/types/finance";
 
@@ -110,8 +111,16 @@ function everyDays(from: ISODate, to: ISODate, step: number): ISODate[] {
   return days;
 }
 
-/** The demo company's accounts, cards, budgets, transactions and bills */
-export function generateDemoData(today: ISODate, seed = 1): DemoData {
+/**
+ * The demo company's accounts, cards, budgets, transactions and bills, with
+ * the names and notes a person would have typed in the visitor's language
+ * (`words`: m.samples.demo)
+ */
+export function generateDemoData(
+  today: ISODate,
+  seed = 1,
+  words: Messages["samples"]["demo"] = messagesFor("en").samples.demo,
+): DemoData {
   const random = seededRandom(seed);
   const between = (min: number, max: number) => round2(min + random() * (max - min));
   const start = addDays(today, -(DEMO_HISTORY_DAYS - 1));
@@ -139,7 +148,7 @@ export function generateDemoData(today: ISODate, seed = 1): DemoData {
   // ── Money in ──────────────────────────────────────────────────────────────
   // A client on a monthly retainer
   for (const day of monthlyDays(start, today, 3)) {
-    add(day, "Acme Corp retainer", 7500, "Sales", { notes: "Monthly design retainer" });
+    add(day, "Acme Corp retainer", 7500, "Sales", { notes: words.retainerNote });
   }
   // Project invoices from another client, two or three a month
   for (const day of everyDays(addDays(start, 5), today, 12)) {
@@ -180,7 +189,7 @@ export function generateDemoData(today: ISODate, seed = 1): DemoData {
   awsDays.forEach((day, i) => {
     const latest = i === awsDays.length - 1;
     add(day, "Amazon Web Services", latest ? -1180.4 : -between(140, 220), "Software & IT", {
-      notes: latest ? "Traffic spike after the product launch" : null,
+      notes: latest ? words.awsNote : null,
     });
   });
   // Ads, now and then
@@ -203,7 +212,7 @@ export function generateDemoData(today: ISODate, seed = 1): DemoData {
   add(addDays(today, -3), "Team offsite lunch", -340, "Other", { card: "jordan" });
   add(addDays(today, -1), "Upwork contractor", -850, null, {
     status: "pending",
-    notes: "Illustrations for the Acme campaign",
+    notes: words.upworkNote,
   });
   // Not categorized yet
   add(addDays(today, -2), "PAYPAL *NOTION LABS", -96, null);
@@ -217,12 +226,12 @@ export function generateDemoData(today: ISODate, seed = 1): DemoData {
 
   return {
     accounts: [
-      { key: "checking", name: "Business Checking", type: "checking", last4: "3201", openingBalance: 24000 },
-      { key: "savings", name: "Tax Savings", type: "savings", last4: "7740", openingBalance: 40000 },
+      { key: "checking", name: words.checking, type: "checking", last4: "3201", openingBalance: 24000 },
+      { key: "savings", name: words.savings, type: "savings", last4: "7740", openingBalance: 40000 },
     ],
     cards: [
-      { key: "maya", name: "Maya's card", last4: "4821", holder: "owner", monthlyLimit: 1500 },
-      { key: "jordan", name: "Jordan's card", last4: "9055", holder: "teammate", monthlyLimit: 300 },
+      { key: "maya", name: words.mayaCard, last4: "4821", holder: "owner", monthlyLimit: 1500 },
+      { key: "jordan", name: words.jordanCard, last4: "9055", holder: "teammate", monthlyLimit: 300 },
     ],
     budgets: {
       "Software & IT": 900,
@@ -238,9 +247,9 @@ export function generateDemoData(today: ISODate, seed = 1): DemoData {
     ],
     transactions: history,
     bills: [
-      { name: "Hiscox business insurance", amount: 420, dueDate: addDays(today, 5), repeat: "monthly", category: "Other", notes: null },
-      { name: "Bookkeeping (quarterly)", amount: 650, dueDate: addDays(today, 12), repeat: "quarterly", category: "Other", notes: "Sent by Ledgerly" },
-      { name: "northpeak.studio domain", amount: 24, dueDate: addDays(today, -2), repeat: "yearly", category: "Software & IT", notes: null },
+      { name: words.insurance, amount: 420, dueDate: addDays(today, 5), repeat: "monthly", category: "Other", notes: null },
+      { name: words.bookkeeping, amount: 650, dueDate: addDays(today, 12), repeat: "quarterly", category: "Other", notes: words.bookkeepingNote },
+      { name: words.domain, amount: 24, dueDate: addDays(today, -2), repeat: "yearly", category: "Software & IT", notes: null },
     ],
   };
 }

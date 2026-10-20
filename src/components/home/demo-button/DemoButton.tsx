@@ -13,9 +13,11 @@ import { PlayCircle } from "lucide-react";
 import Button from "@/components/common/button/Button";
 import Message from "@/components/common/form/Message";
 import { startDemoAction } from "@/app/demo-actions";
+import { useI18n } from "@/i18n/client";
 import styles from "./DemoButton.module.css";
 
 export default function DemoButton({ variant = "secondary" }: { variant?: "primary" | "secondary" | "outline" }) {
+  const { m } = useI18n();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export default function DemoButton({ variant = "secondary" }: { variant?: "prima
     <div className={styles.wrapper}>
       <Button
         variant={variant}
-        text={pending ? "Opening demo" : "Try the demo"}
+        text={pending ? m.home.demo.opening : m.home.demo.try}
         icon={<PlayCircle size="1em" />}
         iconPosition="right"
         loading={pending}

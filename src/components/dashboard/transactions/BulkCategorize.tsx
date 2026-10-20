@@ -29,6 +29,8 @@ import Message from "@/components/common/form/Message";
 import { categorizeSelected } from "@/app/dashboard/transactions/actions";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import type { Category } from "@/types/finance";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./BulkCategorize.module.css";
 
 interface BulkCategorizeProps {
@@ -38,6 +40,9 @@ interface BulkCategorizeProps {
 }
 
 export default function BulkCategorize({ categories, children }: BulkCategorizeProps) {
+  const { m } = useI18n();
+  const words = m.transactions;
+  const t = words.bulk;
   const formRef = useRef<HTMLFormElement>(null);
   // How many transactions are ticked
   const [selected, setSelected] = useState(0);
@@ -106,23 +111,23 @@ export default function BulkCategorize({ categories, children }: BulkCategorizeP
       {selected > 0 && (
         <div className={styles.bar}>
           <span className={styles.count} role="status">
-            {selected} selected
+            {fill(t.selected, { count: selected })}
           </span>
           {state.error && <span className={styles.error}>{state.error}</span>}
           <div className={styles.actions}>
             <Select
               name="bulkCategory"
-              aria-label="Category for the selected transactions"
+              aria-label={t.categoryFor}
               defaultValue=""
               className={styles.select}
               required
               disabled={pending}
             >
               <option value="" disabled>
-                Set category…
+                {t.setCategory}
               </option>
               {incomeCategories.length > 0 && (
-                <optgroup label="Money in">
+                <optgroup label={words.moneyIn}>
                   {incomeCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -131,7 +136,7 @@ export default function BulkCategorize({ categories, children }: BulkCategorizeP
                 </optgroup>
               )}
               {expenseCategories.length > 0 && (
-                <optgroup label="Money out">
+                <optgroup label={words.moneyOut}>
                   {expenseCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -139,14 +144,14 @@ export default function BulkCategorize({ categories, children }: BulkCategorizeP
                   ))}
                 </optgroup>
               )}
-              <option value="none">Uncategorized</option>
+              <option value="none">{words.uncategorized}</option>
             </Select>
             <Button
               type="submit"
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Apply"}
+              text={pending ? m.common.saving : t.apply}
               disabled={pending}
             />
           </div>

@@ -27,14 +27,12 @@ import type { Account } from "@/types/finance";
 import { amountInputProps, formatCurrency } from "@/lib/format";
 // The settings sections share their card, list and message styles
 import shared from "./TeamSettings.module.css";
+import { fill } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
 import styles from "./AccountSettings.module.css";
 
 // Names shown on screen for each kind of account
-const TYPE_LABELS: Record<Account["type"], string> = {
-  checking: "Checking",
-  savings: "Savings",
-  reserve: "Reserve",
-};
+const TYPES: Account["type"][] = ["checking", "savings", "reserve"];
 
 interface AccountSettingsProps {
   /** Whether you may add and remove accounts (owners and admins) */
@@ -49,6 +47,9 @@ export default function AccountSettings({
   accounts,
   currency,
 }: AccountSettingsProps) {
+  const { locale, m } = useI18n();
+  const t = m.settings.accounts;
+  const typeLabels = m.dashboard.accountTypes;
   const addFormRef = useRef<HTMLFormElement>(null);
   const [state, dispatch, pending] = useActionState(
     async (previous: ActionState, formData: FormData) => {
@@ -67,7 +68,7 @@ export default function AccountSettings({
     const formData = new FormData(e.currentTarget);
     if (
       formData.get("intent") === "remove" &&
-      !window.confirm(`Remove ${formData.get("name")}?`)
+      !window.confirm(fill(t.confirmRemove, { name: String(formData.get("name")) }))
     ) {
       return;
     }
@@ -86,41 +87,38 @@ export default function AccountSettings({
       {canManage && (
         <section className={shared.card}>
           <div className={shared.cardHeader}>
-            <h2 className={shared.cardTitle}>Add a bank account</h2>
-            <p className={shared.cardHint}>
-              Every transaction belongs to an account. The opening balance is
-              what was in the account before the first transaction you record.
-            </p>
+            <h2 className={shared.cardTitle}>{t.add}</h2>
+            <p className={shared.cardHint}>{t.addHint}</p>
           </div>
           <form ref={addFormRef} className={styles.addForm} onSubmit={submit}>
-            <Field label="Name">
+            <Field label={t.name}>
               <Input
                 name="name"
-                placeholder="Business Checking"
+                placeholder={t.namePlaceholder}
                 maxLength={120}
                 required
               />
             </Field>
-            <Field label="Type">
+            <Field label={t.type}>
               <Select name="type" defaultValue="checking">
-                {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                {TYPES.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {typeLabels[value]}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Field label="Last 4 digits">
+            <Field label={t.last4}>
               <Input
                 name="last4"
                 inputMode="numeric"
                 pattern="\d{4}"
                 maxLength={4}
                 placeholder="3201"
-                title="Exactly 4 digits"
+                title={t.exactlyFour}
               />
             </Field>
-            <Field label="Opening balance">
+            <Field label={t.openingBalance}>
               <Input
                 name="openingBalance"
                 type="number"
@@ -134,7 +132,7 @@ export default function AccountSettings({
               variant="primary"
               size="sm"
               loading={pending}
-              text={pending ? "Saving" : "Add account"}
+              text={pending ? m.common.saving : t.addButton}
               icon={<Plus size={16} />}
               disabled={pending}
             />
@@ -146,14 +144,12 @@ export default function AccountSettings({
       <section className={shared.card}>
         <div className={shared.cardHeader}>
           <h2 className={shared.cardTitle}>
-            Bank accounts <span className={shared.count}>{accounts.length}</span>
+            {t.title} <span className={shared.count}>{accounts.length}</span>
           </h2>
         </div>
         {accounts.length === 0 ? (
           <Message type="info">
-            {canManage
-              ? "No bank accounts yet. Add one above."
-              : "No bank accounts yet. Ask an owner or admin to add one."}
+            {canManage ? t.emptyManage : t.emptyMember}
           </Message>
         ) : (
           <ul className={shared.list}>
@@ -165,12 +161,12 @@ export default function AccountSettings({
                 <div className={shared.who}>
                   <span className={shared.name}>{account.name}</span>
                   <span className={shared.email}>
-                    {TYPE_LABELS[account.type]}
+                    {typeLabels[account.type]}
                     {account.last4 && ` ••${account.last4}`}
                   </span>
                 </div>
                 <span className={styles.balance}>
-                  {formatCurrency(account.balance, { currency: currency })}
+                  {formatCurrency(account.balance, { currency }, locale)}
                 </span>
                 {canManage && (
                   <form onSubmit={submit}>
@@ -178,7 +174,7 @@ export default function AccountSettings({
                     <input type="hidden" name="id" value={account.id} />
                     <input type="hidden" name="name" value={account.name} />
                     <button type="submit" className={shared.rowAction} disabled={pending}>
-                      Remove
+                      {t.remove}
                     </button>
                   </form>
                 )}

@@ -37,8 +37,8 @@ test("amountInputProps: whole numbers for currencies without cents", () => {
 });
 
 test("formatCompactCurrency", () => {
-  expect(formatCompactCurrency(12400)).toBe("$12.4k");
-  expect(formatCompactCurrency(3000)).toBe("$3k");
+  expect(formatCompactCurrency(12400)).toBe("$12.4K");
+  expect(formatCompactCurrency(3000)).toBe("$3K");
   expect(formatCompactCurrency(750)).toBe("$750");
 });
 
@@ -112,7 +112,7 @@ describe("other currencies", () => {
   test("symbols and chart labels", () => {
     expect(currencySymbol("USD")).toBe("$");
     expect(currencySymbol("EUR")).toBe("€");
-    expect(formatCompactCurrency(12400, "EUR")).toBe("€12.4k");
+    expect(formatCompactCurrency(12400, "EUR")).toBe("€12.4K");
     expect(formatCompactCurrency(750, "GBP")).toBe("£750");
   });
 

@@ -12,6 +12,7 @@
 // by lib/data/budgets.ts (completed money out only).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { DEFAULT_LOCALE, intlLocale, type Locale } from "@/i18n/config";
 import type { CategoryIconKey, ISODate } from "@/types/finance";
 
 /**
@@ -19,8 +20,6 @@ import type { CategoryIconKey, ISODate } from "@/types/finance";
  * category IDs start with "cat_")
  */
 export const ALL_SPENDING = "all";
-/** What the overall budget is called on screen */
-export const ALL_SPENDING_NAME = "All spending";
 
 /** From this share of the budget on, a category counts as "nearly used up" */
 export const NEAR_BUDGET_RATIO = 0.8;
@@ -47,15 +46,13 @@ export interface BudgetProgress extends BudgetSpending {
   status: BudgetStatus;
 }
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** "2026-10-13" -> "October" */
-export function monthName(day: ISODate): string {
-  return MONTHS[Number(day.slice(5, 7)) - 1];
+/** "2026-10-13" -> "October", in Turkish "Ekim" */
+export function monthName(day: ISODate, locale: Locale = DEFAULT_LOCALE): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), { month: "long", timeZone: "UTC" }).format(
+    new Date(`${monthStart(day)}T00:00:00Z`),
+  );
 }
 
 /** "2026-10-13" -> "2026-10-01", the first day of that month */

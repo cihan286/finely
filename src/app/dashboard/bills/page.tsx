@@ -27,12 +27,13 @@ import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { getRecurring } from "@/lib/data/recurring";
 import { canManageFinances } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
+import { getMessages } from "@/i18n/server";
 import { BILL_REPEATS, type BillRepeat } from "@/types/finance";
 
 // Browser tab title: "Bills | Finely"
-export const metadata: Metadata = {
-  title: "Bills",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getMessages()).bills.title };
+}
 
 // One value from the address: the first if repeated, "" if missing
 const single = (value: string | string[] | undefined) =>

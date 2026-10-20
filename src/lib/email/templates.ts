@@ -7,13 +7,14 @@
 // being handed over or deleted, a failed payment and an account being
 // deleted — plus the plain email we get ourselves when
 // someone fills in the contact form. Each email has a designed version and
-// a plain-text version.
+// a plain-text version, in its recipient's language (English or Turkish).
 //
 // For developers: emails can't use our CSS files, so styles are written inline,
-// and buttons are built from tables so they also work in Outlook. Anything a
-// user typed (names, company names) MUST go through escapeHtml(): otherwise
-// someone could name their company with HTML and turn our invitation emails
-// into convincing phishing.
+// and buttons are built from tables so they also work in Outlook. The words
+// are in i18n/messages/<language>/emails.ts. Anything a user typed (names,
+// company names) MUST go through escapeHtml() — html() below does it for
+// every value it fills in: otherwise someone could name their company with
+// HTML and turn our invitation emails into convincing phishing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { appUrl } from "@/lib/app-url";
@@ -21,6 +22,8 @@ import type { ContactMessage } from "@/lib/contact";
 import type { Digest } from "@/lib/finance/digest";
 import type { UnusualCharge } from "@/lib/finance/insights";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { DEFAULT_LOCALE, fill, isLocale, plural, type Locale } from "@/i18n/config";
+import { messagesFor } from "@/i18n/messages";
 import type { Email } from "./send";
 
 // Brand colors, matching the design tokens in globals.css
@@ -38,22 +41,56 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+type Values = Record<string, string | number>;
+
+// A recipient's saved language, or English
+const localeOf = (value: string | null | undefined): Locale =>
+  isLocale(value) ? value : DEFAULT_LOCALE;
+
+/** A sentence for the HTML version: values escaped, <b>…</b> made bold */
+function html(sentence: string, values: Values = {}): string {
+  const safe: Values = {};
+  for (const [name, value] of Object.entries(values)) {
+    safe[name] = typeof value === "string" ? escapeHtml(value) : value;
+  }
+  return fill(escapeHtml(sentence).replace(/&lt;(\/?)b&gt;/g, "<$1strong>"), safe);
+}
+
+/** A sentence for the plain-text version: values as they are, no bold */
+function text(sentence: string, values: Values = {}): string {
+  return fill(sentence.replace(/<\/?b>/g, ""), values);
+}
+
+/** An email's words, and its money and date formats, in a language */
+function wordsFor(locale: Locale) {
+  const m = messagesFor(locale).emails;
+  return {
+    m,
+    locale,
+    money: (amount: number, currency: string, signed = false) =>
+      formatCurrency(amount, { signed, currency }, locale),
+    date: (day: string) => formatDate(day, locale),
+  };
+}
+
 interface LayoutParts {
+  locale: Locale;
   /** Short summary some email apps show next to the subject */
   preview: string;
   heading: string;
   /** Paragraphs of HTML (already escaped) */
   paragraphs: string[];
   button: { label: string; url: string };
-  /** Small print under the button */
+  /** Small print under the button (HTML, already escaped) */
   footnote: string;
 }
 
 // The shared frame of every email: logo, heading, text, button, small print
-function layout({ preview, heading, paragraphs, button, footnote }: LayoutParts): string {
+function layout({ locale, preview, heading, paragraphs, button, footnote }: LayoutParts): string {
+  const { m } = wordsFor(locale);
   const url = escapeHtml(button.url);
   return `<!doctype html>
-<html lang="en">
+<html lang="${locale}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(heading)}</title></head>
 <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,Helvetica,sans-serif;color:${TEXT};">
 <div style="display:none;max-height:0;overflow:hidden;">${escapeHtml(preview)}</div>
@@ -68,9 +105,9 @@ ${paragraphs.map((p) => `<tr><td style="font-size:15px;line-height:1.6;padding-b
 <a href="${url}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">${escapeHtml(button.label)}</a>
 </td></tr></table>
 </td></tr>
-<tr><td style="font-size:13px;line-height:1.6;color:${MUTED};">${footnote}<br><br>If the button doesn't work, copy this link into your browser:<br><a href="${url}" style="color:${BLUE};word-break:break-all;">${url}</a></td></tr>
+<tr><td style="font-size:13px;line-height:1.6;color:${MUTED};">${footnote}<br><br>${escapeHtml(m.copyLink)}<br><a href="${url}" style="color:${BLUE};word-break:break-all;">${url}</a></td></tr>
 </table>
-<p style="font-size:12px;color:${MUTED};margin-top:16px;">Finely – Financial clarity for modern businesses</p>
+<p style="font-size:12px;color:${MUTED};margin-top:16px;">${escapeHtml(m.tagline)}</p>
 </td></tr>
 </table>
 </body>
@@ -81,61 +118,77 @@ ${paragraphs.map((p) => `<tr><td style="font-size:15px;line-height:1.6;padding-b
 const oneLine = (value: string) => value.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
 
 /** "Maya Carter" -> "Maya" (for greetings) */
-const firstName = (name: string) => name.trim().split(/\s+/)[0] || "there";
+const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+
+// "Hi Maya," as HTML and as text
+function greeting(name: string, m: ReturnType<typeof wordsFor>["m"]) {
+  const first = firstName(name);
+  return first
+    ? { html: html(m.hi, { name: first }), text: text(m.hi, { name: first }) }
+    : { html: escapeHtml(m.hiNoName), text: m.hiNoName };
+}
 
 // ---------------------------------------------------------------- password reset
 
-export function passwordResetEmail(to: string, name: string, url: string): Email {
-  const hi = escapeHtml(firstName(name));
+export function passwordResetEmail(
+  to: string,
+  name: string,
+  url: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Email {
+  const { m } = wordsFor(locale);
+  const t = m.passwordReset;
+  const hi = greeting(name, m);
   return {
     to,
-    subject: "Reset your Finely password",
+    subject: t.subject,
     html: layout({
-      preview: "Use this link to choose a new password.",
-      heading: "Reset your password",
-      paragraphs: [
-        `Hi ${hi},`,
-        "We received a request to reset the password for your Finely account. Click the button below to choose a new one.",
-      ],
-      button: { label: "Choose a new password", url },
-      footnote:
-        "This link works once and expires in one hour. If you didn't ask to reset your password, you can ignore this email — your password won't change.",
+      locale,
+      preview: t.preview,
+      heading: t.heading,
+      paragraphs: [hi.html, html(t.body)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(name)},
+    text: `${hi.text}
 
-We received a request to reset the password for your Finely account. Open this link to choose a new one:
+${t.textBody}
 
 ${url}
 
-This link works once and expires in one hour. If you didn't ask to reset your password, you can ignore this email.`,
+${t.textFootnote}`,
   };
 }
 
 // ---------------------------------------------------------------- email verification
 
-export function verifyEmailEmail(to: string, name: string, url: string): Email {
-  const hi = escapeHtml(firstName(name));
+export function verifyEmailEmail(
+  to: string,
+  name: string,
+  url: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Email {
+  const { m } = wordsFor(locale);
+  const t = m.verify;
+  const hi = greeting(name, m);
   return {
     to,
-    subject: "Verify your email for Finely",
+    subject: t.subject,
     html: layout({
-      preview: "Confirm this is your email address.",
-      heading: "Verify your email address",
-      paragraphs: [
-        `Hi ${hi},`,
-        "Welcome to Finely! Please confirm that this is your email address. You'll need a verified email to join teams.",
-      ],
-      button: { label: "Verify email address", url },
-      footnote:
-        "This link expires in one hour. If you didn't create a Finely account, you can ignore this email.",
+      locale,
+      preview: t.preview,
+      heading: t.heading,
+      paragraphs: [hi.html, html(t.body)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(name)},
+    text: `${hi.text}
 
-Welcome to Finely! Please confirm that this is your email address by opening this link:
+${t.textBody}
 
 ${url}
 
-This link expires in one hour. If you didn't create a Finely account, you can ignore this email.`,
+${t.footnote}`,
   };
 }
 
@@ -146,36 +199,39 @@ interface InvitationDetails {
   inviterName: string;
   inviterEmail: string;
   organizationName: string;
+  /** "owner", "admin" or "member" */
   role: string;
   url: string;
 }
 
-export function invitationEmail(d: InvitationDetails): Email {
-  const org = escapeHtml(d.organizationName);
-  const inviter = escapeHtml(d.inviterName);
-  const inviterEmail = escapeHtml(d.inviterEmail);
-  const article = /^[aeiou]/i.test(d.role) ? "an" : "a";
+export function invitationEmail(d: InvitationDetails, locale: Locale = DEFAULT_LOCALE): Email {
+  const { m } = wordsFor(locale);
+  const t = m.invitation;
+  const roles: Record<string, string> = messagesFor(locale).auth.roleWithArticle;
+  const values = {
+    inviter: d.inviterName,
+    email: d.inviterEmail,
+    company: d.organizationName,
+    role: roles[d.role] ?? d.role,
+  };
   return {
     to: d.to,
-    subject: oneLine(`${d.inviterName} invited you to join ${d.organizationName} on Finely`),
+    subject: oneLine(text(t.subject, values)),
     html: layout({
-      preview: `Join ${d.organizationName} on Finely.`,
-      heading: `Join ${d.organizationName} on Finely`,
-      paragraphs: [
-        `<strong>${inviter}</strong> (${inviterEmail}) invited you to join <strong>${org}</strong> on Finely as ${article} ${escapeHtml(d.role)}.`,
-        "Finely gives your team one clear view of the company's cash flow, expenses and bills.",
-      ],
-      button: { label: "Accept invitation", url: d.url },
-      footnote:
-        "This invitation expires in 48 hours. If you weren't expecting it, you can ignore this email.",
+      locale,
+      preview: text(t.preview, values),
+      heading: text(t.heading, values),
+      paragraphs: [html(t.body, values), html(t.about)],
+      button: { label: t.button, url: d.url },
+      footnote: html(t.footnote),
     }),
-    text: `${d.inviterName} (${d.inviterEmail}) invited you to join ${d.organizationName} on Finely as ${article} ${d.role}.
+    text: `${text(t.body, values)}
 
-Accept the invitation here:
+${t.textAccept}
 
 ${d.url}
 
-This invitation expires in 48 hours. If you weren't expecting it, you can ignore this email.`,
+${t.footnote}`,
   };
 }
 
@@ -183,63 +239,67 @@ This invitation expires in 48 hours. If you weren't expecting it, you can ignore
 
 /** Sent to the person a company was just handed over to */
 export function ownershipTransferredEmail(
-  to: { name: string; email: string },
+  to: { name: string; email: string; locale?: string | null },
   organizationName: string,
   formerOwnerName: string,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m } = wordsFor(locale);
+  const t = m.ownership;
   const url = `${appUrl}/dashboard/settings`;
+  const values = { company: organizationName, owner: formerOwnerName };
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
-    subject: oneLine(`You now own ${organizationName} on Finely`),
+    subject: oneLine(text(t.subject, values)),
     html: layout({
-      preview: `${formerOwnerName} handed ${organizationName} over to you.`,
-      heading: `You now own ${organizationName}`,
-      paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        `<strong>${escapeHtml(formerOwnerName)}</strong> handed <strong>${escapeHtml(organizationName)}</strong> over to you on Finely. They are now an admin.`,
-        "As the owner you manage the plan and billing, and only you can hand the company over or delete it.",
-      ],
-      button: { label: "Open settings", url },
-      footnote: "If you weren't expecting this, talk to the person who handed it over.",
+      locale,
+      preview: text(t.preview, values),
+      heading: text(t.heading, values),
+      paragraphs: [hi.html, html(t.body, values), html(t.owner)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-${formerOwnerName} handed ${organizationName} over to you on Finely. They are now an admin.
+${text(t.body, values)}
 
-As the owner you manage the plan and billing, and only you can hand the company over or delete it.
+${t.owner}
 
 ${url}
 
-If you weren't expecting this, talk to the person who handed it over.`,
+${t.footnote}`,
   };
 }
 
 /** Sent to everyone else on the team when the owner deleted the company */
 export function companyDeletedEmail(
-  to: { name: string; email: string },
+  to: { name: string; email: string; locale?: string | null },
   organizationName: string,
   ownerName: string,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m } = wordsFor(locale);
+  const t = m.companyDeleted;
   const url = `${appUrl}/dashboard`;
+  const values = { company: organizationName, owner: ownerName };
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
-    subject: oneLine(`${organizationName} was deleted on Finely`),
+    subject: oneLine(text(t.subject, values)),
     html: layout({
-      preview: `${ownerName} deleted ${organizationName}.`,
-      heading: `${organizationName} was deleted`,
-      paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        `<strong>${escapeHtml(ownerName)}</strong>, the owner of <strong>${escapeHtml(organizationName)}</strong>, deleted the company on Finely. Its accounts, transactions, bills and files are gone, and it no longer appears when you log in.`,
-        "Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.",
-      ],
-      button: { label: "Open Finely", url },
-      footnote: "Deleting a company can't be undone.",
+      locale,
+      preview: text(t.preview, values),
+      heading: text(t.heading, values),
+      paragraphs: [hi.html, html(t.body, values), html(t.untouched)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-${ownerName}, the owner of ${organizationName}, deleted the company on Finely. Its accounts, transactions, bills and files are gone, and it no longer appears when you log in.
+${text(t.body, values)}
 
-Your own Finely account is untouched: other companies you belong to are still there, and you can set up a new one.
+${t.untouched}
 
 ${url}`,
   };
@@ -247,97 +307,105 @@ ${url}`,
 
 /** Sent to a company's owner when the payment for its plan failed */
 export function paymentFailedEmail(
-  to: { name: string; email: string },
+  to: { name: string; email: string; locale?: string | null },
   organizationName: string,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m } = wordsFor(locale);
+  const t = m.paymentFailed;
   const url = `${appUrl}/dashboard/settings#billing`;
+  const values = { company: organizationName };
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
-    subject: oneLine(`The payment for ${organizationName}'s Finely plan failed`),
+    subject: oneLine(text(t.subject, values)),
     html: layout({
-      preview: "Update the payment method to keep the plan.",
-      heading: "A payment failed",
-      paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        `The latest payment for <strong>${escapeHtml(organizationName)}</strong>'s plan on Finely didn't go through. The card may have expired or been declined.`,
-        "Nothing changes right away: the plan stays while the payment is tried again over the coming days. If it keeps failing, the company goes back to the Free plan. Nobody is removed from the team, but nobody can be added beyond the Free plan's size.",
-      ],
-      button: { label: "Update the payment method", url },
-      footnote:
-        "Open “Manage billing” there. You get this email because you're the company's owner.",
+      locale,
+      preview: t.preview,
+      heading: t.heading,
+      paragraphs: [hi.html, html(t.body, values), html(t.nothingChanges)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-The latest payment for ${organizationName}'s plan on Finely didn't go through. The card may have expired or been declined.
+${text(t.body, values)}
 
-Nothing changes right away: the plan stays while the payment is tried again over the coming days. If it keeps failing, the company goes back to the Free plan. Nobody is removed from the team, but nobody can be added beyond the Free plan's size.
+${t.nothingChanges}
 
-Update the payment method under "Manage billing": ${url}
+${t.textUpdate} ${url}
 
-You get this email because you're the company's owner.`,
+${t.owner}`,
   };
 }
 
 /** Sent to a company's owner when its paid plan has ended */
 export function planEndedEmail(
-  to: { name: string; email: string },
+  to: { name: string; email: string; locale?: string | null },
   organizationName: string,
   /** The plan that ended, e.g. "Growth" */
   planName: string,
   /** How many people the Free plan allows */
   freeMembers: number,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m } = wordsFor(locale);
+  const t = m.planEnded;
   const url = `${appUrl}/dashboard/settings#billing`;
+  const values = { company: organizationName, plan: planName, members: freeMembers };
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
-    subject: oneLine(`${organizationName} is back on Finely's Free plan`),
+    subject: oneLine(text(t.subject, values)),
     html: layout({
-      preview: `The ${planName} plan has ended.`,
-      heading: `The ${planName} plan has ended`,
-      paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        `<strong>${escapeHtml(organizationName)}</strong>'s ${escapeHtml(planName)} plan on Finely has ended, because it was cancelled or its payment kept failing. The company is on the Free plan now.`,
-        `Nothing was deleted and nobody was removed from the team. The Free plan is for teams of up to ${freeMembers}, so a bigger team stays as it is but can't grow.`,
-      ],
-      button: { label: "Choose a plan", url },
-      footnote: "You get this email because you're the company's owner.",
+      locale,
+      preview: text(t.preview, values),
+      heading: text(t.heading, values),
+      paragraphs: [hi.html, html(t.body, values), html(t.nothingDeleted, values)],
+      button: { label: t.button, url },
+      footnote: html(t.owner),
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-${organizationName}'s ${planName} plan on Finely has ended, because it was cancelled or its payment kept failing. The company is on the Free plan now.
+${text(t.body, values)}
 
-Nothing was deleted and nobody was removed from the team. The Free plan is for teams of up to ${freeMembers}, so a bigger team stays as it is but can't grow.
+${text(t.nothingDeleted, values)}
 
-Choose a plan: ${url}
+${t.button}: ${url}
 
-You get this email because you're the company's owner.`,
+${t.owner}`,
   };
 }
 
 /** Sent to someone who just deleted their own account */
-export function accountDeletedEmail(to: { name: string; email: string }): Email {
+export function accountDeletedEmail(to: {
+  name: string;
+  email: string;
+  locale?: string | null;
+}): Email {
+  const locale = localeOf(to.locale);
+  const { m } = wordsFor(locale);
+  const t = m.accountDeleted;
   const url = `${appUrl}/contact`;
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
-    subject: "Your Finely account was deleted",
+    subject: t.subject,
     html: layout({
-      preview: "Your account and your logins are gone.",
-      heading: "Your account was deleted",
-      paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        "As you asked, your Finely account was deleted, along with your logins, your email choices and your place in every company you were in. This is the last email you get from us.",
-        "What you entered for a company stays with that company.",
-      ],
-      button: { label: "Contact us", url },
-      footnote: "If this wasn't you, write to us right away.",
+      locale,
+      preview: t.preview,
+      heading: t.heading,
+      paragraphs: [hi.html, html(t.body), html(t.stays)],
+      button: { label: t.button, url },
+      footnote: html(t.footnote),
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-As you asked, your Finely account was deleted, along with your logins, your email choices and your place in every company you were in. This is the last email you get from us.
+${t.body}
 
-What you entered for a company stays with that company.
+${t.stays}
 
-If this wasn't you, write to us right away: ${url}`,
+${t.footnote} ${url}`,
   };
 }
 
@@ -349,6 +417,8 @@ const SETTINGS_URL = `${appUrl}/dashboard/settings#emails`;
 interface Recipient {
   name: string;
   email: string;
+  /** Their language; English when unknown */
+  locale?: string | null;
 }
 
 /** The addresses that stop this kind of email (see lib/email/unsubscribe.ts) */
@@ -359,9 +429,10 @@ interface UnsubscribeLinks {
 
 // How an email that can be stopped ends: the small print as HTML and as
 // text, and the headers that give email apps their own "Unsubscribe" button
-function stoppable(why: string, links: UnsubscribeLinks | null | undefined) {
+function stoppable(why: string, links: UnsubscribeLinks | null | undefined, locale: Locale) {
+  const t = wordsFor(locale).m.stoppable;
   if (!links) {
-    const footnote = `${why} To stop these emails, open Settings → Email notifications in Finely.`;
+    const footnote = `${why} ${t.settings}`;
     return {
       footnote: escapeHtml(footnote),
       text: `${footnote}\n${SETTINGS_URL}`,
@@ -369,8 +440,8 @@ function stoppable(why: string, links: UnsubscribeLinks | null | undefined) {
     };
   }
   return {
-    footnote: `${escapeHtml(why)} <a href="${escapeHtml(links.pageUrl)}" style="color:${MUTED};">Unsubscribe</a>, or choose your emails in Settings → Email notifications.`,
-    text: `${why}\nUnsubscribe: ${links.pageUrl}\nChoose your emails: ${SETTINGS_URL}`,
+    footnote: `${escapeHtml(why)} <a href="${escapeHtml(links.pageUrl)}" style="color:${MUTED};">${escapeHtml(t.unsubscribe)}</a>, ${escapeHtml(t.orChoose)}`,
+    text: `${why}\n${t.textUnsubscribe} ${links.pageUrl}\n${t.textChoose} ${SETTINGS_URL}`,
     headers: {
       "List-Unsubscribe": `<${links.postUrl}>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -388,46 +459,51 @@ export function unusualChargeEmail(
   /** The addresses that stop these alerts for this person, if there are any */
   unsubscribe?: UnsubscribeLinks | null,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m, money, date } = wordsFor(locale);
+  const t = m.unusual;
   const one = charges.length === 1;
-  const line = (c: UnusualCharge) =>
-    `${c.name} charged ${formatCurrency(c.amount, { currency: currency })} on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: currency })}.`;
+  const values = (c: UnusualCharge) => ({
+    name: c.name,
+    amount: money(c.amount, currency),
+    day: date(c.day),
+    percent: c.percentAbove,
+    usual: money(c.usual, currency),
+  });
   const heading = one
-    ? `Unusually high charge from ${charges[0].name}`
-    : `${charges.length} unusually high charges`;
-  const ending = stoppable(
-    `You get this email because you're on ${organizationName}'s team in Finely.`,
-    unsubscribe,
-  );
+    ? text(t.headingOne, { name: charges[0].name })
+    : text(t.headingMany, { count: charges.length });
+  const company = { company: organizationName };
+  const ending = stoppable(text(t.why, company), unsubscribe, locale);
+  const hi = greeting(to.name, m);
   return {
     to: to.email,
     headers: ending.headers,
-    subject: oneLine(`${heading} at ${organizationName}`),
+    subject: oneLine(text(t.subject, { heading, company: organizationName })),
     html: layout({
-      preview: line(charges[0]),
+      locale,
+      preview: text(t.line, values(charges[0])),
       heading,
       paragraphs: [
-        `Hi ${escapeHtml(firstName(to.name))},`,
-        `${one ? "A charge" : "Some charges"} just added to <strong>${escapeHtml(organizationName)}</strong> ${one ? "is" : "are"} well above what ${one ? "that vendor" : "those vendors"} usually ${one ? "charges" : "charge"}:`,
-        ...charges.map(
-          (c) =>
-            `<strong>${escapeHtml(c.name)}</strong> charged <strong>${formatCurrency(c.amount, { currency: currency })}</strong> on ${formatDate(c.day)}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: currency })}.`,
-        ),
+        hi.html,
+        html(one ? t.introOne : t.introMany, company),
+        ...charges.map((c) => html(t.lineHtml, values(c))),
       ],
       button: {
-        label: one ? "Review the transaction" : "Review the transactions",
+        label: one ? t.buttonOne : t.buttonMany,
         url: one
           ? `${appUrl}/dashboard/transactions?edit=${charges[0].id}`
           : `${appUrl}/dashboard/insights`,
       },
       footnote: ending.footnote,
     }),
-    text: `Hi ${firstName(to.name)},
+    text: `${hi.text}
 
-${one ? "A charge" : "Some charges"} just added to ${organizationName} ${one ? "is" : "are"} well above the usual:
+${text(one ? t.textIntroOne : t.textIntroMany, company)}
 
-${charges.map((c) => `- ${line(c)}`).join("\n")}
+${charges.map((c) => `- ${text(t.line, values(c))}`).join("\n")}
 
-Review in Finely: ${appUrl}/dashboard/insights
+${t.textReview} ${appUrl}/dashboard/insights
 
 ${ending.text}`,
   };
@@ -442,81 +518,107 @@ export function weeklyDigestEmail(
   /** The addresses that stop the summary for this person, if there are any */
   unsubscribe?: UnsubscribeLinks | null,
 ): Email {
+  const locale = localeOf(to.locale);
+  const { m, money, date } = wordsFor(locale);
+  const t = m.digest;
   const org = digest.organizationName;
+  const currency = digest.currency;
   const net = digest.moneyIn - digest.moneyOut;
-  const bills = (count: number) => `${count} ${count === 1 ? "bill" : "bills"}`;
+  const bills = (count: number) => plural(count, t.bills);
 
   const figures: [string, string][] = [
-    ["Money in", formatCurrency(digest.moneyIn, { currency: digest.currency })],
-    ["Money out", formatCurrency(digest.moneyOut, { currency: digest.currency })],
-    ["Net", formatCurrency(net, { signed: true, currency: digest.currency })],
-    ["In the bank now", formatCurrency(digest.balance, { currency: digest.currency })],
+    [t.moneyIn, money(digest.moneyIn, currency)],
+    [t.moneyOut, money(digest.moneyOut, currency)],
+    [t.net, money(net, currency, true)],
+    [t.inBank, money(digest.balance, currency)],
   ];
   // Plain sentences; names typed by people are escaped for the HTML version
   const attention: { text: string; html: string }[] = [];
-  const note = (text: string, html = escapeHtml(text)) => attention.push({ text, html });
+  const note = (sentence: string, values: Values) =>
+    attention.push({ text: text(sentence, values), html: html(sentence, values) });
   if (digest.overdueBills.count > 0) {
-    note(`${bills(digest.overdueBills.count)} overdue, ${formatCurrency(digest.overdueBills.amount, { currency: digest.currency })} in total.`);
+    note(t.overdue, {
+      bills: bills(digest.overdueBills.count),
+      amount: money(digest.overdueBills.amount, currency),
+    });
   }
   if (digest.billsDueSoon.count > 0) {
-    note(`${bills(digest.billsDueSoon.count)} due in the next 7 days, ${formatCurrency(digest.billsDueSoon.amount, { currency: digest.currency })} in total.`);
+    note(t.dueSoon, {
+      bills: bills(digest.billsDueSoon.count),
+      amount: money(digest.billsDueSoon.amount, currency),
+    });
   }
   for (const b of digest.overBudget) {
-    note(`${b.name} is ${formatCurrency(b.spent - b.budget, { currency: digest.currency })} over its ${formatCurrency(b.budget, { currency: digest.currency })} budget this month.`);
+    note(t.overBudget, {
+      name: b.name,
+      over: money(b.spent - b.budget, currency),
+      budget: money(b.budget, currency),
+    });
   }
   for (const c of digest.unusualCharges) {
-    note(`${c.name} charged ${formatCurrency(c.amount, { currency: digest.currency })}, ${c.percentAbove}% above its usual ${formatCurrency(c.usual, { currency: digest.currency })}.`);
+    note(t.unusual, {
+      name: c.name,
+      amount: money(c.amount, currency),
+      percent: c.percentAbove,
+      usual: money(c.usual, currency),
+    });
   }
 
-  const period = `${formatDate(digest.from)} – ${formatDate(digest.to)}`;
-  const ending = stoppable(
-    `You get this email every week because you're on ${org}'s team in Finely.`,
-    unsubscribe,
-  );
+  const period = `${date(digest.from)} – ${date(digest.to)}`;
+  const ending = stoppable(text(t.why, { company: org }), unsubscribe, locale);
   const cell = "padding:4px 0;font-size:15px;";
+  const intro = { name: firstName(to.name), company: org, period };
+  const where = digest.topCategories.map((c) => ({
+    name: c.name ?? messagesFor(locale).transactions.uncategorized,
+    amount: money(c.amount, currency),
+  }));
 
   const paragraphs = [
-    `Hi ${escapeHtml(firstName(to.name))}, here's <strong>${escapeHtml(org)}</strong>'s week (${period}).`,
+    html(t.intro, intro),
     `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${figures
       .map(
         ([label, value]) =>
-          `<tr><td style="${cell}color:${MUTED};">${label}</td><td align="right" style="${cell}font-weight:bold;">${value}</td></tr>`,
+          `<tr><td style="${cell}color:${MUTED};">${escapeHtml(label)}</td><td align="right" style="${cell}font-weight:bold;">${escapeHtml(value)}</td></tr>`,
       )
       .join("")}</table>`,
   ];
-  if (digest.topCategories.length > 0) {
+  if (where.length > 0) {
     paragraphs.push(
-      `<strong>Where it went:</strong> ${digest.topCategories
-        .map((c) => `${escapeHtml(c.name)} ${formatCurrency(c.amount, { currency: digest.currency })}`)
+      `<strong>${escapeHtml(t.whereItWent)}</strong> ${where
+        .map((c) => `${escapeHtml(c.name)} ${escapeHtml(c.amount)}`)
         .join(", ")}.`,
     );
   }
   if (attention.length > 0) {
     paragraphs.push(
-      `<strong>Needs a look:</strong><br>${attention.map((a) => `• ${a.html}`).join("<br>")}`,
+      `<strong>${escapeHtml(t.needsALook)}</strong><br>${attention.map((a) => `• ${a.html}`).join("<br>")}`,
     );
   }
 
   return {
     to: to.email,
     headers: ending.headers,
-    subject: oneLine(`${org}'s week: ${formatCurrency(net, { signed: true, currency: digest.currency })} net`),
+    subject: oneLine(text(t.subject, { company: org, net: money(net, currency, true) })),
     html: layout({
-      preview: `Money in ${formatCurrency(digest.moneyIn, { currency: digest.currency })}, money out ${formatCurrency(digest.moneyOut, { currency: digest.currency })}.`,
-      heading: "Your week in Finely",
+      locale,
+      preview: text(t.preview, {
+        in: money(digest.moneyIn, currency),
+        out: money(digest.moneyOut, currency),
+      }),
+      heading: t.heading,
       paragraphs,
-      button: { label: "Open the dashboard", url: `${appUrl}/dashboard` },
+      button: { label: t.button, url: `${appUrl}/dashboard` },
       footnote: ending.footnote,
     }),
-    text: `Hi ${firstName(to.name)}, here's ${org}'s week (${period}).
+    text: `${text(t.intro, intro)}
 
 ${figures.map(([label, value]) => `${label}: ${value}`).join("\n")}
 ${
-  digest.topCategories.length > 0
-    ? `\nWhere it went: ${digest.topCategories.map((c) => `${c.name} ${formatCurrency(c.amount, { currency: digest.currency })}`).join(", ")}.\n`
+  where.length > 0
+    ? `\n${t.whereItWent} ${where.map((c) => `${c.name} ${c.amount}`).join(", ")}.\n`
     : ""
-}${attention.length > 0 ? `\nNeeds a look:\n${attention.map((a) => `- ${a.text}`).join("\n")}\n` : ""}
-Open the dashboard: ${appUrl}/dashboard
+}${attention.length > 0 ? `\n${t.needsALook}\n${attention.map((a) => `- ${a.text}`).join("\n")}\n` : ""}
+${t.button}: ${appUrl}/dashboard
 
 ${ending.text}`,
   };
@@ -524,7 +626,7 @@ ${ending.text}`,
 
 // ---------------------------------------------------------------- contact form
 
-/** A visitor's message from the Contact page, sent to us. Replies go to them. */
+/** A visitor's message from the Contact page, sent to us (in English). Replies go to them. */
 export function contactMessageEmail(to: string, m: ContactMessage): Email {
   const from = m.company ? `${m.name} (${m.company})` : m.name;
   return {

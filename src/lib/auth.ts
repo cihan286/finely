@@ -21,13 +21,13 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { appUrl, vercelUrls } from "@/lib/app-url";
 import { isDemoEmail } from "@/lib/demo";
+import type { AuditDetails } from "@/lib/finance/audit";
 import { queueEmail } from "@/lib/email/send";
 import {
   invitationEmail,
   passwordResetEmail,
   verifyEmailEmail,
 } from "@/lib/email/templates";
-import { roleLabel } from "@/lib/roles";
 
 // Google sign-in credentials, read from the secret .env.local file
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -58,7 +58,7 @@ export const auth = betterAuth({
     // Called when someone asks to reset their password. `url` is the
     // one-time link that lets them choose a new one (valid for one hour).
     sendResetPassword: async ({ user, url }) => {
-      queueEmail(passwordResetEmail(user.email, user.name, url));
+      queueEmail(passwordResetEmail(user.email, user.name, url, await localeOf(user)));
     },
   },
 
@@ -70,7 +70,7 @@ export const auth = betterAuth({
     // Clicking the link in the email also logs the person in
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      queueEmail(verifyEmailEmail(user.email, user.name, url));
+      queueEmail(verifyEmailEmail(user.email, user.name, url, await localeOf(user)));
     },
   },
 
@@ -101,6 +101,9 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       lastOrganizationId: { type: "string", required: false, input: false },
+      // Their language, for emails sent later: the page's language at
+      // sign-up (databaseHooks.user below), then the language switcher's
+      locale: { type: "string", required: false, input: false },
     },
     // People can change their email address in Settings. It only changes
     // once they opened the link we send to the new address (the same
@@ -110,6 +113,15 @@ export const auth = betterAuth({
   },
 
   databaseHooks: {
+    // New people keep the language of the page they signed up on
+    user: {
+      create: {
+        before: async (user) => {
+          const { getLocale } = await import("@/i18n/server");
+          return { data: { ...user, locale: await getLocale() } };
+        },
+      },
+    },
     session: {
       // When someone logs in, open a company they belong to, so the
       // dashboard knows whose data to show: the one they last worked in, or
@@ -169,6 +181,8 @@ export const auth = betterAuth({
       if (isDemoEmail(current?.user.email)) {
         throw new APIError("FORBIDDEN", {
           message: "This isn't available in the demo. Sign up to use it with your own company.",
+          // Shown in the person's language (i18n/auth-errors.ts)
+          code: "DEMO_BLOCKED",
         });
       }
     }),
@@ -182,9 +196,7 @@ export const auth = betterAuth({
       const organizationId = ctx.body?.organizationId;
       const person = await signedInUser();
       if (typeof organizationId !== "string" || !person) return;
-      await recordTeamChange(organizationId, person, "left", {
-        summary: "Left the company",
-      });
+      await recordTeamChange(organizationId, person, "left", { key: "leftCompany" });
     }),
   },
 
@@ -193,16 +205,22 @@ export const auth = betterAuth({
     // role — owner, admin or member — and can invite people by email.
     organization({
       // Called when someone is invited. The link opens our accept page.
+      // The invited person may not have an account yet: written in the
+      // language of whoever invites them
       sendInvitationEmail: async (invite) => {
+        const { getLocale } = await import("@/i18n/server");
         queueEmail(
-          invitationEmail({
-            to: invite.email,
-            inviterName: invite.inviter.user.name,
-            inviterEmail: invite.inviter.user.email,
-            organizationName: invite.organization.name,
-            role: roleLabel(invite.role).toLowerCase(),
-            url: `${appUrl}/accept-invitation/${invite.id}`,
-          }),
+          invitationEmail(
+            {
+              to: invite.email,
+              inviterName: invite.inviter.user.name,
+              inviterEmail: invite.inviter.user.email,
+              organizationName: invite.organization.name,
+              role: invite.role,
+              url: `${appUrl}/accept-invitation/${invite.id}`,
+            },
+            await getLocale(),
+          ),
         );
       },
       // Only people who proved they own the invited email address can join.
@@ -221,37 +239,47 @@ export const auth = betterAuth({
         afterCreateInvitation: async ({ invitation, inviter, organization }) => {
           await recordTeamChange(organization.id, inviter, "invited", {
             entityId: invitation.id,
-            summary: `Invited ${invitation.email} as ${roleLabel(invitation.role).toLowerCase()}`,
+            key: "invited",
+            values: { email: invitation.email, role: { role: invitation.role } },
           });
         },
         afterCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
           await recordTeamChange(organization.id, cancelledBy, "invitation-cancelled", {
             entityId: invitation.id,
-            summary: `Cancelled the invitation to ${invitation.email}`,
+            key: "invitationCancelled",
+            values: { email: invitation.email },
           });
         },
         afterAcceptInvitation: async ({ member, user, organization }) => {
           await recordTeamChange(organization.id, user, "joined", {
             entityId: member.id,
-            summary: `Joined the company as ${roleLabel(member.role).toLowerCase()}`,
+            key: "joined",
+            values: { role: { role: member.role } },
           });
         },
         afterUpdateMemberRole: async ({ member, previousRole, user, organization }) => {
           await recordTeamChange(organization.id, await signedInUser(), "role-changed", {
             entityId: member.id,
-            summary: `Changed ${user.name}'s role from ${roleLabel(previousRole).toLowerCase()} to ${roleLabel(member.role).toLowerCase()}`,
+            key: "roleChanged",
+            values: {
+              name: user.name,
+              from: { role: previousRole },
+              to: { role: member.role },
+            },
           });
         },
         afterRemoveMember: async ({ member, user, organization }) => {
           await recordTeamChange(organization.id, await signedInUser(), "removed", {
             entityId: member.id,
-            summary: `Removed ${user.name} (${user.email}) from the team`,
+            key: "memberRemoved",
+            values: { name: user.name, email: user.email },
           });
         },
         afterUpdateOrganization: async ({ organization, user }) => {
           if (!organization) return;
           await recordTeamChange(organization.id, user, "company-updated", {
-            summary: `Changed the company's name to “${organization.name}”`,
+            key: "companyRenamed",
+            values: { name: organization.name },
           });
         },
         // New companies start with a ready-made set of categories, and the
@@ -279,7 +307,8 @@ export const auth = betterAuth({
             createCompanySettings(organization.id, metadata?.timezone),
           ]);
           await recordTeamChange(organization.id, user, "company-created", {
-            summary: `Created the company “${organization.name}”`,
+            key: "companyCreated",
+            values: { name: organization.name },
           });
         },
       },
@@ -288,6 +317,16 @@ export const auth = betterAuth({
     nextCookies(),
   ],
 });
+
+// The language to email someone in: the one saved on them, or else the
+// current page's (loaded here: i18n/server is "server-only", see below)
+async function localeOf(person: object) {
+  const { isLocale } = await import("@/i18n/config");
+  const saved = "locale" in person ? person.locale : null;
+  if (isLocale(saved)) return saved;
+  const { getLocale } = await import("@/i18n/server");
+  return getLocale();
+}
 
 // Who is making the current request, for the activity log. Some of Better
 // Auth's hooks only say who was changed, not who changed them.
@@ -307,7 +346,7 @@ async function recordTeamChange(
   organizationId: string,
   actor: { id: string; name: string } | null,
   action: string,
-  event: { summary: string; entityId?: string },
+  event: AuditDetails & { entityId?: string },
 ) {
   const { recordAudit } = await import("@/lib/data/audit");
   await recordAudit(

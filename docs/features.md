@@ -187,6 +187,34 @@ tested against a pretend bank, not against Plaid itself. Try it in Plaid's
 sandbox first, and apply for production access with Plaid (which includes
 their security questionnaire) before real banks will work.
 
+## Languages
+
+Finely speaks English and Turkish. A first visit follows the browser's
+language (Turkish for a browser that prefers it, English for everything
+else). The **EN / TR** switch in the header of the public pages, on the login
+and sign-up pages and in the dashboard's top bar (on phones: **Settings →
+Your account → Language**) changes it; the choice is kept in a cookie for a
+year, and for someone who is logged in also on their account.
+
+Everything is translated: the public pages (including the terms and the
+privacy policy), signing up and logging in, the whole dashboard, error
+messages, the bell, the CSV exports' column names and every email. Numbers
+and dates follow the language too: `$1,234.56` and `Oct 8, 2026` in
+English, `$1.234,56` and `8 Eki 2026` in Turkish. The company's currency
+doesn't change with the language.
+
+Some things are written in whoever's language was in use when they were
+made, and stay that way: the default categories a new company starts with
+(in its creator's language), and the names and notes of the demo company (in
+the visitor's). The demo's transactions keep their English descriptions,
+as a bank statement writes them. Emails go out in their recipient's
+language: the one saved on their account, or for someone without one yet
+(an invitation), the language of whoever sent it. The activity log is shown
+in each reader's language (see [Activity log](#activity-log)).
+
+For developers: see [Languages](development.md#languages) in the
+development guide.
+
 ## Activity log
 
 Every change in a company adds a line to its activity log: who did it, when,
@@ -203,7 +231,14 @@ of a person's name) and download what's shown with **Export CSV** (up to
 
 Lines are only ever added (`recordAudit()` in `lib/data/audit.ts`, called by
 the data functions right after a change succeeded). **When you add a data
-function that changes something, record it.** Team changes go through Better
+function that changes something, record it.** A line is kept as what
+happened rather than as text: a sentence's key from
+`i18n/messages/<language>/audit.ts` and what fills it in (names, amounts with
+their currency, days, roles, a list of what changed), in the `details`
+column. `renderAudit()` in `lib/finance/audit.ts` writes it out when the log
+is read, so everyone reads the whole log in their own language. The English
+sentence is saved too, in `summary`, for searching (and lines from before
+`details` existed only have that). Team changes go through Better
 Auth, so they're recorded from its hooks in `lib/auth.ts` (leaving has no
 hook of its own there: it's caught by the `hooks.after` that looks at
 `/organization/leave`).

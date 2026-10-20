@@ -22,12 +22,6 @@ import type { EmailPreferences } from "@/types/finance";
 export const EMAIL_KINDS = ["weeklyDigest", "unusualCharges"] as const satisfies readonly (keyof EmailPreferences)[];
 export type EmailKind = (typeof EMAIL_KINDS)[number];
 
-/** How each kind is called in a sentence: "Stop the weekly summary…" */
-export const EMAIL_KIND_LABELS: Record<EmailKind, string> = {
-  weeklyDigest: "the weekly summary",
-  unusualCharges: "alerts about unusually high charges",
-};
-
 /** Whose emails of which kind, about which company */
 export interface UnsubscribeTarget {
   userId: string;

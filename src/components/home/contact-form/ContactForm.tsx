@@ -21,9 +21,11 @@ import Message from "@/components/common/form/Message";
 import { submitContactMessage } from "@/app/(site)/contact/actions";
 import { initialActionState } from "@/lib/action-state";
 import { CONTACT_LIMITS } from "@/lib/contact";
+import { useI18n } from "@/i18n/client";
 import styles from "./ContactForm.module.css";
 
 export default function ContactForm() {
+  const t = useI18n().m.home.contactForm;
   const [state, dispatch, pending] = useActionState(
     submitContactMessage,
     initialActionState,
@@ -43,10 +45,10 @@ export default function ContactForm() {
       {state.error && <Message type="error">{state.error}</Message>}
 
       <div className={styles.row}>
-        <Field label="Name">
+        <Field label={t.name}>
           <Input name="name" autoComplete="name" maxLength={CONTACT_LIMITS.name} required />
         </Field>
-        <Field label="Work email">
+        <Field label={t.workEmail}>
           <Input
             name="email"
             type="email"
@@ -57,11 +59,11 @@ export default function ContactForm() {
         </Field>
       </div>
 
-      <Field label="Company" optional>
+      <Field label={t.company} optional>
         <Input name="company" autoComplete="organization" maxLength={CONTACT_LIMITS.company} />
       </Field>
 
-      <Field label="How can we help?">
+      <Field label={t.message}>
         <Textarea name="message" rows={6} maxLength={CONTACT_LIMITS.message} required />
       </Field>
 
@@ -77,7 +79,7 @@ export default function ContactForm() {
           type="submit"
           variant="primary"
           loading={pending}
-          text={pending ? "Sending" : "Send message"}
+          text={pending ? t.sending : t.send}
           disabled={pending}
         />
       </div>

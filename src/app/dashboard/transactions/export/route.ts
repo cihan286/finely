@@ -11,7 +11,8 @@
 // aren't logged in to /login, like every data function.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DataError } from "@/lib/data/common";
+import { getMessages } from "@/i18n/server";
+import { DataError, errorMessage } from "@/lib/data/common";
 import { exportTransactions } from "@/lib/data/transactions";
 import { exportFileName, transactionsCsv } from "@/lib/finance/export";
 
@@ -29,11 +30,11 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     // E.g. a date in the address that isn't a date
-    if (error instanceof DataError) return new Response(error.message, { status: 400 });
+    if (error instanceof DataError) return new Response(await errorMessage(error), { status: 400 });
     throw error;
   }
 
-  return new Response(transactionsCsv(result.rows), {
+  return new Response(transactionsCsv(result.rows, await getMessages()), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName("transactions", result.today)}"`,

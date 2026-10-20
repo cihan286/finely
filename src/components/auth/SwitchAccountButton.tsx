@@ -13,10 +13,12 @@
 
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/i18n/client";
 import styles from "./AuthForm.module.css";
 
 export default function SwitchAccountButton({ next }: { next: string }) {
   const router = useRouter();
+  const { m } = useI18n();
 
   const handleClick = async () => {
     await authClient.signOut();
@@ -26,7 +28,7 @@ export default function SwitchAccountButton({ next }: { next: string }) {
 
   return (
     <button type="button" className={styles.linkButton} onClick={handleClick}>
-      Use a different account
+      {m.auth.invitation.switchAccount}
     </button>
   );
 }

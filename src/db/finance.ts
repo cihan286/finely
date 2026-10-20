@@ -29,6 +29,7 @@ import {
   boolean,
   date,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -38,6 +39,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./schema";
+import type { AuditDetails } from "@/lib/finance/audit";
 
 // Money columns: exact to the cent, up to 999 billion
 const money = (name: string) =>
@@ -435,8 +437,12 @@ export const auditLog = pgTable(
     action: text("action").notNull(),
     // The thing's ID, if it has one (it may be gone by now)
     entityId: text("entity_id"),
-    // What happened, in a sentence for the screen
+    // What happened, as an English sentence (for searching, and for lines
+    // written before `details` existed)
     summary: text("summary").notNull(),
+    // What happened, as a sentence's key and what fills it in, so it can be
+    // shown in each reader's language (lib/finance/audit.ts)
+    details: jsonb("details").$type<AuditDetails>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

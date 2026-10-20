@@ -9,25 +9,27 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import styles from "./Features.module.css";
+import { getMessages } from "@/i18n/server";
 import { RefreshCw, LineChart, PieChart, ShieldCheck } from "lucide-react";
 
-export default function Features() {
+export default async function Features() {
+  const t = (await getMessages()).home.features;
   return (
     <section id="features" className={styles.mainContainer}>
       {/* Soft blue glow behind the section (decoration only) */}
       <div className={styles.backgroundLayer} aria-hidden="true" />
       <div className={styles.headlineContainer}>
-        <span className={styles.title}>Features</span>
+        <span className={styles.title}>{t.title}</span>
         <div className={styles.headline}>
-          <span>Everything You Need to </span>
-          <span>Scale Your Operations</span>
+          <span>{t.headline1} </span>
+          <span>{t.headline2}</span>
         </div>
         <div className={styles.subHeadline}>
-          <span>Automate workflows, gain actionable insights, and</span>{" "}
+          <span>{t.sub1}</span>{" "}
           {/* One line on wide screens, split in two below 650px (see CSS) */}
           <span className={styles.lastLine}>
-            <span>empower your team with tools designed for</span>{" "}
-            <span>modern, fast-growing businesses.</span>
+            <span>{t.sub2}</span>{" "}
+            <span>{t.sub3}</span>
           </span>
         </div>
       </div>
@@ -38,14 +40,8 @@ export default function Features() {
             <RefreshCw />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>
-              Automatic expense tracking
-            </span>
-            <span className={styles.featureDescription}>
-              Connect your accounts and cards once. Every transaction is
-              imported and categorized for you, so your books stay current
-              without manual entry.
-            </span>
+            <span className={styles.featureTitle}>{t.trackingTitle}</span>
+            <span className={styles.featureDescription}>{t.trackingText}</span>
           </div>
         </div>
         <div className={styles.featureCard}>
@@ -53,11 +49,8 @@ export default function Features() {
             <LineChart />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Real-time cash flow</span>
-            <span className={styles.featureDescription}>
-              See money coming in and going out as it happens. Spot shortfalls
-              early and plan payroll, bills and spending with confidence.
-            </span>
+            <span className={styles.featureTitle}>{t.cashFlowTitle}</span>
+            <span className={styles.featureDescription}>{t.cashFlowText}</span>
           </div>
         </div>
         <div className={styles.featureCard}>
@@ -65,11 +58,8 @@ export default function Features() {
             <PieChart />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Actionable insights</span>
-            <span className={styles.featureDescription}>
-              Understand where your money goes by category and vendor, and get
-              alerted when spending spikes or a bill is about to come due.
-            </span>
+            <span className={styles.featureTitle}>{t.insightsTitle}</span>
+            <span className={styles.featureDescription}>{t.insightsText}</span>
           </div>
         </div>
         <div className={styles.featureCard}>
@@ -77,11 +67,8 @@ export default function Features() {
             <ShieldCheck />
           </div>
           <div className={styles.textContainer}>
-            <span className={styles.featureTitle}>Secure by default</span>
-            <span className={styles.featureDescription}>
-              Your financial data is encrypted, and role-based access means
-              each team member sees only what they need.
-            </span>
+            <span className={styles.featureTitle}>{t.secureTitle}</span>
+            <span className={styles.featureDescription}>{t.secureText}</span>
           </div>
         </div>
       </div>

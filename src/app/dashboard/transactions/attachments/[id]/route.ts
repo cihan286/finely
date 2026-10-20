@@ -11,6 +11,7 @@
 // running anything; "nosniff" and the sandbox keep it that way.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getMessages } from "@/i18n/server";
 import { getAttachmentFile } from "@/lib/data/attachments";
 
 export async function GET(
@@ -18,7 +19,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const file = await getAttachmentFile((await params).id);
-  if (!file) return new Response("File not found.", { status: 404 });
+  if (!file) return new Response((await getMessages()).errors.fileNotFound, { status: 404 });
 
   const download = new URL(request.url).searchParams.has("download");
   // The name may contain any character: plain for old browsers, encoded for the rest

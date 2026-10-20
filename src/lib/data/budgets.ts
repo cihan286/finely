@@ -22,7 +22,6 @@ import { category, companySettings, transaction } from "@/db/finance";
 import { startOfDay, todayIn } from "@/lib/dates";
 import {
   ALL_SPENDING,
-  ALL_SPENDING_NAME,
   buildBudgets,
   monthStart,
   nextMonthStart,
@@ -30,6 +29,7 @@ import {
 } from "@/lib/finance/budgets";
 import type { CategoryIconKey, ISODate } from "@/types/finance";
 import { getFinanceContext } from "./common";
+import { getMessages } from "@/i18n/server";
 
 /**
  * Every category of a company that has a budget, with what was spent in it
@@ -68,7 +68,7 @@ export async function selectBudgetSpending(
     ? [
         {
           categoryId: ALL_SPENDING,
-          name: ALL_SPENDING_NAME,
+          name: (await getMessages()).dashboard.allSpending,
           color: "#2196f3",
           iconKey: "receipt" as CategoryIconKey,
           budget: settings.budget,
