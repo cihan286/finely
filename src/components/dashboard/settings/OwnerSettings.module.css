@@ -59,8 +59,45 @@
   cursor: not-allowed;
 }
 
+/* Fields side by side whose labels, boxes and hints share rows, so a hint
+   under one box doesn't push it out of line; the button sits by the boxes */
+.alignedForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.4rem;
+}
+
+.alignedForm .grow {
+  grid-row: 1 / span 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  gap: 0.4rem;
+}
+
+.alignedForm > :last-child {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
+}
+
 /* Screens narrower than 640px (phones): the button below the box */
 @media (max-width: 640px) {
+  .alignedForm {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .alignedForm .grow {
+    display: flex;
+  }
+
+  .alignedForm > :last-child {
+    align-self: flex-start;
+  }
+
   .form {
     flex-direction: column;
     align-items: stretch;

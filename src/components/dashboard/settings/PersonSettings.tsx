@@ -251,7 +251,7 @@ export default function PersonSettings({
             <h2 className={shared.cardTitle}>{t.password}</h2>
             <p className={shared.cardHint}>{t.passwordHint}</p>
           </div>
-          <form className={styles.form} onSubmit={handlePassword}>
+          <form className={styles.alignedForm} onSubmit={handlePassword}>
             <Field label={t.currentPassword} className={styles.grow}>
               <PasswordInput
                 name="currentPassword"
