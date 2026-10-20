@@ -37,7 +37,9 @@ export default function LanguageSwitcher({ className }: { className?: string }) 
           lang={option}
           className={styles.option}
           aria-pressed={option === locale}
-          aria-label={LOCALE_NAMES[option]}
+          // Starts with the visible "EN" / "TR", so voice control users can
+          // say what they see
+          aria-label={`${option.toUpperCase()} ${LOCALE_NAMES[option]}`}
           title={LOCALE_NAMES[option]}
           disabled={pending}
           onClick={() => {

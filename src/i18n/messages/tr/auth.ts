@@ -145,7 +145,7 @@ export const auth: typeof enAuth = {
       "Şirketi yalnızca sahipler ve yöneticiler değiştirebilir.",
     YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_MEMBER: "Bu kişiyi çıkaramazsınız.",
     YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER: "Bu kişinin rolünü değiştiremezsiniz.",
-    TOO_MANY_REQUESTS: "Çok fazla deneme yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.",
+    TOO_MANY_REQUESTS: "Çok fazla istek gönderildi. Lütfen bir dakika bekleyip tekrar deneyin.",
   },
   demoBlocked:
     "Bu özellik demoda kullanılamaz. Kendi şirketinizle kullanmak için kaydolun.",

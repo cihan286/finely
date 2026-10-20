@@ -139,7 +139,7 @@ export const auth = {
     YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_ORGANIZATION: "Only owners and admins can change the company.",
     YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_MEMBER: "You can't remove this person.",
     YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER: "You can't change this person's role.",
-    TOO_MANY_REQUESTS: "Too many attempts. Please wait a minute and try again.",
+    TOO_MANY_REQUESTS: "Too many requests. Please wait a minute and try again.",
   },
   demoBlocked: "This isn't available in the demo. Sign up to use it with your own company.",
 };
