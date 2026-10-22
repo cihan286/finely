@@ -152,7 +152,7 @@ export async function getRecurring(): Promise<{
  * the forecast from now on. `key` is the payment's own (RecurringPayment.key).
  */
 export async function hideRecurring(key: string, name: string) {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId } = actor;
   const cleanKey = requiredText(key, "payment", 200);
   if (!/^(in|out):./.test(cleanKey)) throw new DataError("paymentNotFound");
@@ -174,7 +174,7 @@ export async function hideRecurring(key: string, name: string) {
 
 /** Takes back "Not regular": the payment counts as regular again. */
 export async function showRecurring(key: string) {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId } = actor;
   const removed = await db
     .delete(recurringDismissal)

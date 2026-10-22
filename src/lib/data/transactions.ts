@@ -388,7 +388,7 @@ async function parseTransactionInput(
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<string> {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId, userId, timeZone } = actor;
   const values = await parseTransactionInput(
     input,
@@ -440,7 +440,7 @@ export async function createTransaction(
  * removes a category on purpose shouldn't get it back.
  */
 export async function updateTransaction(id: string, input: TransactionInput) {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId, timeZone } = actor;
   const own = and(eq(transaction.id, id), eq(transaction.organizationId, organizationId));
   // What it was, to say what changed
@@ -502,9 +502,9 @@ export async function updateTransaction(id: string, input: TransactionInput) {
   }
 }
 
-/** Removes a transaction (owners and admins only). */
+/** Removes a transaction (owners, admins and accountants only). */
 export async function deleteTransaction(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId, timeZone } = actor;
   const deleted = await db
     .delete(transaction)
@@ -543,7 +543,7 @@ export async function setTransactionsCategory(
   ids: string[],
   categoryId: string | null,
 ): Promise<number> {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId } = actor;
 
   if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || !id)) {
@@ -618,7 +618,7 @@ export async function importTransactions(
   billsPaid: number;
   billsMerged: number;
 }> {
-  const actor = await getFinanceContext();
+  const actor = await getFinanceContext({ need: "finance.record" });
   const { organizationId, userId, timeZone } = actor;
 
   if (!Array.isArray(rows) || rows.length === 0) {

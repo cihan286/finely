@@ -11,7 +11,7 @@
 // the syncing; the accounts and transactions stay.
 //
 // For developers: server-only. The functions people call find the company
-// via getFinanceContext({ manage: true }). syncAllBankConnections() is for
+// via getFinanceContext({ need: "finance.manage" }). syncAllBankConnections() is for
 // the daily job: no login, every connection, each with its own company's ID.
 // The bank's key is stored encrypted (lib/bank/crypto.ts) and only decrypted
 // here, right before a call; it never leaves this file, the logs or error
@@ -107,11 +107,11 @@ export async function listBankConnections(): Promise<BankConnectionSummary[]> {
 }
 
 /**
- * Starts linking a bank (owners and admins only): the one-time token that
+ * Starts linking a bank (owners, admins and accountants only): the one-time token that
  * opens the "log in at your bank" window in the browser.
  */
 export async function createBankLinkToken(): Promise<string> {
-  const { userId, organizationId } = await getFinanceContext({ manage: true });
+  const { userId, organizationId } = await getFinanceContext({ need: "finance.manage" });
   await refuseInDemo(organizationId);
   try {
     return await requireProvider().createLinkToken(userId);
@@ -121,14 +121,14 @@ export async function createBankLinkToken(): Promise<string> {
 }
 
 /**
- * Finishes linking a bank (owners and admins only) with what the bank
+ * Finishes linking a bank (owners, admins and accountants only) with what the bank
  * window handed back, and brings in its accounts and transactions.
  */
 export async function connectBank(
   publicToken: string,
   institutionName: string,
 ): Promise<SyncResult & { institutionName: string }> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   await refuseInDemo(actor.organizationId);
   const provider = requireProvider();
   const token = requiredText(publicToken, "bankLink", 500);
@@ -173,9 +173,9 @@ export async function connectBank(
   }
 }
 
-/** Brings one linked bank up to date now (owners and admins only). */
+/** Brings one linked bank up to date now (owners, admins and accountants only). */
 export async function syncBankConnection(id: string): Promise<SyncResult> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const [connection] = await db
     .select()
     .from(bankConnection)
@@ -191,11 +191,11 @@ export async function syncBankConnection(id: string): Promise<SyncResult> {
 }
 
 /**
- * Stops syncing a bank (owners and admins only). Its accounts and
+ * Stops syncing a bank (owners, admins and accountants only). Its accounts and
  * transactions stay in Finely, as ordinary ones.
  */
 export async function disconnectBank(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const own = and(
     eq(bankConnection.id, id),
     eq(bankConnection.organizationId, actor.organizationId),

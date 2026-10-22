@@ -2,7 +2,7 @@
 // Category rules: reading and saving
 //
 // In plain words: lists the company's rules ("descriptions containing AWS
-// are Software & IT") and lets owners and admins add, change or remove them,
+// are Software & IT") and lets owners, admins and accountants add, change or remove them,
 // and apply a rule to the transactions that have no category yet. Removing
 // a rule doesn't touch transactions that already got its category.
 //
@@ -79,11 +79,11 @@ async function parseRuleInput(input: CategoryRuleInput, organizationId: string) 
   return { matchText, categoryId };
 }
 
-/** Adds a rule (owners and admins only) and returns its ID. */
+/** Adds a rule (owners, admins and accountants only) and returns its ID. */
 export async function createCategoryRule(
   input: CategoryRuleInput,
 ): Promise<string> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
   try {
@@ -105,9 +105,9 @@ export async function createCategoryRule(
   }
 }
 
-/** Changes a rule's text or category (owners and admins only). */
+/** Changes a rule's text or category (owners, admins and accountants only). */
 export async function updateCategoryRule(id: string, input: CategoryRuleInput) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
   try {
@@ -203,7 +203,7 @@ async function categorizeMatching(
  * already have a category are never changed.
  */
 export async function applyCategoryRule(id: string): Promise<number> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const { organizationId } = await getFinanceContext({ need: "finance.manage" });
   const [rule] = await db
     .select({ matchText: categoryRule.matchText })
     .from(categoryRule)
@@ -215,15 +215,15 @@ export async function applyCategoryRule(id: string): Promise<number> {
 }
 
 /**
- * "Always categorize descriptions containing this text like this" (owners
- * and admins only): adds the rule, or changes the category of the rule that
+ * "Always categorize descriptions containing this text like this" (owners,
+ * admins and accountants only): adds the rule, or changes the category of the rule that
  * text already has, and applies it to the transactions that have no category
  * yet. Returns how many of those it categorized.
  */
 export async function saveCategoryRule(
   input: CategoryRuleInput,
 ): Promise<{ categorized: number }> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const values = await parseRuleInput(input, organizationId);
 
@@ -255,11 +255,11 @@ export async function saveCategoryRule(
 }
 
 /**
- * Removes a rule (owners and admins only). Transactions it categorized keep
+ * Removes a rule (owners, admins and accountants only). Transactions it categorized keep
  * their category.
  */
 export async function deleteCategoryRule(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const deleted = await db
     .delete(categoryRule)

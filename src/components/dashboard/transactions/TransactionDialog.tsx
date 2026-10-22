@@ -73,6 +73,8 @@ interface TransactionDialogProps {
    * (owners and admins)
    */
   canManage: boolean;
+  /** Whether anything can be changed (everyone but viewers) */
+  canRecord: boolean;
   /** The list's address, to return to when the window closes */
   closeHref: string;
   /** Today in the company's timezone ("2026-10-01"), the default date */
@@ -103,6 +105,7 @@ export default function TransactionDialog(props: TransactionDialogProps) {
         <Attachments
           transactionId={props.transaction.id}
           initial={props.attachments}
+          canAdd={props.canRecord}
         />
       )}
     </Dialog>
@@ -122,6 +125,7 @@ function TransactionForm({
   cards,
   currency,
   canManage,
+  canRecord,
   closeHref,
   today,
   pending,
@@ -155,194 +159,196 @@ function TransactionForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
+      {/* Viewers see the details but can't change them */}
+      <fieldset className={forms.fields} disabled={!canRecord}>
+        <input type="hidden" name="id" value={transaction?.id ?? ""} />
+        <input type="hidden" name="originalDate" value={transaction?.date ?? ""} />
+        <input type="hidden" name="returnTo" value={closeHref} />
 
-      <input type="hidden" name="id" value={transaction?.id ?? ""} />
-      <input type="hidden" name="originalDate" value={transaction?.date ?? ""} />
-      <input type="hidden" name="returnTo" value={closeHref} />
+        {/* Money out / Money in: decides whether the amount is negative */}
+        <fieldset className={styles.direction}>
+          <legend className={forms.srOnly}>{t.type}</legend>
+          <label>
+            <input
+              type="radio"
+              name="direction"
+              value="out"
+              defaultChecked={!transaction || transaction.amount < 0}
+            />
+            <span>{words.moneyOut}</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="direction"
+              value="in"
+              defaultChecked={transaction !== null && transaction.amount > 0}
+            />
+            <span>{words.moneyIn}</span>
+          </label>
+        </fieldset>
 
-      {/* Money out / Money in: decides whether the amount is negative */}
-      <fieldset className={styles.direction}>
-        <legend className={forms.srOnly}>{t.type}</legend>
-        <label>
-          <input
-            type="radio"
-            name="direction"
-            value="out"
-            defaultChecked={!transaction || transaction.amount < 0}
-          />
-          <span>{words.moneyOut}</span>
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="direction"
-            value="in"
-            defaultChecked={transaction !== null && transaction.amount > 0}
-          />
-          <span>{words.moneyIn}</span>
-        </label>
-      </fieldset>
+        <div className={forms.grid}>
+          <Field label={fill(t.amountIn, { currency })}>
+            <Input
+              name="amount"
+              type="number"
+              {...amountInputProps(currency)}
+              defaultValue={transaction ? Math.abs(transaction.amount) : ""}
+              required
+              autoFocus
+            />
+          </Field>
+          <Field label={t.date}>
+            <Input
+              name="date"
+              type="date"
+              defaultValue={transaction?.day ?? today}
+              required
+            />
+          </Field>
+        </div>
 
-      <div className={forms.grid}>
-        <Field label={fill(t.amountIn, { currency })}>
+        <Field label={t.description}>
           <Input
-            name="amount"
-            type="number"
-            {...amountInputProps(currency)}
-            defaultValue={transaction ? Math.abs(transaction.amount) : ""}
-            required
-            autoFocus
-          />
-        </Field>
-        <Field label={t.date}>
-          <Input
-            name="date"
-            type="date"
-            defaultValue={transaction?.day ?? today}
+            name="name"
+            type="text"
+            placeholder={t.descriptionPlaceholder}
+            defaultValue={transaction?.name ?? ""}
+            maxLength={120}
             required
           />
         </Field>
-      </div>
 
-      <Field label={t.description}>
-        <Input
-          name="name"
-          type="text"
-          placeholder={t.descriptionPlaceholder}
-          defaultValue={transaction?.name ?? ""}
-          maxLength={120}
-          required
-        />
-      </Field>
-
-      <div className={forms.grid}>
-        <Field label={t.account}>
-          <Select
-            name="accountId"
-            defaultValue={transaction?.account ?? accounts[0]?.id}
-            required
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.last4 ? ` ••${a.last4}` : ""}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={t.category}>
-          <Select
-            name="categoryId"
-            defaultValue={transaction?.categoryId ?? ""}
-          >
-            <option value="">{words.uncategorized}</option>
-            {incomeCategories.length > 0 && (
-              <optgroup label={words.moneyIn}>
-                {incomeCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {expenseCategories.length > 0 && (
-              <optgroup label={words.moneyOut}>
-                {expenseCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </Select>
-        </Field>
-      </div>
-
-      {/* Only once the company has cards; archived ones can't be chosen,
-          but the one this transaction already has stays */}
-      {cards.length > 0 && (
-        <Field
-          label={t.paidWith}
-          optional
-          hint={isNew ? t.paidWithHint : undefined}
-        >
-          <Select name="cardId" defaultValue={transaction?.cardId ?? ""}>
-            <option value="">{t.noCard}</option>
-            {cards
-              .filter((c) => !c.archived || c.id === transaction?.cardId)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} •••• {c.last4}
-                  {c.archived ? ` ${t.archived}` : ""}
+        <div className={forms.grid}>
+          <Field label={t.account}>
+            <Select
+              name="accountId"
+              defaultValue={transaction?.account ?? accounts[0]?.id}
+              required
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.last4 ? ` ••${a.last4}` : ""}
                 </option>
               ))}
+            </Select>
+          </Field>
+          <Field label={t.category}>
+            <Select
+              name="categoryId"
+              defaultValue={transaction?.categoryId ?? ""}
+            >
+              <option value="">{words.uncategorized}</option>
+              {incomeCategories.length > 0 && (
+                <optgroup label={words.moneyIn}>
+                  {incomeCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {expenseCategories.length > 0 && (
+                <optgroup label={words.moneyOut}>
+                  {expenseCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </Select>
+          </Field>
+        </div>
+
+        {/* Only once the company has cards; archived ones can't be chosen,
+            but the one this transaction already has stays */}
+        {cards.length > 0 && (
+          <Field
+            label={t.paidWith}
+            optional
+            hint={isNew ? t.paidWithHint : undefined}
+          >
+            <Select name="cardId" defaultValue={transaction?.cardId ?? ""}>
+              <option value="">{t.noCard}</option>
+              {cards
+                .filter((c) => !c.archived || c.id === transaction?.cardId)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} •••• {c.last4}
+                    {c.archived ? ` ${t.archived}` : ""}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+        )}
+
+        {/* Make it a rule: owners and admins only */}
+        {canManage && categories.length > 0 && (
+          <div className={styles.remember}>
+            <label className={forms.checkbox}>
+              <input
+                type="checkbox"
+                name="remember"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              {t.remember}
+            </label>
+            {remember && (
+              <Field
+                label={t.containing}
+                hint={t.containingHint}
+              >
+                <Input
+                  name="ruleText"
+                  type="text"
+                  defaultValue={transaction?.name ?? ""}
+                  placeholder={t.wholeDescription}
+                  minLength={MIN_RULE_TEXT_LENGTH}
+                  maxLength={MAX_RULE_TEXT_LENGTH}
+                />
+              </Field>
+            )}
+          </div>
+        )}
+
+        <Field label={t.status}>
+          <Select
+            name="status"
+            defaultValue={transaction?.status ?? "completed"}
+          >
+            <option value="completed">{words.status.completed}</option>
+            <option value="pending">{words.status.pendingLong}</option>
           </Select>
         </Field>
-      )}
 
-      {/* Make it a rule: owners and admins only */}
-      {canManage && categories.length > 0 && (
-        <div className={styles.remember}>
-          <label className={forms.checkbox}>
-            <input
-              type="checkbox"
-              name="remember"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-            />
-            {t.remember}
-          </label>
-          {remember && (
-            <Field
-              label={t.containing}
-              hint={t.containingHint}
-            >
-              <Input
-                name="ruleText"
-                type="text"
-                defaultValue={transaction?.name ?? ""}
-                placeholder={t.wholeDescription}
-                minLength={MIN_RULE_TEXT_LENGTH}
-                maxLength={MAX_RULE_TEXT_LENGTH}
-              />
-            </Field>
-          )}
-        </div>
-      )}
-
-      <Field label={t.status}>
-        <Select
-          name="status"
-          defaultValue={transaction?.status ?? "completed"}
-        >
-          <option value="completed">{words.status.completed}</option>
-          <option value="pending">{words.status.pendingLong}</option>
-        </Select>
-      </Field>
-
-      <Field label={t.notes} optional>
-        <Textarea
-          name="notes"
-          rows={2}
-          maxLength={1000}
-          defaultValue={transaction?.notes ?? ""}
-        />
-      </Field>
-
-      {/* While adding: one receipt right away. More can be added afterwards,
-          by opening the transaction. */}
-      {isNew && (
-        <Field
-          label={t.receipt}
-          optional
-          hint={fill(t.receiptHint, {
-            types: Object.values(ATTACHMENT_TYPES).join(", "),
-            size: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
-          })}
-        >
-          <Input name="receipt" type="file" accept={ATTACHMENT_ACCEPT} />
+        <Field label={t.notes} optional>
+          <Textarea
+            name="notes"
+            rows={2}
+            maxLength={1000}
+            defaultValue={transaction?.notes ?? ""}
+          />
         </Field>
-      )}
+
+        {/* While adding: one receipt right away. More can be added afterwards,
+            by opening the transaction. */}
+        {isNew && (
+          <Field
+            label={t.receipt}
+            optional
+            hint={fill(t.receiptHint, {
+              types: Object.values(ATTACHMENT_TYPES).join(", "),
+              size: formatFileSize(MAX_ATTACHMENT_BYTES, locale),
+            })}
+          >
+            <Input name="receipt" type="file" accept={ATTACHMENT_ACCEPT} />
+          </Field>
+        )}
+      </fieldset>
 
       <div className={forms.footer}>
         {!isNew && canManage && (
@@ -363,18 +369,20 @@ function TransactionForm({
           <Button
             variant="outline"
             size="sm"
-            text={m.common.cancel}
+            text={canRecord ? m.common.cancel : m.common.close}
             action={close}
             disabled={pending}
           />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            loading={pending}
-            text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
-            disabled={pending}
-          />
+          {canRecord && (
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={pending}
+              text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
+              disabled={pending}
+            />
+          )}
         </div>
       </div>
     </form>

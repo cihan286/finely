@@ -114,7 +114,9 @@ export const auth: typeof enAuth = {
   roleWithArticle: {
     owner: "sahip",
     admin: "yönetici",
+    accountant: "muhasebeci",
     member: "üye",
+    viewer: "izleyici",
   },
   errors: {
     INVALID_EMAIL_OR_PASSWORD: "E-posta veya şifre hatalı.",
@@ -155,11 +157,15 @@ export const auth: typeof enAuth = {
 export const roles: typeof enRoles = {
   owner: "Sahip",
   admin: "Yönetici",
+  accountant: "Muhasebeci",
   member: "Üye",
+  viewer: "İzleyici",
 };
 
 export const rolesInSentence: typeof enRolesInSentence = {
   owner: "sahip",
   admin: "yönetici",
+  accountant: "muhasebeci",
   member: "üye",
+  viewer: "izleyici",
 };

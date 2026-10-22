@@ -46,6 +46,8 @@ interface BillsViewProps {
   today: ISODate;
   /** Whether to show Delete and Undo (owners and admins) */
   canManage: boolean;
+  /** Whether you may add and change things (everyone but viewers) */
+  canRecord: boolean;
   /** Bills still owed, soonest due first */
   unpaid: Bill[];
   /** The most recently paid bills */
@@ -95,6 +97,7 @@ export default async function BillsView({
   currency,
   today,
   canManage,
+  canRecord,
   unpaid,
   paid,
   possiblyPaid,
@@ -149,13 +152,15 @@ export default async function BillsView({
               icon={<Download size={16} />}
             />
           )}
-          <Button
-            href={`${LIST_PATH}?new=1`}
-            variant="primary"
-            size="sm"
-            text={t.add}
-            icon={<Plus size={16} />}
-          />
+          {canRecord && (
+            <Button
+              href={`${LIST_PATH}?new=1`}
+              variant="primary"
+              size="sm"
+              text={t.add}
+              icon={<Plus size={16} />}
+            />
+          )}
         </div>
       </div>
 
@@ -253,9 +258,11 @@ export default async function BillsView({
                   <th scope="col" className={styles.amountCell}>
                     {t.table.amount}
                   </th>
-                  <th scope="col">
-                    <span className={styles.srOnly}>{t.table.pay}</span>
-                  </th>
+                  {canRecord && (
+                    <th scope="col">
+                      <span className={styles.srOnly}>{t.table.pay}</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -295,16 +302,18 @@ export default async function BillsView({
                       </td>
                       <td className={styles.mediumUp}>{categoryCell(bill)}</td>
                       <td className={styles.amountCell}>{money(bill.amount)}</td>
-                      <td className={styles.actionCell}>
-                        <Link
-                          href={`${LIST_PATH}?pay=${bill.id}`}
-                          scroll={false}
-                          className={styles.payLink}
-                          aria-label={fill(t.markAsPaidLabel, { name: bill.name })}
-                        >
-                          {t.markAsPaid}
-                        </Link>
-                      </td>
+                      {canRecord && (
+                        <td className={styles.actionCell}>
+                          <Link
+                            href={`${LIST_PATH}?pay=${bill.id}`}
+                            scroll={false}
+                            className={styles.payLink}
+                            aria-label={fill(t.markAsPaidLabel, { name: bill.name })}
+                          >
+                            {t.markAsPaid}
+                          </Link>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -392,7 +401,7 @@ export default async function BillsView({
         </section>
       )}
 
-      {dialog && (dialog.mode === "new" || dialog.mode === "edit") && (
+      {dialog && (dialog.mode === "edit" || (dialog.mode === "new" && canRecord)) && (
         <BillDialog
           // A fresh form for each bill opened
           key={dialog.mode === "edit" ? dialog.bill.id : "new"}
@@ -401,11 +410,12 @@ export default async function BillsView({
           categories={categories}
           currency={currency}
           canManage={canManage}
+          canRecord={canRecord}
           closeHref={LIST_PATH}
           today={today}
         />
       )}
-      {dialog?.mode === "pay" && (
+      {dialog?.mode === "pay" && canRecord && (
         <PayBillDialog
           key={dialog.bill.id}
           bill={dialog.bill}

@@ -2,7 +2,7 @@
 // Bank accounts: reading and saving
 //
 // In plain words: lists the company's bank accounts with how much is in each,
-// and lets owners and admins add, change or remove them. An account's balance
+// and lets owners, admins and accountants add, change or remove them. An account's balance
 // is what it started with plus every completed payment in or out of it. An
 // account that still has transactions can't be removed, so no history is lost.
 //
@@ -74,9 +74,9 @@ function parseAccountInput(input: AccountInput, currency: string) {
   };
 }
 
-/** Adds an account (owners and admins only) and returns its ID. */
+/** Adds an account (owners, admins and accountants only) and returns its ID. */
 export async function createAccount(input: AccountInput): Promise<string> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const [row] = await db
     .insert(financialAccount)
@@ -92,9 +92,9 @@ export async function createAccount(input: AccountInput): Promise<string> {
   return row.id;
 }
 
-/** Changes an account's details (owners and admins only). */
+/** Changes an account's details (owners, admins and accountants only). */
 export async function updateAccount(id: string, input: AccountInput) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const updated = await db
     .update(financialAccount)
@@ -116,9 +116,9 @@ export async function updateAccount(id: string, input: AccountInput) {
   });
 }
 
-/** Removes an account that has no transactions (owners and admins only). */
+/** Removes an account that has no transactions (owners, admins and accountants only). */
 export async function deleteAccount(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const transactionCount = await db.$count(
     transaction,

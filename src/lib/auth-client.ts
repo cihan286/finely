@@ -12,9 +12,10 @@
 
 import { createAuthClient } from "better-auth/react";
 import { organizationClient } from "better-auth/client/plugins";
+import { ac, roles } from "@/lib/roles";
 
 // Browser-side auth API (sign in, sign up, sign out). Same origin as the app.
 // organizationClient adds authClient.organization.* (must match lib/auth.ts).
 export const authClient = createAuthClient({
-  plugins: [organizationClient()],
+  plugins: [organizationClient({ ac, roles })],
 });

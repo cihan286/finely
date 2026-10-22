@@ -3,8 +3,8 @@
 //
 // In plain words: lets people add a receipt or invoice (a PDF or a picture)
 // to a transaction, see what's attached, open a file and delete it.
-// Everyone on the team can add files; the person who added one, and owners
-// and admins, can delete it.
+// Everyone on the team but viewers can add files; the person who added one,
+// and owners, admins and accountants, can delete it.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); the transaction and the file are always looked up
@@ -26,7 +26,7 @@ import {
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from "@/lib/finance/attachments";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import type { Attachment } from "@/types/finance";
 import { recordAudit } from "./audit";
 import { DataError, getFinanceContext } from "./common";
@@ -54,9 +54,15 @@ async function selectAttachments(
     .orderBy(asc(attachment.createdAt), asc(attachment.id));
   return rows.map(({ createdById, ...row }) => ({
     ...row,
-    canDelete: createdById === context.userId || canManageFinances(context.role),
+    canDelete: mayDelete(createdById, context),
   }));
 }
+
+// Whoever manages the finances, and whoever added the file while they may
+// still record (not after becoming a viewer)
+const mayDelete = (createdById: string | null, context: { userId: string; role: string }) =>
+  can(context.role, "finance.manage") ||
+  (createdById === context.userId && can(context.role, "finance.record"));
 
 /** The files attached to one of the company's transactions, oldest first */
 export async function listAttachments(transactionId: string): Promise<Attachment[]> {
@@ -71,7 +77,7 @@ export async function addAttachment(
   transactionId: string,
   file: { name: string; bytes: Uint8Array },
 ): Promise<Attachment[]> {
-  const context = await getFinanceContext();
+  const context = await getFinanceContext({ need: "finance.record" });
   const { organizationId, userId } = context;
 
   if (!(file?.bytes instanceof Uint8Array) || file.bytes.length === 0) {
@@ -131,10 +137,10 @@ export async function addAttachment(
 
 /**
  * Removes a file and returns what's left on its transaction. Allowed for
- * the person who added it, and for owners and admins.
+ * the person who added it, and for owners, admins and accountants.
  */
 export async function deleteAttachment(id: string): Promise<Attachment[]> {
-  const context = await getFinanceContext();
+  const context = await getFinanceContext({ need: "finance.record" });
   const [row] = await db
     .select({
       transactionId: attachment.transactionId,
@@ -146,7 +152,7 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
       and(eq(attachment.id, id), eq(attachment.organizationId, context.organizationId)),
     );
   if (!row) throw new DataError("fileNotFound");
-  if (row.createdById !== context.userId && !canManageFinances(context.role)) {
+  if (!mayDelete(row.createdById, context)) {
     throw new DataError("fileDeleteNotAllowed");
   }
   await db

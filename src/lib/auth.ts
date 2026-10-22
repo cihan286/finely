@@ -23,6 +23,7 @@ import { appUrl, vercelUrls } from "@/lib/app-url";
 import { isDemoEmail } from "@/lib/demo";
 import type { AuditDetails } from "@/lib/finance/audit";
 import { queueEmail } from "@/lib/email/send";
+import { ac, roles } from "@/lib/roles";
 import {
   invitationEmail,
   passwordResetEmail,
@@ -202,8 +203,10 @@ export const auth = betterAuth({
 
   plugins: [
     // Business accounts ("organizations"): each company has members with a
-    // role — owner, admin or member — and can invite people by email.
+    // role (see lib/roles.ts) and can invite people by email.
     organization({
+      ac,
+      roles,
       // Called when someone is invited. The link opens our accept page.
       // The invited person may not have an account yet: written in the
       // language of whoever invites them

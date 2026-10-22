@@ -17,7 +17,7 @@ import { getCompanyLocale } from "@/lib/data/common";
 import { getInsights } from "@/lib/data/insights";
 import { getRecurring } from "@/lib/data/recurring";
 import { INSIGHT_PERIODS, type InsightPeriod } from "@/lib/finance/insights";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 
 // Browser tab title: "Insights | Finely"
@@ -49,7 +49,8 @@ export default async function InsightsPage({
       organizationName={organization.name}
       currency={currency}
       hasAccounts={accounts.length > 0}
-      canManage={canManageFinances(role)}
+      canManage={can(role, "finance.manage")}
+      canRecord={can(role, "finance.record")}
       insights={insights}
       recurring={payments}
       hiddenRecurring={hidden}

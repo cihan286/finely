@@ -8,8 +8,17 @@ copy and the code conventions, see [Development](development.md).
 Finely is for businesses, so everyone works inside a **company**
 (an "organization" in the code). After signing up, people name their company
 and become its **owner**. Owners and **admins** can invite teammates by email
-from **Settings**, make them an admin or a member, remove them, and rename
-the company; **members** can use Finely but can't change the team. Everyone
+from **Settings**, give them a role, remove them, and rename the company.
+The roles, from most to least allowed:
+
+| Role | What it may do |
+| --- | --- |
+| **Owner** | Everything; only the owner can pay for a plan, hand the company over or delete it |
+| **Admin** | Manage the team, and everything an accountant may |
+| **Accountant** | Manage the finances (accounts, categories, rules, cards, budgets, linked banks, the company's currency and timezone), delete transactions and bills, and read the activity log; not the team. For a bookkeeper or an outside advisor |
+| **Member** | Add and edit transactions and bills, pay bills, attach files |
+| **Viewer** | See everything, change nothing: the buttons to add, import, pay or save aren't shown, and windows open read-only |
+ Everyone
 except the owner can leave a company (the **Leave** button next to their own
 name). The owner can **hand the company over** to another member (and
 becomes an admin, who can then leave) or **delete it** for everyone, with
@@ -78,7 +87,7 @@ category" (Settings → Category rules; upper/lower case and extra spaces
 don't matter, and the longest matching text wins). Rules fill in the category
 of transactions that have none: imported ones, ones added by hand, and the
 ones already there when a rule is added or changed. They never replace a
-category someone chose. Owners and admins manage rules, in Settings or by
+category someone chose. Owners, admins and accountants manage rules, in Settings or by
 ticking **Always use this category** when adding or editing a transaction.
 
 Everyone can also tick several transactions in the list and give them all
@@ -158,7 +167,7 @@ first.
 
 ## Linked banks
 
-Owners and admins can **Connect a bank** in Settings. A window from
+Owners, admins and accountants can **Connect a bank** in Settings. A window from
 [Plaid](https://plaid.com) lets them pick their bank and log in there;
 Finely never sees that login. Finely then adds the bank's everyday and
 savings accounts (those in the company's currency) and keeps their transactions up to date:
@@ -223,8 +232,8 @@ and what ("Changed the transaction “Office rent”: amount from -$500.00 to
 bills, bank accounts and linked banks, categories and budgets, category
 rules, attached files, the company's settings and the team (the company
 being created, invitations, roles, removals, someone leaving, handing over).
-A bank sync run by the daily job is recorded as done by "Finely". Owners and
-admins read it under **Settings → See who changed what**, newest first, and
+A bank sync run by the daily job is recorded as done by "Finely". Owners,
+admins and accountants read it under **Settings → See who changed what**, newest first, and
 can narrow it down to one kind of thing, search it (part of what happened or
 of a person's name) and download what's shown with **Export CSV** (up to
 20,000 lines).
@@ -249,7 +258,7 @@ When editing a transaction, **Add file** attaches a receipt or invoice: a
 PDF, JPEG, PNG or WebP of at most 4 MB, up to 10 per transaction. Files are
 saved as soon as they're chosen, and a paperclip in the list marks
 transactions that have some. Everyone on the team can add and open files; the
-person who added one, and owners and admins, can delete it. One file can be
+person who added one, and owners, admins and accountants, can delete it. One file can be
 chosen while adding a transaction; more are added by opening it afterwards.
 Pictures are shown small in the list.
 
@@ -335,7 +344,7 @@ that. A transaction typed in by hand never removes anything.
 
 Paid bills can't be edited; the last 20 are listed (**Show all paid bills**
 lists up to 500) with a link to their payment. Deleting a paid bill leaves its payment in the transactions, and
-deleting the payment leaves the bill paid. Owners and admins can **Undo** a
+deleting the payment leaves the bill paid. Owners, admins and accountants can **Undo** a
 payment: the bill is owed again, the transaction that "Mark as paid" recorded
 is deleted (one that was already there stays), and the next bill of a
 repeating one is removed unless someone changed or paid it since.
@@ -349,7 +358,7 @@ full number is never asked for), optionally the team member who carries it,
 and optionally a **monthly limit**. Each card shows what was paid with it
 this month against that limit (blue, amber from 80%, red once it's over),
 and links to its payments. When a card goes over its limit, the bell says so
-once per month. Owners and admins add, edit, archive and delete cards;
+once per month. Owners, admins and accountants add, edit, archive and delete cards;
 everyone on the team sees them.
 
 A transaction can say which card paid it ("Paid with" in its window, and a
@@ -368,7 +377,7 @@ money out counts, in the calendar month of the company's timezone.
 ## Budgets
 
 A "Money out" category can have a **monthly budget** (Settings → Categories,
-owners and admins). The dashboard then shows a **Budgets** card with, for each
+owners, admins and accountants). The dashboard then shows a **Budgets** card with, for each
 one, what was spent since the first of the month and what's left: blue while
 it's fine, amber from 80% used, red once it's exceeded. Clicking one opens
 that category's transactions of the month.

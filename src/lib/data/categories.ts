@@ -2,7 +2,7 @@
 // Categories: reading and saving
 //
 // In plain words: lists the company's categories (Payroll, Sales, …) and lets
-// owners and admins add, change or remove them. Removing a category doesn't
+// owners, admins and accountants add, change or remove them. Removing a category doesn't
 // remove its transactions; they simply become "Uncategorized".
 //
 // For developers: server-only. Every function finds the company itself via
@@ -83,9 +83,9 @@ function parseCategoryInput(input: CategoryInput, currency: string) {
   };
 }
 
-/** Adds a category (owners and admins only) and returns its ID. */
+/** Adds a category (owners, admins and accountants only) and returns its ID. */
 export async function createCategory(input: CategoryInput): Promise<string> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   try {
     const [row] = await db
@@ -114,9 +114,9 @@ export async function createCategory(input: CategoryInput): Promise<string> {
   }
 }
 
-/** Changes a category (owners and admins only). */
+/** Changes a category (owners, admins and accountants only). */
 export async function updateCategory(id: string, input: CategoryInput) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const own = and(eq(category.id, id), eq(category.organizationId, organizationId));
   try {
@@ -156,11 +156,11 @@ export async function updateCategory(id: string, input: CategoryInput) {
 }
 
 /**
- * Removes a category (owners and admins only). Its transactions stay and
+ * Removes a category (owners, admins and accountants only). Its transactions stay and
  * become uncategorized.
  */
 export async function deleteCategory(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const deleted = await db
     .delete(category)

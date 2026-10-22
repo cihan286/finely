@@ -15,7 +15,7 @@ import { getMessages } from "@/i18n/server";
 import CardsView from "@/components/dashboard/cards/CardsView";
 import { getCard, listCards } from "@/lib/data/cards";
 import { getCompanyLocale } from "@/lib/data/common";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 
 // Browser tab title: "Cards | Finely"
@@ -37,7 +37,7 @@ export default async function CardsPage({
   const { organization, role } = await requireOrganization();
   const params = await searchParams;
   const editId = single(params.edit);
-  const canManage = canManageFinances(role);
+  const canManage = can(role, "finance.manage");
 
   const [{ cards, today }, opened, { currency }] = await Promise.all([
     listCards(),

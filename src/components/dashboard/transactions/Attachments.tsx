@@ -42,9 +42,11 @@ interface AttachmentsProps {
   transactionId: string;
   /** The files attached when the window opened */
   initial: Attachment[];
+  /** Whether files can be added (everyone but viewers) */
+  canAdd: boolean;
 }
 
-export default function Attachments({ transactionId, initial }: AttachmentsProps) {
+export default function Attachments({ transactionId, initial, canAdd }: AttachmentsProps) {
   const { locale, m } = useI18n();
   const t = m.transactions.attachments;
   const [attachments, setAttachments] = useState(initial);
@@ -113,24 +115,28 @@ export default function Attachments({ transactionId, initial }: AttachmentsProps
     <section className={styles.section} aria-label={t.label}>
       <div className={styles.header}>
         <h3 className={styles.title}>{t.title}</h3>
-        <button
-          type="button"
-          className={styles.addButton}
-          onClick={() => inputRef.current?.click()}
-          disabled={busy !== null || full}
-        >
-          {busy === "upload" ? <Spinner size={14} /> : <Paperclip size={14} />}
-          {busy === "upload" ? t.uploading : t.add}
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ATTACHMENT_ACCEPT}
-          className={styles.fileInput}
-          onChange={handleChoose}
-          aria-label={t.choose}
-          tabIndex={-1}
-        />
+        {canAdd && (
+          <>
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => inputRef.current?.click()}
+              disabled={busy !== null || full}
+            >
+              {busy === "upload" ? <Spinner size={14} /> : <Paperclip size={14} />}
+              {busy === "upload" ? t.uploading : t.add}
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={ATTACHMENT_ACCEPT}
+              className={styles.fileInput}
+              onChange={handleChoose}
+              aria-label={t.choose}
+              tabIndex={-1}
+            />
+          </>
+        )}
       </div>
 
       {attachments.length === 0 ? (

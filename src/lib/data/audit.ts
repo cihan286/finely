@@ -4,8 +4,8 @@
 // In plain words: every time someone adds, changes or deletes something in
 // a company — a transaction, a bill, a category, a teammate's role — a line
 // is added to the company's activity log saying who did what and when.
-// Owners and admins can read the log in Settings, search it and save it as
-// a file, each in their own language. Lines are never changed or removed
+// Owners, admins and accountants can read the log in Settings, search it
+// and save it as a file, each in their own language. Lines are never changed or removed
 // (until the company itself is deleted).
 //
 // For developers: server-only. The data functions call recordAudit() right
@@ -131,12 +131,12 @@ export async function recordAudit(actor: AuditActor, event: AuditEvent) {
 
 /**
  * One page of the company's activity log, newest first, plus how many lines
- * there are in total (owners and admins only).
+ * there are in total (owners, admins and accountants).
  */
 export async function listAuditLog(
   filters: AuditFilters & { limit?: number; offset?: number } = {},
 ): Promise<{ entries: AuditEntry[]; total: number }> {
-  const { organizationId } = await getFinanceContext({ manage: true });
+  const { organizationId } = await getFinanceContext({ need: "activity.view" });
   const i18n = await getI18n();
   const where = matching(organizationId, filters);
   const limit = Math.min(Math.max(Math.trunc(filters.limit ?? 50), 1), 200);
@@ -175,12 +175,12 @@ export async function listAuditLog(
 
 /**
  * Every line that matches the filters (paging ignored), newest first, for
- * the export file (owners and admins only).
+ * the export file (owners, admins and accountants).
  */
 export async function exportAuditLog(
   filters: AuditFilters = {},
 ): Promise<{ rows: ActivityExportRow[]; today: ISODate }> {
-  const { organizationId, timeZone } = await getFinanceContext({ manage: true });
+  const { organizationId, timeZone } = await getFinanceContext({ need: "activity.view" });
   const i18n = await getI18n();
   const areas: Record<string, string> = i18n.m.audit.areas;
   const rows = await db

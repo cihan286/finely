@@ -65,6 +65,8 @@ interface DashboardHomeProps {
   currency: string;
   /** Whether you may add bank accounts (owners and admins) */
   canManage: boolean;
+  /** Whether you may add and change things (everyone but viewers) */
+  canRecord: boolean;
   summary: DashboardSummary;
   /** This month's budgets, the most used up first */
   budgets: BudgetProgress[];
@@ -92,6 +94,7 @@ export default async function DashboardHome({
   organizationName,
   currency,
   canManage,
+  canRecord,
   summary,
   budgets,
   forecast,
@@ -118,7 +121,7 @@ export default async function DashboardHome({
             {fill(t.welcome, { name: firstName, company: organizationName })}
           </p>
         </div>
-        {accounts.length > 0 && (
+        {accounts.length > 0 && canRecord && (
           <div className={styles.headerActions}>
             <Button
               href="/dashboard/transactions?import=1"

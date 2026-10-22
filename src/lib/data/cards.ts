@@ -192,9 +192,9 @@ const label = (c: { name: string; last4: string }) => `“${c.name}” (••�
 const limitValue = (amount: number | null, currency: string) =>
   amount === null ? null : { perMonth: amount, currency };
 
-/** Adds a card (owners and admins only) and returns its ID. */
+/** Adds a card (owners, admins and accountants only) and returns its ID. */
 export async function createCard(input: CardInput): Promise<string> {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId, currency } = actor;
   const values = await parseCardInput(input, organizationId, currency);
   const [row] = await db
@@ -211,9 +211,9 @@ export async function createCard(input: CardInput): Promise<string> {
   return row.id;
 }
 
-/** Changes a card (owners and admins only). */
+/** Changes a card (owners, admins and accountants only). */
 export async function updateCard(id: string, input: CardInput) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId, currency } = actor;
   const values = await parseCardInput(input, organizationId, currency);
   const own = and(eq(card.id, id), eq(card.organizationId, organizationId));
@@ -248,13 +248,13 @@ export async function updateCard(id: string, input: CardInput) {
 }
 
 /**
- * Puts a card away (cancelled, expired) or takes it back into use (owners
- * and admins only). An archived card keeps its past payments, but new
+ * Puts a card away (cancelled, expired) or takes it back into use (owners,
+ * admins and accountants only). An archived card keeps its past payments, but new
  * transactions can't be given it and it's no longer recognized in
  * descriptions.
  */
 export async function setCardArchived(id: string, archived: boolean) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const updated = await db
     .update(card)
@@ -286,11 +286,11 @@ export async function setCardArchived(id: string, archived: boolean) {
 }
 
 /**
- * Removes a card (owners and admins only). The transactions paid with it
+ * Removes a card (owners, admins and accountants only). The transactions paid with it
  * stay, without a card.
  */
 export async function deleteCard(id: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   const deleted = await db
     .delete(card)

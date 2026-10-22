@@ -99,7 +99,7 @@ export const settings = {
     disconnect: "Disconnect",
     connecting: "Connecting",
     connect: "Connect a bank",
-    onlyManagers: "Only owners and admins can link a bank.",
+    onlyManagers: "Only owners, admins and accountants can link a bank.",
     accountsAdded: { one: "1 account added", other: "{count} accounts added" },
     transactionsAdded: { one: "1 transaction added", other: "{count} transactions added" },
     updated: "{count} updated",

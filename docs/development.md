@@ -162,7 +162,7 @@ src/
 │   ├── auth.ts             Better Auth server config
 │   ├── auth-client.ts      Auth functions for client components
 │   ├── session.ts          getSession() / requireUser() / requireOrganization()
-│   ├── roles.ts            Team roles (owner, admin, member) and their labels
+│   ├── roles.ts            Team roles, what each may do (can()) and their labels (tested)
 │   ├── action-state.ts     What server actions read from forms and answer
 │   ├── contact.ts          Checking a message from the Contact page (tested)
 │   ├── demo.ts             Telling the demo's pretend people apart
@@ -276,10 +276,17 @@ test. Never take the company ID from the browser. Read and save
 company data through the functions in `src/lib/data/` (`listTransactions()`,
 `createAccount()`, …): each one looks up the active company and checks the
 person's role itself, and checks what was typed. They throw a `DataError`
-whose message is safe to show on screen. Members can add and edit
-transactions and bills (and mark bills as paid); owners and admins can also
-delete them and manage accounts,
-categories and category rules (`canManageFinances()` in `src/lib/roles.ts`).
+whose message is safe to show on screen. What someone may do depends on
+their role (see [Companies and teams](features.md)): ask
+`can(role, "finance.manage")` from `src/lib/roles.ts` rather than comparing
+role names, and pass the permission a data function needs to
+`getFinanceContext({ need: "finance.record" })` (anything that changes
+data) or `{ need: "finance.manage" }` (accounts, categories, rules, cards,
+settings, deleting). Pages pass the same answers to views as `canRecord`
+and `canManage`, which only hide buttons: the data functions decide.
+A new role goes in `roles` in `roles.ts` (Better Auth gets the same list)
+with its name in `roles`, `rolesInSentence` and `roleWithArticle` in both
+languages.
 
 **Dates and timezones.** Each company has a timezone (Settings; new
 companies get their creator's). Moments are stored in UTC; a transaction's
@@ -344,7 +351,7 @@ they can be tested: put a `*.test.ts` file next to the code (e.g.
 functions are tested against an in-memory Postgres with the real migrations
 (`src/lib/data/isolation.test.ts`, helpers in `src/lib/data/testing.ts`):
 they check that a company can't read or change another company's data and
-that members can't do what only owners and admins may. **When you add a
+that each role can do only what it may. **When you add a
 function to `lib/data/`, add its "other company" case there.**
 
 The end-to-end tests (`e2e/`, Playwright) use the real app in a real

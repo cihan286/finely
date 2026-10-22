@@ -8,7 +8,7 @@ export const errors = {
   notANumber: "{field} must be a number.",
   tooLarge: "{field} is too large.",
   notADate: "{field} must be a valid date.",
-  ownersAndAdminsOnly: "Only owners and admins can do this.",
+  notAllowed: "Your role in this company doesn't allow this.",
   notInDemo: "This isn't available in the demo. Sign up to use it with your own company.",
   // Things that weren't found (deleted meanwhile, or another company's)
   accountNotFound: "Account not found.",
@@ -42,7 +42,7 @@ export const errors = {
   fileTooLarge: "A file can be at most {max}. This one is {size}.",
   fileType: "Only {types} files can be attached.",
   tooManyFiles: "A transaction can have at most {max} files.",
-  fileDeleteNotAllowed: "Only the person who added this file, an owner or an admin can delete it.",
+  fileDeleteNotAllowed: "Only the person who added this file, an owner, an admin or an accountant can delete it.",
   // Categories, budgets and rules
   colorInvalid: "Color is invalid.",
   budgetAboveZero: "Monthly budget must be more than zero. Leave it empty for no budget.",

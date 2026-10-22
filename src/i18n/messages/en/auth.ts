@@ -109,7 +109,9 @@ export const auth = {
   roleWithArticle: {
     owner: "an owner",
     admin: "an admin",
+    accountant: "an accountant",
     member: "a member",
+    viewer: "a viewer",
   },
   /** What Better Auth's errors say, by their code */
   errors: {
@@ -149,11 +151,15 @@ export const auth = {
 export const roles = {
   owner: "Owner",
   admin: "Admin",
+  accountant: "Accountant",
   member: "Member",
+  viewer: "Viewer",
 };
 
 export const rolesInSentence = {
   owner: "owner",
   admin: "admin",
+  accountant: "accountant",
   member: "member",
+  viewer: "viewer",
 };

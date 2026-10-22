@@ -57,6 +57,8 @@ interface BillDialogProps {
   currency: string;
   /** Whether to show the Delete button (owners and admins) */
   canManage: boolean;
+  /** Whether anything can be changed (everyone but viewers) */
+  canRecord: boolean;
   /** The list's address, to return to when the window closes */
   closeHref: string;
   /** Today in the company's timezone ("2026-10-01"), the default due date */
@@ -94,6 +96,7 @@ function BillForm({
   categories,
   currency,
   canManage,
+  canRecord,
   today,
   pending,
   submit,
@@ -123,78 +126,80 @@ function BillForm({
 
   return (
     <form className={forms.form} onSubmit={handleSubmit}>
+      {/* Viewers see the details but can't change them */}
+      <fieldset className={forms.fields} disabled={!canRecord}>
+        <input type="hidden" name="id" value={bill?.id ?? ""} />
 
-      <input type="hidden" name="id" value={bill?.id ?? ""} />
-
-      <Field label={t.bill}>
-        <Input
-          name="name"
-          type="text"
-          placeholder={t.placeholder}
-          defaultValue={bill?.name ?? prefill?.name ?? ""}
-          maxLength={120}
-          required
-          autoFocus
-        />
-      </Field>
-
-      <div className={forms.grid}>
-        <Field label={fill(t.amountIn, { currency })}>
+        <Field label={t.bill}>
           <Input
-            name="amount"
-            type="number"
-            {...amountInputProps(currency)}
-            defaultValue={bill?.amount ?? prefill?.amount ?? ""}
+            name="name"
+            type="text"
+            placeholder={t.placeholder}
+            defaultValue={bill?.name ?? prefill?.name ?? ""}
+            maxLength={120}
             required
+            autoFocus
           />
         </Field>
-        <Field label={t.dueDate}>
-          <Input
-            name="dueDate"
-            type="date"
-            defaultValue={bill?.dueDate ?? prefill?.dueDate ?? today}
-            required
+
+        <div className={forms.grid}>
+          <Field label={fill(t.amountIn, { currency })}>
+            <Input
+              name="amount"
+              type="number"
+              {...amountInputProps(currency)}
+              defaultValue={bill?.amount ?? prefill?.amount ?? ""}
+              required
+            />
+          </Field>
+          <Field label={t.dueDate}>
+            <Input
+              name="dueDate"
+              type="date"
+              defaultValue={bill?.dueDate ?? prefill?.dueDate ?? today}
+              required
+            />
+          </Field>
+        </div>
+
+        <div className={forms.grid}>
+          <Field label={t.repeats}>
+            <Select name="repeat" defaultValue={bill?.repeat ?? prefill?.repeat ?? "none"}>
+              {BILL_REPEATS.map((repeat) => (
+                <option key={repeat} value={repeat}>
+                  {words.repeats[repeat]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={t.category}>
+            <Select
+              name="categoryId"
+              defaultValue={bill?.categoryId ?? prefill?.categoryId ?? ""}
+            >
+              <option value="">{words.uncategorized}</option>
+              {expenseCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <Field
+          label={t.notes}
+          optional
+          hint={t.notesHint}
+        >
+          <Textarea
+            name="notes"
+            rows={2}
+            maxLength={1000}
+            defaultValue={bill?.notes ?? ""}
           />
         </Field>
-      </div>
-
-      <div className={forms.grid}>
-        <Field label={t.repeats}>
-          <Select name="repeat" defaultValue={bill?.repeat ?? prefill?.repeat ?? "none"}>
-            {BILL_REPEATS.map((repeat) => (
-              <option key={repeat} value={repeat}>
-                {words.repeats[repeat]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={t.category}>
-          <Select
-            name="categoryId"
-            defaultValue={bill?.categoryId ?? prefill?.categoryId ?? ""}
-          >
-            <option value="">{words.uncategorized}</option>
-            {expenseCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-
-      <Field
-        label={t.notes}
-        optional
-        hint={t.notesHint}
-      >
-        <Textarea
-          name="notes"
-          rows={2}
-          maxLength={1000}
-          defaultValue={bill?.notes ?? ""}
-        />
-      </Field>
+      </fieldset>
 
       <div className={forms.footer}>
         {!isNew && canManage && (
@@ -215,18 +220,20 @@ function BillForm({
           <Button
             variant="outline"
             size="sm"
-            text={m.common.cancel}
+            text={canRecord ? m.common.cancel : m.common.close}
             action={close}
             disabled={pending}
           />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            loading={pending}
-            text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
-            disabled={pending}
-          />
+          {canRecord && (
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={pending}
+              text={pending ? m.common.saving : isNew ? words.add : t.saveChanges}
+              disabled={pending}
+            />
+          )}
         </div>
       </div>
     </form>

@@ -21,7 +21,7 @@ import { companySettings } from "@/db/finance";
 import { roundMoney } from "@/lib/money";
 import { requireOrganization } from "@/lib/session";
 import { currencyDecimals } from "@/lib/format";
-import { canManageFinances } from "@/lib/roles";
+import { can, type Permission } from "@/lib/roles";
 import type { ISODate } from "@/types/finance";
 import { DEFAULT_LOCALE, fill, type Locale } from "@/i18n/config";
 import { messagesFor, type Messages } from "@/i18n/messages";
@@ -116,12 +116,13 @@ export async function getCompanyTimeZone(organizationId: string): Promise<string
 /**
  * The signed-in user, the company whose data they may use, and its timezone
  * and currency.
- * With `manage: true`, also requires the owner or admin role.
+ * With `need`, also requires a role that allows it (see lib/roles.ts), e.g.
+ * { need: "finance.record" } before changing anything.
  */
-export async function getFinanceContext({ manage = false } = {}) {
+export async function getFinanceContext({ need }: { need?: Permission } = {}) {
   const { user, organization, role } = await requireOrganization();
-  if (manage && !canManageFinances(role)) {
-    throw new DataError("ownersAndAdminsOnly");
+  if (need && !can(role, need)) {
+    throw new DataError("notAllowed");
   }
   return {
     userId: user.id,

@@ -11,7 +11,8 @@
 // For developers: a client component ("use client") for the forms and buttons.
 // The page passes in the current data; after each change we call
 // router.refresh() so the server sends the updated lists. Permissions are
-// enforced by Better Auth on the server; canManageTeam() only hides buttons.
+// enforced by Better Auth on the server; can(role, "team.manage") only hides
+// buttons.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -25,7 +26,7 @@ import Message from "@/components/common/form/Message";
 import { useNotify } from "@/components/common/notice/Notice";
 import { useConfirm } from "@/components/common/confirm/Confirm";
 import { authClient } from "@/lib/auth-client";
-import { canManageTeam, roleLabel } from "@/lib/roles";
+import { ASSIGNABLE_ROLES, can, roleLabel, type Role } from "@/lib/roles";
 import { formatShortDate, getInitials } from "@/lib/format";
 import Spinner from "@/components/common/spinner/Spinner";
 import { fill } from "@/i18n/config";
@@ -59,6 +60,10 @@ interface TeamSettingsProps {
   emailEnabled: boolean;
 }
 
+// A role picked in a form; anything unexpected becomes a plain member
+const assignable = (value: unknown): Exclude<Role, "owner"> =>
+  ASSIGNABLE_ROLES.find((r) => r === value) ?? "member";
+
 export default function TeamSettings({
   organization,
   role,
@@ -70,11 +75,17 @@ export default function TeamSettings({
   const i18n = useI18n();
   const { locale, m } = i18n;
   const t = m.settings.team;
-  const canManage = canManageTeam(role);
+  const canManage = can(role, "team.manage");
   const notify = useNotify();
   const confirm = useConfirm();
   // Which action is in progress
   const [busy, setBusy] = useState<string | null>(null);
+  // Everyone can be invited as or given any role but owner
+  const roleOptions = ASSIGNABLE_ROLES.map((r) => (
+    <option key={r} value={r}>
+      {m.roles[r]}
+    </option>
+  ));
 
   // Runs one team action, shows its result, and reloads the lists on success
   const run = async (
@@ -99,7 +110,7 @@ export default function TeamSettings({
     const form = e.currentTarget;
     const data = new FormData(form);
     const email = String(data.get("email")).trim();
-    const inviteRole = data.get("role") === "admin" ? "admin" : "member";
+    const inviteRole = assignable(data.get("role"));
     const ok = await run(
       "invite",
       () => authClient.organization.inviteMember({ email, role: inviteRole }),
@@ -119,7 +130,7 @@ export default function TeamSettings({
   };
 
   const handleRoleChange = (member: MemberRow, newRole: string) => {
-    const next = newRole === "admin" ? "admin" : "member";
+    const next = assignable(newRole);
     run(
       `role-${member.id}`,
       () => authClient.organization.updateMemberRole({ memberId: member.id, role: next }),
@@ -180,8 +191,7 @@ export default function TeamSettings({
               className={styles.role}
               defaultValue="member"
             >
-              <option value="member">{m.roles.member}</option>
-              <option value="admin">{m.roles.admin}</option>
+              {roleOptions}
             </Select>
             <Button
               type="submit"
@@ -231,8 +241,7 @@ export default function TeamSettings({
                   onChange={(e) => handleRoleChange(member, e.target.value)}
                   disabled={busy !== null}
                 >
-                  <option value="member">{m.roles.member}</option>
-                  <option value="admin">{m.roles.admin}</option>
+                  {roleOptions}
                 </Select>
               ) : (
                 <span className={styles.badge}>{roleLabel(member.role, m.roles)}</span>

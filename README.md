@@ -22,8 +22,8 @@ real customers.*
 ## What it does
 
 - **Companies and teams.** Everyone works inside a company, with owners,
-  admins and members, invitations by email, handing a company over and
-  deleting it. One person can belong to several companies.
+  admins, accountants, members and viewers, invitations by email, handing
+  a company over and deleting it. One person can belong to several companies.
 - **Money in and out.** Bank accounts, transactions added by hand, imported
   from any bank's CSV export (columns are recognized automatically) or synced
   from a linked bank through Plaid. Categories, rules that categorize new
@@ -70,7 +70,7 @@ real customers.*
 - **Multi-tenant by design.** Every query is scoped to the signed-in
   person's company on the server, and a test suite runs the real data code
   against an in-memory Postgres to prove that one company can never read or
-  change another's data, and that members can't do what only admins may.
+  change another's data, and that each role can do only what it may.
 - **Real integrations.** Better Auth (email and Google sign-in, sessions,
   organizations), Stripe subscriptions with signed webhooks that ignore late
   or repeated messages, Plaid bank linking with access tokens encrypted

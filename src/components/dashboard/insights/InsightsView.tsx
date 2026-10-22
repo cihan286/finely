@@ -55,6 +55,8 @@ interface InsightsViewProps {
   currency: string;
   hasAccounts: boolean;
   canManage: boolean;
+  /** Whether you may add and change things (everyone but viewers) */
+  canRecord: boolean;
   insights: Insights;
   /** Payments that come back regularly, the largest per month first */
   recurring: RecurringPaymentDetails[];
@@ -67,6 +69,7 @@ export default async function InsightsView({
   currency,
   hasAccounts,
   canManage,
+  canRecord,
   insights,
   recurring,
   hiddenRecurring,
@@ -137,12 +140,14 @@ export default async function InsightsView({
                 : t.noAccountsMember}
           </p>
           {hasAccounts ? (
-            <Button
-              href="/dashboard/transactions?import=1"
-              variant="primary"
-              size="sm"
-              text={t.importStatement}
-            />
+            canRecord && (
+              <Button
+                href="/dashboard/transactions?import=1"
+                variant="primary"
+                size="sm"
+                text={t.importStatement}
+              />
+            )
           ) : (
             canManage && (
               <Button
@@ -358,26 +363,30 @@ export default async function InsightsView({
                               (r.billed ? (
                                 <span className={styles.muted}>{t.trackedAsBill}</span>
                               ) : (
-                                <Link
-                                  href={billHref(r)}
-                                  className={styles.addBill}
-                                  aria-label={fill(t.addAsBillLabel, { name: r.name })}
-                                >
-                                  {t.addAsBill}
-                                </Link>
+                                canRecord && (
+                                  <Link
+                                    href={billHref(r)}
+                                    className={styles.addBill}
+                                    aria-label={fill(t.addAsBillLabel, { name: r.name })}
+                                  >
+                                    {t.addAsBill}
+                                  </Link>
+                                )
                               ))}
                             {/* Leaves it out of this list and the forecast */}
-                            <form action={submitRecurringVisibility}>
-                              <input type="hidden" name="key" value={r.key} />
-                              <input type="hidden" name="name" value={r.name} />
-                              <button
-                                type="submit"
-                                className={styles.hideButton}
-                                aria-label={fill(t.notRegularLabel, { name: r.name })}
-                              >
-                                {t.notRegular}
-                              </button>
-                            </form>
+                            {canRecord && (
+                              <form action={submitRecurringVisibility}>
+                                <input type="hidden" name="key" value={r.key} />
+                                <input type="hidden" name="name" value={r.name} />
+                                <button
+                                  type="submit"
+                                  className={styles.hideButton}
+                                  aria-label={fill(t.notRegularLabel, { name: r.name })}
+                                >
+                                  {t.notRegular}
+                                </button>
+                              </form>
+                            )}
                           </span>
                         </td>
                       </tr>
@@ -387,7 +396,7 @@ export default async function InsightsView({
               </div>
             )}
             {/* The ones marked "Not regular", to bring back */}
-            {hiddenRecurring.length > 0 && (
+            {hiddenRecurring.length > 0 && canRecord && (
               <div className={styles.hiddenList}>
                 <span className={styles.muted}>{t.notCounted}</span>
                 {hiddenRecurring.map((h) => (

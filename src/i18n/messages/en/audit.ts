@@ -4,7 +4,7 @@ export const audit = {
   title: "Activity log",
   subtitle: "Who changed what in {company}, newest first.",
   back: "Settings",
-  onlyManagers: "Only owners and admins can read the activity log.",
+  onlyManagers: "Only owners, admins and accountants can read the activity log.",
   show: "Show",
   everything: "Everything",
   searchPlaceholder: "Search what happened or who did it",

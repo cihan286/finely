@@ -25,7 +25,7 @@ import { AUDIT_AREAS, isAuditArea } from "@/lib/finance/audit";
 import { fill } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
 import { formatDateTime } from "@/lib/format";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import styles from "./page.module.css";
 
@@ -79,7 +79,7 @@ export default async function ActivityPage({
     </div>
   );
 
-  if (!canManageFinances(role)) {
+  if (!can(role, "activity.view")) {
     return (
       <main className={styles.page}>
         {header}

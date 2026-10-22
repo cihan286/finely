@@ -4,7 +4,7 @@ export const audit: typeof en = {
   title: "Etkinlik kaydı",
   subtitle: "{company} şirketinde kim neyi değiştirdi, en yeniler önce.",
   back: "Ayarlar",
-  onlyManagers: "Etkinlik kaydını yalnızca sahipler ve yöneticiler okuyabilir.",
+  onlyManagers: "Etkinlik kaydını yalnızca sahipler, yöneticiler ve muhasebeciler okuyabilir.",
   show: "Göster",
   everything: "Tümü",
   searchPlaceholder: "Ne olduğunu veya kimin yaptığını arayın",

@@ -40,7 +40,7 @@ import { hasPassword, listOwnedCompanies } from "@/lib/data/person";
 import { getCompanySettings } from "@/lib/data/settings";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localDay } from "@/lib/dates";
-import { canManageFinances } from "@/lib/roles";
+import { can, ROLES, type Role } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import { fill } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
@@ -92,8 +92,11 @@ export default async function SettingsPage({
   ];
   if (!timeZones.includes(settings.timeZone)) timeZones.push(settings.timeZone);
 
-  // Owner first, then admins, then members; alphabetical within each role
-  const order = { owner: 0, admin: 1, member: 2 } as Record<string, number>;
+  // The most powerful roles first (owner, admins…); alphabetical within each
+  const order = (role: string) => {
+    const index = ROLES.indexOf(role as Role);
+    return index < 0 ? ROLES.length : index;
+  };
   const members = organization.members
     .map((member) => ({
       id: member.id,
@@ -102,7 +105,7 @@ export default async function SettingsPage({
       role: member.role,
       isYou: member.userId === user.id,
     }))
-    .sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.name.localeCompare(b.name));
+    .sort((a, b) => order(a.role) - order(b.role) || a.name.localeCompare(b.name));
 
   // Only invitations that can still be accepted
   const now = new Date();
@@ -121,7 +124,7 @@ export default async function SettingsPage({
         <h1 className={styles.title}>{t.title}</h1>
         <p className={styles.subtitle}>
           {fill(t.subtitle, { company: organization.name })}
-          {canManageFinances(role) && (
+          {can(role, "activity.view") && (
             <>
               {" "}
               <Link href="/dashboard/settings/activity" className={styles.link}>
@@ -143,7 +146,7 @@ export default async function SettingsPage({
         />
       )}
       <CompanySettings
-        canManage={canManageFinances(role)}
+        canManage={can(role, "finance.manage")}
         organization={{ id: organization.id, name: organization.name }}
         timeZone={settings.timeZone}
         currency={settings.currency}
@@ -160,7 +163,7 @@ export default async function SettingsPage({
       {/* Shown once linking banks is set up, or while a linked bank remains */}
       {(isBankEnabled || banks.length > 0) && (
         <BankConnections
-          canManage={canManageFinances(role) && isBankEnabled}
+          canManage={can(role, "finance.manage") && isBankEnabled}
           connections={banks.map((bank) => ({
             id: bank.id,
             institutionName: bank.institutionName,
@@ -177,17 +180,17 @@ export default async function SettingsPage({
         />
       )}
       <AccountSettings
-        canManage={canManageFinances(role)}
+        canManage={can(role, "finance.manage")}
         accounts={accounts}
         currency={settings.currency}
       />
       <CategorySettings
-        canManage={canManageFinances(role)}
+        canManage={can(role, "finance.manage")}
         categories={categories}
         currency={settings.currency}
       />
       <CategoryRuleSettings
-        canManage={canManageFinances(role)}
+        canManage={can(role, "finance.manage")}
         rules={rules}
         categories={categories}
       />

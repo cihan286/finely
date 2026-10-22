@@ -28,7 +28,7 @@ import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { countBillsMatching } from "@/lib/data/bills";
 import { listCards } from "@/lib/data/cards";
 import { getTransaction, listTransactions } from "@/lib/data/transactions";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 
@@ -123,7 +123,8 @@ export default async function TransactionsPage({
       organizationName={organization.name}
       currency={currency}
       today={todayIn(timeZone)}
-      canManage={canManageFinances(role)}
+      canManage={can(role, "finance.manage")}
+      canRecord={can(role, "finance.record")}
       query={query}
       pageSize={PAGE_SIZE}
       transactions={transactions}

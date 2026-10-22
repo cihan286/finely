@@ -2,8 +2,8 @@
 // The categories every new company starts with
 //
 // In plain words: so nobody starts from an empty list, each new company gets
-// a ready-made set of categories (Payroll, Office & Rent, Sales, …). Owners
-// and admins can rename, recolor or delete them later.
+// a ready-made set of categories (Payroll, Office & Rent, Sales, …). Owners,
+// admins and accountants can rename, recolor or delete them later.
 //
 // For developers: called from the afterCreateOrganization hook in lib/auth.ts.
 // Companies created before categories existed got the same set from

@@ -13,7 +13,7 @@ import { getBudgets } from "@/lib/data/budgets";
 import { getCompanyLocale } from "@/lib/data/common";
 import { getDashboardSummary } from "@/lib/data/dashboard";
 import { getForecast } from "@/lib/data/recurring";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 
@@ -37,7 +37,8 @@ export default async function DashboardPage() {
       firstName={user.name.split(" ")[0]}
       organizationName={organization.name}
       currency={currency}
-      canManage={canManageFinances(role)}
+      canManage={can(role, "finance.manage")}
+      canRecord={can(role, "finance.record")}
       summary={summary}
       budgets={budgets}
       forecast={forecast}

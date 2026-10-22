@@ -100,7 +100,7 @@ export const settings: typeof en = {
     disconnect: "Bağlantıyı kes",
     connecting: "Bağlanıyor",
     connect: "Banka bağla",
-    onlyManagers: "Banka yalnızca sahipler ve yöneticiler tarafından bağlanabilir.",
+    onlyManagers: "Banka yalnızca sahipler, yöneticiler ve muhasebeciler tarafından bağlanabilir.",
     accountsAdded: { one: "1 hesap eklendi", other: "{count} hesap eklendi" },
     transactionsAdded: { one: "1 işlem eklendi", other: "{count} işlem eklendi" },
     updated: "{count} güncellendi",

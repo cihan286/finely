@@ -4,7 +4,7 @@
 // In plain words: a company's preferences: its timezone, which decides
 // which day a transaction belongs to and when "today" starts, and its
 // currency, which decides how every amount is shown. A new company gets the
-// timezone of the person who created it and US dollars; owners and admins
+// timezone of the person who created it and US dollars; owners, admins and accountants
 // can change both in Settings.
 //
 // For developers: server-only. createCompanySettings() is called from the
@@ -37,11 +37,11 @@ export async function getCompanySettings() {
 }
 
 /**
- * Sets the company's overall monthly budget, or removes it (null). Owners
- * and admins only.
+ * Sets the company's overall monthly budget, or removes it (null). Owners,
+ * admins and accountants only.
  */
 export async function updateOverallBudget(amount: number | null) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId, currency } = actor;
   const monthlyBudget = amount === null ? null : money(amount, "monthlyBudget", currency);
   if (monthlyBudget !== null && monthlyBudget <= 0) {
@@ -83,9 +83,9 @@ export async function createCompanySettings(
     .onConflictDoNothing();
 }
 
-/** Changes the company's timezone (owners and admins only). */
+/** Changes the company's timezone (owners, admins and accountants only). */
 export async function updateTimeZone(timeZone: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;
   if (typeof timeZone !== "string" || !isValidTimeZone(timeZone)) {
     throw new DataError("chooseTimezone");
@@ -110,7 +110,7 @@ export async function updateTimeZone(timeZone: string) {
  * admins only). Nothing is converted: 100.00 stays 100.00.
  */
 export async function updateCurrency(currency: string) {
-  const actor = await getFinanceContext({ manage: true });
+  const actor = await getFinanceContext({ need: "finance.manage" });
   if (!isCurrency(currency)) throw new DataError("chooseCurrency");
   if (currency === actor.currency) return;
   await db

@@ -25,7 +25,7 @@ import { getBill, listBillPaymentCandidates, listBills } from "@/lib/data/bills"
 import { listCategories } from "@/lib/data/categories";
 import { getCompanyLocale, getCompanyTimeZone } from "@/lib/data/common";
 import { getRecurring } from "@/lib/data/recurring";
-import { canManageFinances } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { BILL_REPEATS, type BillRepeat } from "@/types/finance";
@@ -54,7 +54,8 @@ export default async function BillsPage({
   const undoId = single(params.undo);
   // ?q=rent narrows both lists down
   const search = single(params.q).trim().slice(0, 100);
-  const canManage = canManageFinances(role);
+  const canManage = can(role, "finance.manage");
+  const canRecord = can(role, "finance.record");
 
   const [
     { unpaid, paid, possiblyPaid, morePaid },
@@ -105,6 +106,7 @@ export default async function BillsPage({
       currency={currency}
       today={todayIn(timeZone)}
       canManage={canManage}
+      canRecord={canRecord}
       unpaid={unpaid}
       paid={paid}
       possiblyPaid={possiblyPaid}

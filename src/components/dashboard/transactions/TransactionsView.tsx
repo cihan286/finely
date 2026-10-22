@@ -95,6 +95,8 @@ interface TransactionsViewProps {
   today: string;
   /** Whether you may delete transactions and add bank accounts */
   canManage: boolean;
+  /** Whether you may add and change things (everyone but viewers) */
+  canRecord: boolean;
   query: TransactionsQuery;
   pageSize: number;
   /** This page of transactions */
@@ -160,6 +162,7 @@ export default async function TransactionsView({
   currency,
   today,
   canManage,
+  canRecord,
   query,
   pageSize,
   transactions,
@@ -207,20 +210,24 @@ export default async function TransactionsView({
                 icon={<Download size={16} />}
               />
             )}
-            <Button
-              href={hrefFor(query, { import: "1" })}
-              variant="outline"
-              size="sm"
-              text={t.importCsv}
-              icon={<FileUp size={16} />}
-            />
-            <Button
-              href={hrefFor(query, { new: "1" })}
-              variant="primary"
-              size="sm"
-              text={t.add}
-              icon={<Plus size={16} />}
-            />
+            {canRecord && (
+              <>
+                <Button
+                  href={hrefFor(query, { import: "1" })}
+                  variant="outline"
+                  size="sm"
+                  text={t.importCsv}
+                  icon={<FileUp size={16} />}
+                />
+                <Button
+                  href={hrefFor(query, { new: "1" })}
+                  variant="primary"
+                  size="sm"
+                  text={t.add}
+                  icon={<Plus size={16} />}
+                />
+              </>
+            )}
           </div>
         )}
       </div>
@@ -370,13 +377,15 @@ export default async function TransactionsView({
                   <table className={styles.table}>
                     <thead>
                       <tr>
-                        <th scope="col" className={styles.checkCell}>
-                          <input
-                            type="checkbox"
-                            name="all"
-                            aria-label={t.table.selectAll}
-                          />
-                        </th>
+                        {canRecord && (
+                          <th scope="col" className={styles.checkCell}>
+                            <input
+                              type="checkbox"
+                              name="all"
+                              aria-label={t.table.selectAll}
+                            />
+                          </th>
+                        )}
                         <th scope="col">{t.table.date}</th>
                         <th scope="col" className={styles.nameCell}>
                           {t.table.description}
@@ -398,14 +407,16 @@ export default async function TransactionsView({
                     <tbody>
                       {transactions.map((tx) => (
                         <tr key={tx.id} className={styles.row}>
-                          <td className={styles.checkCell}>
-                            <input
-                              type="checkbox"
-                              name="ids"
-                              value={tx.id}
-                              aria-label={fill(t.table.select, { name: tx.name })}
-                            />
-                          </td>
+                          {canRecord && (
+                            <td className={styles.checkCell}>
+                              <input
+                                type="checkbox"
+                                name="ids"
+                                value={tx.id}
+                                aria-label={fill(t.table.select, { name: tx.name })}
+                              />
+                            </td>
+                          )}
                           <td className={styles.dateCell}>{formatDate(tx.day, locale)}</td>
                           <td className={styles.nameCell}>
                             {/* The link covers the whole row (see CSS) */}
@@ -490,7 +501,7 @@ export default async function TransactionsView({
         </>
       )}
 
-      {dialog?.mode === "import" && (
+      {dialog?.mode === "import" && canRecord && (
         <ImportDialog
           currency={currency}
           accounts={accounts}
@@ -499,7 +510,7 @@ export default async function TransactionsView({
           closeHref={listHref}
         />
       )}
-      {dialog && dialog.mode !== "import" && (
+      {dialog && dialog.mode !== "import" && (dialog.mode === "edit" || canRecord) && (
         <TransactionDialog
           // A fresh form for each transaction opened
           key={dialog.mode === "edit" ? dialog.transaction.id : "new"}
@@ -510,6 +521,7 @@ export default async function TransactionsView({
           categories={categories}
           cards={cards}
           canManage={canManage}
+          canRecord={canRecord}
           closeHref={listHref}
           today={today}
         />

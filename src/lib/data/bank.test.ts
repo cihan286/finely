@@ -320,7 +320,7 @@ describe("other companies and roles", () => {
     const [connection] = await listBankConnections();
 
     actAs(company, "member");
-    const denied = "Only owners and admins can do this.";
+    const denied = "Your role in this company doesn't allow this.";
     expect((await listBankConnections()).length).toBe(1);
     await expect(createBankLinkToken()).rejects.toThrow(denied);
     await expect(connectBank("token-6", "Sixth Bank")).rejects.toThrow(denied);

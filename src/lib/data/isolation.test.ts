@@ -501,9 +501,9 @@ describe("category rules", () => {
     expect(await setTransactionsCategory([globex.transactionId], globex.categoryId)).toBe(1);
     await expect(
       saveCategoryRule({ matchText: "Extra", categoryId: globex.categoryId }),
-    ).rejects.toThrow("Only owners and admins can do this.");
+    ).rejects.toThrow("Your role in this company doesn't allow this.");
     await expect(applyCategoryRule("rule_missing")).rejects.toThrow(
-      "Only owners and admins can do this.",
+      "Your role in this company doesn't allow this.",
     );
   });
 
@@ -512,7 +512,7 @@ describe("category rules", () => {
     const id = await createCategoryRule({ matchText: "Initech", categoryId: globex.categoryId });
 
     actAs(globex, "member");
-    const denied = "Only owners and admins can do this.";
+    const denied = "Your role in this company doesn't allow this.";
     expect((await listCategoryRules()).map((r) => r.id)).toEqual([id]);
     await expect(
       createCategoryRule({ matchText: "Extra", categoryId: globex.categoryId }),
@@ -533,7 +533,7 @@ describe("roles", () => {
     actAs(globex, "member");
     const id = await createTransaction(transactionFor(globex, { name: "Member entry" }));
     await updateTransaction(id, transactionFor(globex, { name: "Member edit" }));
-    await expect(deleteTransaction(id)).rejects.toThrow("Only owners and admins can do this.");
+    await expect(deleteTransaction(id)).rejects.toThrow("Your role in this company doesn't allow this.");
 
     actAs(globex, "admin");
     await deleteTransaction(id);
@@ -542,7 +542,7 @@ describe("roles", () => {
 
   it("stops members from managing accounts, categories and settings", async () => {
     actAs(globex, "member");
-    const denied = "Only owners and admins can do this.";
+    const denied = "Your role in this company doesn't allow this.";
     await expect(createAccount({ name: "Extra", type: "savings" })).rejects.toThrow(denied);
     await expect(deleteAccount(globex.accountId)).rejects.toThrow(denied);
     await expect(
@@ -550,6 +550,62 @@ describe("roles", () => {
     ).rejects.toThrow(denied);
     await expect(deleteCategory(globex.categoryId)).rejects.toThrow(denied);
     await expect(updateTimeZone("Europe/Istanbul")).rejects.toThrow(denied);
+  });
+
+  it("lets accountants manage the finances and read the activity log", async () => {
+    actAs(globex, "accountant");
+    const accountId = await createAccount({ name: "Reserve", type: "reserve" });
+    const id = await createTransaction(
+      transactionFor(globex, { name: "Accountant entry", accountId }),
+    );
+    await deleteTransaction(id);
+    await deleteAccount(accountId);
+    expect((await listAuditLog()).total).toBeGreaterThan(0);
+  });
+
+  it("lets viewers see everything but change nothing", async () => {
+    actAs(globex, "viewer");
+    const denied = "Your role in this company doesn't allow this.";
+    const { transactions } = await listTransactions();
+    expect(transactions.length).toBeGreaterThan(0);
+    expect(await listAccounts()).not.toEqual([]);
+
+    await expect(createTransaction(transactionFor(globex))).rejects.toThrow(denied);
+    await expect(
+      updateTransaction(globex.transactionId, transactionFor(globex, { name: "Changed" })),
+    ).rejects.toThrow(denied);
+    await expect(setTransactionsCategory([globex.transactionId], null)).rejects.toThrow(denied);
+    await expect(
+      importTransactions(globex.accountId, [
+        { date: today, name: "Tea", amount: -4, category: null },
+      ]),
+    ).rejects.toThrow(denied);
+    await expect(
+      createBill({ name: "Rent", amount: 100, dueDate: today, repeat: "none", categoryId: null }),
+    ).rejects.toThrow(denied);
+    await expect(
+      addAttachment(globex.transactionId, { name: "a.pdf", bytes: PDF }),
+    ).rejects.toThrow(denied);
+    await expect(hideRecurring("out:rent", "Rent")).rejects.toThrow(denied);
+    await expect(listAuditLog()).rejects.toThrow(denied);
+    expect((await getTransaction(globex.transactionId))?.name).not.toBe("Changed");
+  });
+
+  it("stops someone who became a viewer from deleting the files they added", async () => {
+    await testDb.insert(user).values({ id: "user_vic", name: "Vic", email: "vic@example.com" });
+    const vic = { ...globex, userId: "user_vic" };
+    actAs(vic, "member");
+    const [file] = await addAttachment(globex.transactionId, { name: "v.pdf", bytes: PDF });
+
+    actAs(vic, "viewer");
+    const files = await listAttachments(globex.transactionId);
+    expect(files.find((f) => f.id === file.id)?.canDelete).toBe(false);
+    await expect(deleteAttachment(file.id)).rejects.toThrow(
+      "Your role in this company doesn't allow this.",
+    );
+
+    actAs(vic, "member");
+    await deleteAttachment(file.id);
   });
 });
 
@@ -718,7 +774,7 @@ describe("bills", () => {
 
     // Members can pay, but not undo: it deletes a transaction
     actAs(company, "member");
-    await expect(undoBillPayment(id)).rejects.toThrow("Only owners and admins can do this.");
+    await expect(undoBillPayment(id)).rejects.toThrow("Your role in this company doesn't allow this.");
     // Nor can another company
     actAs(await createTestCompany("baratheon"));
     await expect(undoBillPayment(id)).rejects.toThrow("Bill not found.");
@@ -1059,7 +1115,7 @@ describe("bills", () => {
     expect((await getBudgets()).budgets.map((b) => b.name)).toEqual(["Travel"]);
 
     actAs(company, "member");
-    await expect(updateOverallBudget(1000)).rejects.toThrow("Only owners and admins can do this.");
+    await expect(updateOverallBudget(1000)).rejects.toThrow("Your role in this company doesn't allow this.");
     actAs(company);
     await expect(updateOverallBudget(0)).rejects.toThrow("Monthly budget must be more than zero.");
     await updateOverallBudget(1000);
@@ -1140,7 +1196,7 @@ describe("bills", () => {
     actAs(globex, "member");
     const id = await createBill(billFor(globex));
     await updateBill(id, billFor(globex, { name: "Member edit" }));
-    await expect(deleteBill(id)).rejects.toThrow("Only owners and admins can do this.");
+    await expect(deleteBill(id)).rejects.toThrow("Your role in this company doesn't allow this.");
 
     actAs(globex, "admin");
     await deleteBill(id);
@@ -1230,7 +1286,7 @@ describe("budgets", () => {
     actAs(globex, "member");
     await expect(
       updateCategory(id, { name: "Snacks", kind: "expense", color: "#6366f1", iconKey: "more", budget: 9 }),
-    ).rejects.toThrow("Only owners and admins can do this.");
+    ).rejects.toThrow("Your role in this company doesn't allow this.");
     actAs(globex);
     await deleteCategory(id);
   });
@@ -1344,7 +1400,7 @@ describe("payment cards", () => {
     const company = await createTestCompany("visa-co");
     const other = await createTestCompany("amex-co");
     actAs(company, "member");
-    await expect(createCard(cardInput())).rejects.toThrow("Only owners and admins can do this.");
+    await expect(createCard(cardInput())).rejects.toThrow("Your role in this company doesn't allow this.");
 
     actAs(company);
     await expect(createCard(cardInput({ last4: "48" }))).rejects.toThrow(
@@ -1767,7 +1823,7 @@ describe("attachments", () => {
       ["b.pdf", true],
     ]);
     await expect(deleteAttachment(ownersFile.id)).rejects.toThrow(
-      "Only the person who added this file, an owner or an admin can delete it.",
+      "Only the person who added this file, an owner, an admin or an accountant can delete it.",
     );
     await deleteAttachment(files[1].id);
 
@@ -2012,8 +2068,8 @@ describe("activity log", () => {
 
   it("can only be read by owners and admins", async () => {
     actAs(globex, "member");
-    await expect(listAuditLog()).rejects.toThrow("Only owners and admins can do this.");
-    await expect(exportAuditLog()).rejects.toThrow("Only owners and admins can do this.");
+    await expect(listAuditLog()).rejects.toThrow("Your role in this company doesn't allow this.");
+    await expect(exportAuditLog()).rejects.toThrow("Your role in this company doesn't allow this.");
     actAs(globex, "admin");
     expect((await listAuditLog()).total).toBeGreaterThan(0);
   });
@@ -2050,7 +2106,7 @@ describe("currency", () => {
     );
 
     actAs(company, "member");
-    await expect(updateCurrency("GBP")).rejects.toThrow("Only owners and admins can do this.");
+    await expect(updateCurrency("GBP")).rejects.toThrow("Your role in this company doesn't allow this.");
     actAs(other);
     expect((await getCompanySettings()).currency).toBe("USD");
   });
