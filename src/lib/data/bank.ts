@@ -1,21 +1,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Linked banks: connecting, syncing, disconnecting
 //
-// In plain words: an owner or admin can link the company's bank. Finely
-// then adds that bank's everyday and savings accounts and keeps their
-// transactions up to date by itself — when the bank is linked, whenever
-// someone presses "Sync now", and once a day. New transactions get a
-// category from the company's rules; a pending payment that gets booked
-// stays the same transaction, with its category, notes and receipts. The
-// account's balance always follows what the bank says. Disconnecting stops
-// the syncing; the accounts and transactions stay.
+// In plain words: an owner, admin or accountant can link the company's bank.
+// Finely then adds that bank's everyday and savings accounts and keeps their
+// transactions up to date by itself — when the bank is linked, whenever someone
+// presses "Sync now", and once a day. New transactions get a category from the
+// company's rules; a pending payment that gets booked stays the same
+// transaction, with its category, notes and receipts. The account's balance
+// always follows what the bank says. Disconnecting stops the syncing; the
+// accounts and transactions stay.
 //
-// For developers: server-only. The functions people call find the company
-// via getFinanceContext({ need: "finance.manage" }). syncAllBankConnections() is for
-// the daily job: no login, every connection, each with its own company's ID.
-// The bank's key is stored encrypted (lib/bank/crypto.ts) and only decrypted
-// here, right before a call; it never leaves this file, the logs or error
-// messages. Syncing is safe to repeat: the cursor only moves on after the
+// For developers: server-only. The functions people call find the company via
+// getFinanceContext({ need: "finance.manage" }). syncAllBankConnections() is
+// for the daily job: no login, every connection, each with its own company's
+// ID. The bank's key is stored encrypted (lib/bank/crypto.ts) and only
+// decrypted here, right before a call; it never leaves this file, the logs or
+// error messages. Syncing is safe to repeat: the cursor only moves on after the
 // changes were saved, and saving the same changes twice changes nothing.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -107,8 +107,8 @@ export async function listBankConnections(): Promise<BankConnectionSummary[]> {
 }
 
 /**
- * Starts linking a bank (owners, admins and accountants only): the one-time token that
- * opens the "log in at your bank" window in the browser.
+ * Starts linking a bank (owners, admins and accountants only): the one-time
+ * token that opens the "log in at your bank" window in the browser.
  */
 export async function createBankLinkToken(): Promise<string> {
   const { userId, organizationId } = await getFinanceContext({ need: "finance.manage" });
@@ -121,8 +121,8 @@ export async function createBankLinkToken(): Promise<string> {
 }
 
 /**
- * Finishes linking a bank (owners, admins and accountants only) with what the bank
- * window handed back, and brings in its accounts and transactions.
+ * Finishes linking a bank (owners, admins and accountants only) with what the
+ * bank window handed back, and brings in its accounts and transactions.
  */
 export async function connectBank(
   publicToken: string,
@@ -173,7 +173,9 @@ export async function connectBank(
   }
 }
 
-/** Brings one linked bank up to date now (owners, admins and accountants only). */
+/**
+ * Brings one linked bank up to date now (owners, admins and accountants only).
+ */
 export async function syncBankConnection(id: string): Promise<SyncResult> {
   const actor = await getFinanceContext({ need: "finance.manage" });
   const [connection] = await db

@@ -81,6 +81,72 @@ export const companySettings = pgTable("company_settings", {
   ...timestamps,
 });
 
+// Who the company is, as it appears on invoices and official papers: its
+// registered name, tax number, address. Companies without a row haven't
+// filled it in yet. (See lib/data/company-profile.ts.)
+export const companyProfile = pgTable("company_profile", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  // The registered name ("ticaret unvanı"), e.g. "Acme Tasarım Ltd. Şti.";
+  // can be longer than the name the team calls it
+  legalName: text("legal_name"),
+  // Two-letter country code (ISO 3166), e.g. "TR". Decides how the tax
+  // number is checked.
+  country: text("country"),
+  // In Turkey: the 10-digit VKN, or the 11-digit TCKN of a sole proprietor
+  taxId: text("tax_id"),
+  // The tax office the company belongs to, e.g. "Kadıköy"
+  taxOffice: text("tax_office"),
+  // Turkey's 16-digit central registration number (MERSİS)
+  mersisNo: text("mersis_no"),
+  // The trade registry number ("ticaret sicil no")
+  tradeRegistryNo: text("trade_registry_no"),
+  address: text("address"),
+  district: text("district"),
+  city: text("city"),
+  postalCode: text("postal_code"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  ...timestamps,
+});
+
+// A place the company works from: its head office, a shop, a factory.
+// Warehouses and cost centers will belong to one (see lib/data/branches.ts).
+export const branch = pgTable(
+  "branch",
+  {
+    id: text("id").primaryKey().$defaultFn(prefixedId("br")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // A short code for lists and document numbers, e.g. "IST"; optional
+    code: text("code"),
+    address: text("address"),
+    city: text("city"),
+    phone: text("phone"),
+    // The registered head office; at most one per company
+    isHeadOffice: boolean("is_head_office").default(false).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    // No two branches with the same name or code in a company, ignoring
+    // upper/lower case
+    uniqueIndex("branch_organization_name_unique").on(
+      table.organizationId,
+      sql`lower(${table.name})`,
+    ),
+    uniqueIndex("branch_organization_code_unique")
+      .on(table.organizationId, sql`lower(${table.code})`)
+      .where(sql`${table.code} is not null`),
+    uniqueIndex("branch_organization_head_office_unique")
+      .on(table.organizationId)
+      .where(sql`${table.isHeadOffice}`),
+  ],
+);
+
 // A bank the company linked (through Plaid), so that its accounts'
 // transactions are imported automatically (see lib/data/bank.ts).
 export const bankConnection = pgTable(

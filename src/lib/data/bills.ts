@@ -1,17 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Bills: reading and saving
 //
-// In plain words: lists what the company still owes (soonest first) and what
-// it paid recently, and lets people add, change and pay bills. Paying a bill
+// In plain words: lists what the company still owes (soonest first) and what it
+// paid recently, and lets people add, change and pay bills. Paying a bill
 // records the payment as a transaction in the chosen account — or, when the
 // payment is already among the transactions (it came with a bank statement),
 // points the bill at that one — and, if the bill repeats, adds the next one.
 // When transactions arrive (an imported statement, a linked bank, one typed
 // in), the ones that clearly are a bill's payment mark that bill as paid by
-// themselves; ones that only might be are pointed out on the Bills page.
-// A payment can be undone, which makes the bill owed again. Everyone on the
-// team can add, edit and pay bills; only owners, admins and accountants can delete them
-// or undo a payment.
+// themselves; ones that only might be are pointed out on the Bills page. A
+// payment can be undone, which makes the bill owed again. Everyone on the team
+// can add, edit and pay bills; only owners, admins and accountants can delete
+// them or undo a payment.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID. Account and
@@ -671,8 +671,8 @@ export async function updateBill(id: string, input: BillInput) {
 }
 
 /**
- * Removes a bill (owners, admins and accountants only). The payment of a paid bill stays
- * in the transactions.
+ * Removes a bill (owners, admins and accountants only). The payment of a paid
+ * bill stays in the transactions.
  */
 export async function deleteBill(id: string) {
   const actor = await getFinanceContext({ need: "finance.manage" });
@@ -798,11 +798,11 @@ export async function payBill(
 }
 
 /**
- * Undoes a bill's payment (owners, admins and accountants only): the bill is owed again.
- * The transaction that "Mark as paid" recorded is deleted; a payment that
- * was already in the transactions stays there. The next bill that was added
- * for a repeating one is removed too, if nobody touched it since. Returns
- * whether a transaction was deleted.
+ * Undoes a bill's payment (owners, admins and accountants only): the bill is
+ * owed again. The transaction that "Mark as paid" recorded is deleted; a
+ * payment that was already in the transactions stays there. The next bill that
+ * was added for a repeating one is removed too, if nobody touched it since.
+ * Returns whether a transaction was deleted.
  */
 export async function undoBillPayment(id: string): Promise<{ deletedPayment: boolean }> {
   const actor = await getFinanceContext({ need: "finance.manage" });

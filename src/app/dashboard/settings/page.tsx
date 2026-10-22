@@ -1,10 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings page (finely.com/dashboard/settings)
 //
-// In plain words: where you manage your company — its name and timezone, its team
-// (who's in it, their roles, and invitations), its bank accounts, its
-// categories and its category rules. Owners and admins can change all of
-// these; members can see them. Everyone chooses which emails they get
+// In plain words: where you manage your company — its name and timezone,
+// its official details (registered name, tax number, address) and
+// branches, its team (who's in it, their roles, and invitations), its bank
+// accounts, its categories and its category rules. Each role can change
+// some of these (see lib/roles.ts); everyone can see them. Everyone chooses which emails they get
 // themselves. The owner also gets a last section to hand
 // the company over to someone else or delete it.
 //
@@ -21,7 +22,9 @@ import AccountSettings from "@/components/dashboard/settings/AccountSettings";
 import CategoryRuleSettings from "@/components/dashboard/settings/CategoryRuleSettings";
 import BankConnections from "@/components/dashboard/settings/BankConnections";
 import BillingSettings from "@/components/dashboard/settings/BillingSettings";
+import BranchSettings from "@/components/dashboard/settings/BranchSettings";
 import CategorySettings from "@/components/dashboard/settings/CategorySettings";
+import CompanyDetails from "@/components/dashboard/settings/CompanyDetails";
 import CompanySettings from "@/components/dashboard/settings/CompanySettings";
 import EmailSettings from "@/components/dashboard/settings/EmailSettings";
 import OwnerSettings from "@/components/dashboard/settings/OwnerSettings";
@@ -33,16 +36,19 @@ import { isBankEnabled } from "@/lib/bank/provider";
 import { listAccounts } from "@/lib/data/accounts";
 import { listBankConnections } from "@/lib/data/bank";
 import { getBilling } from "@/lib/data/billing";
+import { listBranches } from "@/lib/data/branches";
+import { getCompanyProfile } from "@/lib/data/company-profile";
 import { listCategories } from "@/lib/data/categories";
 import { listCategoryRules } from "@/lib/data/category-rules";
 import { getEmailPreferences } from "@/lib/data/email-notifications";
 import { hasPassword, listOwnedCompanies } from "@/lib/data/person";
 import { getCompanySettings } from "@/lib/data/settings";
+import { countriesByName } from "@/lib/finance/countries";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localDay } from "@/lib/dates";
 import { can, ROLES, type Role } from "@/lib/roles";
 import { requireOrganization } from "@/lib/session";
-import { fill } from "@/i18n/config";
+import { fill, intlLocale } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
 import styles from "./page.module.css";
 
@@ -74,6 +80,8 @@ export default async function SettingsPage({
     billing,
     ownedCompanies,
     passwordSet,
+    profile,
+    branches,
   ] = await Promise.all([
     listAccounts(),
     listCategories(),
@@ -84,6 +92,8 @@ export default async function SettingsPage({
     getBilling(),
     listOwnedCompanies(),
     hasPassword(),
+    getCompanyProfile(),
+    listBranches(),
   ]);
   // Every timezone this server knows (UTC first), plus the saved one
   const timeZones = [
@@ -147,12 +157,19 @@ export default async function SettingsPage({
       )}
       <CompanySettings
         canManage={can(role, "finance.manage")}
+        canRename={can(role, "company.update")}
         organization={{ id: organization.id, name: organization.name }}
         timeZone={settings.timeZone}
         currency={settings.currency}
         monthlyBudget={settings.monthlyBudget}
         timeZones={timeZones}
       />
+      <CompanyDetails
+        canEdit={can(role, "company.update")}
+        profile={profile}
+        countries={countriesByName(intlLocale(locale))}
+      />
+      <BranchSettings canEdit={can(role, "company.update")} branches={branches} />
       <TeamSettings
         organization={{ id: organization.id, name: organization.name }}
         role={role}

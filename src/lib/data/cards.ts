@@ -286,8 +286,8 @@ export async function setCardArchived(id: string, archived: boolean) {
 }
 
 /**
- * Removes a card (owners, admins and accountants only). The transactions paid with it
- * stay, without a card.
+ * Removes a card (owners, admins and accountants only). The transactions paid
+ * with it stay, without a card.
  */
 export async function deleteCard(id: string) {
   const actor = await getFinanceContext({ need: "finance.manage" });

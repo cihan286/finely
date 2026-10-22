@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // What happens when a form on the Settings page is submitted
 //
-// In plain words: changes the company's timezone, adds or removes one of its
-// bank accounts, adds, changes or deletes a category or a category rule,
-// links, syncs or unlinks a bank, hands the company over to another member
+// In plain words: changes the company's timezone or official details, adds
+// or removes a branch or one of its bank accounts, adds, changes or
+// deletes a category or a category rule, links, syncs or unlinks a bank,
+// hands the company over to another member
 // or deletes it, saves which emails the person wants, or deletes the
 // person's own account, then reloads the page so it's up to date. If
 // something's wrong, we send back a message to show instead.
@@ -23,6 +24,7 @@ import { redirect } from "next/navigation";
 import { formField, type ActionState } from "@/lib/action-state";
 import { setFlashNotice } from "@/lib/flash-notice";
 import { createAccount, deleteAccount } from "@/lib/data/accounts";
+import { createBranch, deleteBranch, setHeadOffice } from "@/lib/data/branches";
 import {
   connectBank,
   createBankLinkToken,
@@ -44,6 +46,7 @@ import {
 import { openBillingPortal, startCheckout } from "@/lib/data/billing";
 import { errorMessage } from "@/lib/data/common";
 import { deleteCompany, transferOwnership } from "@/lib/data/company";
+import { updateCompanyProfile } from "@/lib/data/company-profile";
 import { updateEmailPreferences } from "@/lib/data/email-notifications";
 import { deleteOwnAccount } from "@/lib/data/person";
 import {
@@ -124,6 +127,68 @@ export async function submitCompanySettings(
       ? fill(t.currencySaved, { currency })
       : fill(t.timezoneSaved, { zone: timeZone.replaceAll("_", " ") }),
   };
+}
+
+/** Saves the company's official details (owners and admins only) */
+export async function submitCompanyProfile(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const field = (name: string) => formField(formData, name);
+  try {
+    await updateCompanyProfile({
+      legalName: field("legalName"),
+      country: field("country"),
+      taxId: field("taxId"),
+      taxOffice: field("taxOffice"),
+      mersisNo: field("mersisNo"),
+      tradeRegistryNo: field("tradeRegistryNo"),
+      address: field("address"),
+      district: field("district"),
+      city: field("city"),
+      postalCode: field("postalCode"),
+      phone: field("phone"),
+      email: field("email"),
+      website: field("website"),
+    });
+  } catch (error) {
+    return { error: await errorMessage(error) };
+  }
+  refresh();
+  return { error: null, success: (await getMessages()).settings.details.saved };
+}
+
+/**
+ * Adds a branch, makes one the head office (intent=headOffice) or removes
+ * one (intent=remove). Owners and admins only.
+ */
+export async function submitBranch(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const intent = formField(formData, "intent");
+  const id = formField(formData, "id");
+  const name = formField(formData, "name").trim();
+  try {
+    if (intent === "remove") await deleteBranch(id);
+    else if (intent === "headOffice") await setHeadOffice(id);
+    else {
+      await createBranch({
+        name,
+        code: formField(formData, "code"),
+        city: formField(formData, "city"),
+        phone: formField(formData, "phone"),
+        address: formField(formData, "address"),
+        isHeadOffice: formData.get("isHeadOffice") === "on",
+      });
+    }
+  } catch (error) {
+    return { error: await errorMessage(error) };
+  }
+  refresh();
+  const t = (await getMessages()).settings.branches;
+  const done = { remove: t.removed, headOffice: t.nowHeadOffice }[intent] ?? t.added;
+  return { error: null, success: fill(done, { name }) };
 }
 
 /**

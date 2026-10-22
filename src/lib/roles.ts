@@ -7,7 +7,7 @@
 //   Owner       everything, and only the owner can hand the company over
 //               to someone else, pay for a plan or delete the company
 //   Admin       manages the team (invites people, changes their roles,
-//               removes them) and the company's finances
+//               removes them), the company's details and its finances
 //   Accountant  manages the finances (bank accounts, categories, rules,
 //               cards, deleting transactions and bills, the activity log)
 //               but not the team: for a bookkeeper or an outside advisor
@@ -70,6 +70,8 @@ const PERMISSIONS = {
   "activity.view": { activity: ["view"] },
   /** Invite and remove people, change their roles */
   "team.manage": { invitation: ["create"], member: ["update", "delete"] },
+  /** The company's name, official details and branches */
+  "company.update": { organization: ["update"] },
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

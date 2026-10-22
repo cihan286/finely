@@ -9,6 +9,8 @@ import {
   attachment,
   bill,
   category,
+  branch,
+  companyProfile,
   companySettings,
   financialAccount,
   transaction,
@@ -57,6 +59,8 @@ import {
   listAttachments,
 } from "./attachments";
 import { deleteCompany, transferOwnership } from "./company";
+import { getCompanyProfile, updateCompanyProfile } from "./company-profile";
+import { createBranch, deleteBranch, listBranches, updateBranch } from "./branches";
 import {
   getEmailPreferences,
   sendWeeklyDigests,
@@ -1603,6 +1607,8 @@ describe("handing over and deleting a company", () => {
       await addAttachment(paid.transactionId, { name: "receipt.pdf", bytes: PDF });
       await updateEmailPreferences({ weeklyDigest: false, unusualCharges: true });
       await markNotificationsRead();
+      await updateCompanyProfile({ legalName: `${company.name} Ltd.` });
+      await createBranch({ name: "Head office", isHeadOffice: true });
     }
 
     actAs(doomed, "admin");
@@ -1629,7 +1635,15 @@ describe("handing over and deleting a company", () => {
       .from(organization)
       .where(eq(organization.id, doomed.organizationId));
     expect(organizations).toEqual([]);
-    for (const table of [transaction, bill, category, financialAccount, attachment]) {
+    for (const table of [
+      transaction,
+      bill,
+      category,
+      financialAccount,
+      attachment,
+      companyProfile,
+      branch,
+    ]) {
       expect(
         await testDb.$count(table, eq(table.organizationId, doomed.organizationId)),
       ).toBe(0);
@@ -1647,6 +1661,97 @@ describe("handing over and deleting a company", () => {
     ).toBe(1);
     expect(await getEmailPreferences()).toEqual({ weeklyDigest: false, unusualCharges: true });
     expect(await rolesIn(kept.organizationId)).toEqual({ [kept.userId]: "owner" });
+    expect((await getCompanyProfile()).legalName).toBe("kramerica Ltd.");
+    expect((await listBranches()).map((b) => b.name)).toEqual(["Head office"]);
+  });
+});
+
+describe("company details and branches", () => {
+  it("saves the details, checking a Turkish tax number", async () => {
+    const company = await createTestCompany("acme-tr");
+    actAs(company);
+    expect(await getCompanyProfile()).toMatchObject({ legalName: null, taxId: null });
+    await expect(
+      updateCompanyProfile({ country: "TR", taxId: "1234567891" }),
+    ).rejects.toThrow("Tax number");
+    await expect(updateCompanyProfile({ mersisNo: "123" })).rejects.toThrow("MERSİS");
+    await expect(updateCompanyProfile({ country: "XX" })).rejects.toThrow("Country is invalid.");
+    await updateCompanyProfile({
+      legalName: "  Acme Tasarım Ltd. Şti. ",
+      country: "TR",
+      taxId: "123 456 7890",
+      taxOffice: "Kadıköy",
+      mersisNo: "0123-4567-8901-2345",
+      city: "İstanbul",
+      email: "",
+    });
+    expect(await getCompanyProfile()).toMatchObject({
+      legalName: "Acme Tasarım Ltd. Şti.",
+      country: "TR",
+      taxId: "1234567890",
+      taxOffice: "Kadıköy",
+      mersisNo: "0123456789012345",
+      city: "İstanbul",
+      email: null,
+    });
+    // A sole proprietor's citizen number is a tax number too
+    await updateCompanyProfile({ country: "TR", taxId: "10000000146" });
+    expect((await getCompanyProfile()).taxId).toBe("10000000146");
+    const log = await listAuditLog();
+    expect(log.entries[0].summary).toBe("Changed the company's details");
+  });
+
+  it("lets only owners and admins change the details and branches", async () => {
+    actAs(globex, "accountant");
+    const denied = "Your role in this company doesn't allow this.";
+    await expect(updateCompanyProfile({ legalName: "Nope" })).rejects.toThrow(denied);
+    await expect(createBranch({ name: "Nope" })).rejects.toThrow(denied);
+    // Everyone can read them
+    actAs(globex, "viewer");
+    expect(await getCompanyProfile()).toBeDefined();
+    expect(await listBranches()).toBeDefined();
+    actAs(globex, "admin");
+    const id = await createBranch({ name: "Admin's branch" });
+    await deleteBranch(id);
+  });
+
+  it("keeps one head office, unique names and codes, and each company's own", async () => {
+    const company = await createTestCompany("branchy");
+    actAs(company);
+    const hq = await createBranch({ name: "Merkez", code: "ist", isHeadOffice: true });
+    const ankara = await createBranch({ name: "Ankara", code: "ANK", city: "Ankara" });
+    expect(await listBranches()).toMatchObject([
+      { name: "Merkez", code: "IST", isHeadOffice: true },
+      { name: "Ankara", code: "ANK", isHeadOffice: false },
+    ]);
+    await expect(createBranch({ name: "merkez" })).rejects.toThrow(
+      "Another branch already has this name or code.",
+    );
+    await expect(createBranch({ name: "İzmir", code: "ank" })).rejects.toThrow(
+      "Another branch already has this name or code.",
+    );
+    await expect(createBranch({ name: "Bursa", code: "B/1" })).rejects.toThrow("Code");
+
+    // Moving the head office
+    await updateBranch(ankara, { name: "Ankara", code: "ANK", isHeadOffice: true });
+    expect((await listBranches()).map((b) => [b.name, b.isHeadOffice])).toEqual([
+      ["Ankara", true],
+      ["Merkez", false],
+    ]);
+    const another = await createBranch({ name: "İzmir", isHeadOffice: true });
+    expect((await listBranches()).filter((b) => b.isHeadOffice).map((b) => b.id)).toEqual([
+      another,
+    ]);
+
+    // Another company's branches can't be seen, changed or removed
+    actAs(globex);
+    expect((await listBranches()).map((b) => b.id)).not.toContain(hq);
+    await expect(updateBranch(hq, { name: "Taken" })).rejects.toThrow("Branch not found.");
+    await expect(deleteBranch(hq)).rejects.toThrow("Branch not found.");
+
+    actAs(company);
+    await deleteBranch(hq);
+    expect((await listBranches()).map((b) => b.name)).toEqual(["İzmir", "Ankara"]);
   });
 });
 

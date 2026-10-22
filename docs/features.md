@@ -113,6 +113,32 @@ data functions get the currency from `getFinanceContext()`, pages from
 Without a currency both format US dollars, so a forgotten one shows the
 wrong sign rather than failing: pass it everywhere.
 
+## Company details and branches
+
+**Settings → Company details** holds who the company officially is, as it
+will appear on invoices: its registered name, country, tax number and tax
+office, MERSİS and trade registry numbers, address, phone, email and
+website. Everything is optional. For a company in Turkey, the tax number
+must be a valid 10-digit VKN or a sole proprietor's 11-digit TCKN: their
+check digits are verified, so a typo is caught when it's saved. Spaces,
+dots and dashes typed inside numbers are taken out. Other countries' tax
+numbers are kept as typed (letters and digits).
+
+**Settings → Branches** lists the places the company works from, each with
+a name, an optional short code ("IST", shown in capitals), address, city
+and phone. One can be the **head office**; marking another one moves it
+there. Names and codes are unique within a company, ignoring upper/lower
+case. Warehouses and cost centers will belong to a branch (see the
+[ERP roadmap](erp-roadmap.md)).
+
+Owners and admins change both, as they rename the company; everyone else
+sees them. Changes go in the activity log.
+
+For developers: `lib/data/company-profile.ts` and `lib/data/branches.ts`;
+the checksums are in `lib/finance/company-identity.ts` and the countries
+(ISO 3166 codes, named in the reader's language) in
+`lib/finance/countries.ts`.
+
 ## Plans and billing
 
 Plans differ in how many people can be on a company's team

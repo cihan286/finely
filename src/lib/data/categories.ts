@@ -2,8 +2,8 @@
 // Categories: reading and saving
 //
 // In plain words: lists the company's categories (Payroll, Sales, …) and lets
-// owners, admins and accountants add, change or remove them. Removing a category doesn't
-// remove its transactions; they simply become "Uncategorized".
+// owners, admins and accountants add, change or remove them. Removing a
+// category doesn't remove its transactions; they simply become "Uncategorized".
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID.
@@ -156,8 +156,8 @@ export async function updateCategory(id: string, input: CategoryInput) {
 }
 
 /**
- * Removes a category (owners, admins and accountants only). Its transactions stay and
- * become uncategorized.
+ * Removes a category (owners, admins and accountants only). Its transactions
+ * stay and become uncategorized.
  */
 export async function deleteCategory(id: string) {
   const actor = await getFinanceContext({ need: "finance.manage" });

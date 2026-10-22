@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Company settings: reading and saving
 //
-// In plain words: a company's preferences: its timezone, which decides
-// which day a transaction belongs to and when "today" starts, and its
-// currency, which decides how every amount is shown. A new company gets the
-// timezone of the person who created it and US dollars; owners, admins and accountants
-// can change both in Settings.
+// In plain words: a company's preferences: its timezone, which decides which
+// day a transaction belongs to and when "today" starts, and its currency, which
+// decides how every amount is shown. A new company gets the timezone of the
+// person who created it and US dollars; owners, admins and accountants can
+// change both in Settings.
 //
 // For developers: server-only. createCompanySettings() is called from the
 // afterCreateOrganization hook (lib/auth.ts), where there's no session to

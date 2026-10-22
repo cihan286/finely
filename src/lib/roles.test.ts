@@ -7,13 +7,14 @@ test("what each role may do", () => {
     "finance.manage",
     "activity.view",
     "team.manage",
+    "company.update",
   ];
   const allowed = Object.fromEntries(
     ROLES.map((role) => [role, permissions.filter((p) => can(role, p))]),
   );
   expect(allowed).toEqual({
-    owner: ["finance.record", "finance.manage", "activity.view", "team.manage"],
-    admin: ["finance.record", "finance.manage", "activity.view", "team.manage"],
+    owner: ["finance.record", "finance.manage", "activity.view", "team.manage", "company.update"],
+    admin: ["finance.record", "finance.manage", "activity.view", "team.manage", "company.update"],
     accountant: ["finance.record", "finance.manage", "activity.view"],
     member: ["finance.record"],
     viewer: [],

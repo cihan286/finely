@@ -2,9 +2,10 @@
 // Bank accounts: reading and saving
 //
 // In plain words: lists the company's bank accounts with how much is in each,
-// and lets owners, admins and accountants add, change or remove them. An account's balance
-// is what it started with plus every completed payment in or out of it. An
-// account that still has transactions can't be removed, so no history is lost.
+// and lets owners, admins and accountants add, change or remove them. An
+// account's balance is what it started with plus every completed payment in or
+// out of it. An account that still has transactions can't be removed, so no
+// history is lost.
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); callers never pass an organization ID.
@@ -116,7 +117,10 @@ export async function updateAccount(id: string, input: AccountInput) {
   });
 }
 
-/** Removes an account that has no transactions (owners, admins and accountants only). */
+/**
+ * Removes an account that has no transactions (owners, admins and accountants
+ * only).
+ */
 export async function deleteAccount(id: string) {
   const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId } = actor;

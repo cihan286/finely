@@ -4,9 +4,9 @@
 // In plain words: the company's name, its timezone, which decides which
 // day each transaction belongs to and when "today" starts on the dashboard,
 // and its currency, which decides how every amount is shown.
-// Owners and admins can change them; if the timezone differs from this
-// device's, a button offers to use the device's instead. Members can see
-// them but not change them.
+// Owners and admins can change all of them, accountants all but the name;
+// if the timezone differs from this device's, a button offers to use the
+// device's instead. Everyone else can see them but not change them.
 //
 // For developers: a client component ("use client") for the forms. Renaming
 // goes through Better Auth, which checks the role on the server. The list
@@ -42,8 +42,10 @@ import shared from "./TeamSettings.module.css";
 import styles from "./CompanySettings.module.css";
 
 interface CompanySettingsProps {
-  /** Whether you may change the settings (owners and admins) */
+  /** Whether you may change the timezone, currency and budget */
   canManage: boolean;
+  /** Whether you may rename the company (owners and admins) */
+  canRename: boolean;
   /** The company's ID and current name */
   organization: { id: string; name: string };
   timeZone: string;
@@ -66,6 +68,7 @@ const useDeviceTimeZone = () =>
 
 export default function CompanySettings({
   canManage,
+  canRename,
   organization,
   timeZone,
   currency,
@@ -156,7 +159,7 @@ export default function CompanySettings({
           <h2 className={shared.cardTitle}>{t.name}</h2>
           <p className={shared.cardHint}>{t.nameHint}</p>
         </div>
-        {canManage ? (
+        {canRename ? (
           <form className={styles.form} onSubmit={handleRename}>
             <Input
               name="name"
