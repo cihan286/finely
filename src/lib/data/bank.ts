@@ -23,6 +23,7 @@ import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  attachment,
   bankConnection,
   financialAccount,
   prefixedId,
@@ -38,6 +39,8 @@ import { finelyAccountType, last4From, planSync } from "@/lib/finance/bank-sync"
 import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
 import { roundMoney, subtractMoney } from "@/lib/money";
+import { deleteFiles } from "@/lib/storage";
+import { storedFileKeys } from "./attachments";
 import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
@@ -426,7 +429,29 @@ async function syncConnection(
       .set({ cursor, lastSyncedAt: new Date(), lastError: null })
       .where(ownConnection),
   );
+  // Files attached to payments the bank took back go with them
+  const files =
+    plan.remove.length === 0
+      ? []
+      : await storedFileKeys(
+          and(
+            eq(attachment.organizationId, organizationId),
+            inArray(
+              attachment.transactionId,
+              db
+                .select({ id: transaction.id })
+                .from(transaction)
+                .where(
+                  and(
+                    eq(transaction.organizationId, organizationId),
+                    inArray(transaction.externalId, plan.remove),
+                  ),
+                ),
+            ),
+          ),
+        );
   await db.batch(writes as [(typeof writes)[number], ...typeof writes]);
+  await deleteFiles(files);
 
   // The bank knows the balance: set where each account "started" so that
   // start + its completed transactions is exactly what the bank says

@@ -49,6 +49,8 @@ import {
   ownershipTransferredEmail,
 } from "@/lib/email/templates";
 import { requireOrganization } from "@/lib/session";
+import { deleteFiles } from "@/lib/storage";
+import { storedFileKeys } from "./attachments";
 import { recordAudit } from "./audit";
 import { cancelSubscriptionFor, updateBillingContact } from "./billing";
 import { DataError } from "./common";
@@ -135,7 +137,9 @@ export async function deleteCompany(confirmation: string) {
   // First, so nobody keeps paying for a company that no longer exists; if
   // Stripe can't be told, the company stays
   await cancelSubscriptionFor(id);
+  const files = await storedFileKeys(eq(attachment.organizationId, id));
   await db.batch(companyDeletionSteps(id));
+  await deleteFiles(files);
   // sendEmail() never throws
   await afterResponse(async () => {
     for (const person of team) {
@@ -147,7 +151,9 @@ export async function deleteCompany(confirmation: string) {
 /**
  * The statements that delete a company and everything in it, in an order
  * its foreign keys allow. Run them together (db.batch): all or nothing.
- * Also used for demo companies that expired (demo.ts).
+ * Also used for demo companies that expired (demo.ts). Its stored files
+ * aren't in the database: find them first (storedFileKeys) and remove them
+ * after.
  */
 export function companyDeletionSteps(id: string) {
   return [

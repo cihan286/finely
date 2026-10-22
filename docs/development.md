@@ -72,6 +72,7 @@ Open [http://localhost:3000](http://localhost:3000), create an account at
 | `npm run test:e2e`  | Use the app in a real browser (Playwright); see [Tests](#tests) |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations to the database    |
+| `npm run files:move` | Move attached files from the database to Vercel Blob (once) |
 | `npm run db:studio` | Browse the database in Drizzle Studio        |
 
 ## Project structure
@@ -175,6 +176,7 @@ src/
 │   ├── format.ts           Currency, number and date formatting, in either language
 │   ├── money.ts            Exact sums, differences and rounding of money (tested)
 │   ├── monitoring.ts       Sentry settings (what is and isn't sent)
+│   ├── storage.ts          Where attached files are kept (Vercel Blob)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── i18n/                   English and Turkish (see Languages below)
 │   ├── config.ts           The languages, fill() and plural()

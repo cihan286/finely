@@ -8,16 +8,19 @@
 //
 // For developers: server-only. Every function finds the company itself via
 // getFinanceContext(); the transaction and the file are always looked up
-// together with the company's ID. Files are kept in the database as base64
-// text (see db/finance.ts): listAttachments() never reads that column, only
-// getAttachmentFile() does. What kind a file is comes from its content, not
-// from what the browser claims.
+// together with the company's ID. Files are kept in file storage (Vercel
+// Blob, see lib/storage.ts) when it's set up, otherwise in the database as
+// base64 text: listAttachments() never reads the file, only
+// getAttachmentFile() does. Whatever deletes attachments (directly, or by
+// deleting their transaction or company) must also remove their stored
+// files: find them with storedFileKeys() first. What kind a file is comes
+// from its content, not from what the browser claims.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { attachment, transaction } from "@/db/finance";
+import { attachment, prefixedId, transaction } from "@/db/finance";
 import {
   ATTACHMENT_TYPES,
   cleanFileName,
@@ -27,6 +30,13 @@ import {
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from "@/lib/finance/attachments";
 import { can } from "@/lib/roles";
+import {
+  attachmentKey,
+  deleteFiles,
+  isFileStorageEnabled,
+  readFile,
+  saveFile,
+} from "@/lib/storage";
 import type { Attachment } from "@/types/finance";
 import { recordAudit } from "./audit";
 import { DataError, getFinanceContext } from "./common";
@@ -116,15 +126,26 @@ export async function addAttachment(
   }
 
   const name = cleanFileName(typeof file.name === "string" ? file.name : "");
-  await db.insert(attachment).values({
-    organizationId,
-    transactionId,
-    name,
-    contentType,
-    size: file.bytes.length,
-    data: Buffer.from(file.bytes).toString("base64"),
-    createdById: userId,
-  });
+  const id = prefixedId("att")();
+  // In file storage first: a row never points at a file that isn't there
+  const storageKey = isFileStorageEnabled() ? attachmentKey(organizationId, id) : null;
+  if (storageKey) await saveFile(storageKey, file.bytes, contentType);
+  try {
+    await db.insert(attachment).values({
+      id,
+      organizationId,
+      transactionId,
+      name,
+      contentType,
+      size: file.bytes.length,
+      data: storageKey ? null : Buffer.from(file.bytes).toString("base64"),
+      storageKey,
+      createdById: userId,
+    });
+  } catch (error) {
+    await deleteFiles([storageKey]);
+    throw error;
+  }
   await recordAudit(context, {
     area: "attachment",
     action: "created",
@@ -155,11 +176,13 @@ export async function deleteAttachment(id: string): Promise<Attachment[]> {
   if (!mayDelete(row.createdById, context)) {
     throw new DataError("fileDeleteNotAllowed");
   }
-  await db
+  const [gone] = await db
     .delete(attachment)
     .where(
       and(eq(attachment.id, id), eq(attachment.organizationId, context.organizationId)),
-    );
+    )
+    .returning({ storageKey: attachment.storageKey });
+  await deleteFiles([gone?.storageKey ?? null]);
   await recordAudit(context, {
     area: "attachment",
     action: "deleted",
@@ -180,13 +203,27 @@ export async function getAttachmentFile(
       name: attachment.name,
       contentType: attachment.contentType,
       data: attachment.data,
+      storageKey: attachment.storageKey,
     })
     .from(attachment)
     .where(and(eq(attachment.id, id), eq(attachment.organizationId, organizationId)));
   if (!row) return null;
-  return {
-    name: row.name,
-    contentType: row.contentType,
-    bytes: new Uint8Array(Buffer.from(row.data, "base64")),
-  };
+  const bytes = row.storageKey
+    ? await readFile(row.storageKey)
+    : new Uint8Array(Buffer.from(row.data ?? "", "base64"));
+  if (!bytes) return null;
+  return { name: row.name, contentType: row.contentType, bytes };
+}
+
+/**
+ * Where the stored files of the attachments that match are kept, e.g. of
+ * one transaction's attachments, to remove them along with it. Only
+ * attachments in file storage have one.
+ */
+export async function storedFileKeys(where: SQL | undefined): Promise<string[]> {
+  const rows = await db
+    .select({ key: attachment.storageKey })
+    .from(attachment)
+    .where(and(where, isNotNull(attachment.storageKey)));
+  return rows.map((row) => row.key).filter((key): key is string => key !== null);
 }

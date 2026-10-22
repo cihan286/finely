@@ -25,6 +25,7 @@ import { and, eq, inArray, isNotNull, like, lt, notExists } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import {
+  attachment,
   bill,
   card,
   category,
@@ -45,6 +46,8 @@ import {
 } from "@/lib/finance/demo-data";
 import { DEMO_EMAIL_DOMAIN, DEMO_LIFETIME_HOURS } from "@/lib/demo";
 import { clientIp, withinRateLimit } from "@/lib/rate-limit";
+import { deleteFiles } from "@/lib/storage";
+import { storedFileKeys } from "./attachments";
 import { DataError } from "./common";
 import { companyDeletionSteps } from "./company";
 import { DEFAULT_CATEGORIES } from "./default-categories";
@@ -228,7 +231,9 @@ export async function deleteExpiredDemos(now = new Date(), limit = 20): Promise<
         ? [db.delete(user).where(inArray(user.id, people.map((p) => p.id)))]
         : []),
     ];
+    const files = await storedFileKeys(eq(attachment.organizationId, id));
     await db.batch(steps as [(typeof steps)[number], ...typeof steps]);
+    await deleteFiles(files);
   }
 
   // Demo people left without a company (e.g. a demo that failed half-way),

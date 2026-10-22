@@ -57,6 +57,7 @@ import {
   removeExisting,
   type StatementRow,
 } from "@/lib/finance/statement-import";
+import { deleteFiles } from "@/lib/storage";
 import {
   TRANSACTION_STATUSES,
   type ISODate,
@@ -64,6 +65,7 @@ import {
   type TransactionDetails,
   type TransactionStatus,
 } from "@/types/finance";
+import { storedFileKeys } from "./attachments";
 import { recordAudit } from "./audit";
 import { settleBillsWith } from "./bills";
 import { selectActiveCards } from "./cards";
@@ -506,6 +508,10 @@ export async function updateTransaction(id: string, input: TransactionInput) {
 export async function deleteTransaction(id: string) {
   const actor = await getFinanceContext({ need: "finance.manage" });
   const { organizationId, timeZone } = actor;
+  // Its files go with it (the database removes their rows by itself)
+  const files = await storedFileKeys(
+    and(eq(attachment.transactionId, id), eq(attachment.organizationId, organizationId)),
+  );
   const deleted = await db
     .delete(transaction)
     .where(
@@ -518,6 +524,7 @@ export async function deleteTransaction(id: string) {
       occurredAt: transaction.occurredAt,
     });
   if (deleted.length === 0) throw new DataError("transactionNotFound");
+  await deleteFiles(files);
   const [gone] = deleted;
   await recordAudit(actor, {
     area: "transaction",

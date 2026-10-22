@@ -172,7 +172,7 @@ is. What's missing at that level:
   again, and syncing is once a day or on demand.
 - **Plans** were only tried in Stripe's test mode. They differ in team size
   only, are priced in US dollars and have no free trial.
-- **Attached files** are kept in the database, and PDFs have no preview.
+- **Attached files** have no preview for PDFs.
 - **Your account:** someone who signs in with Google can't add a password.
 - **Exports** are CSV files, plus the browser's "Save as PDF" on the
   Insights page.

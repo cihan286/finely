@@ -60,6 +60,8 @@ import {
   type BillRepeat,
   type ISODate,
 } from "@/types/finance";
+import { deleteFiles } from "@/lib/storage";
+import { storedFileKeys } from "./attachments";
 import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
@@ -852,7 +854,18 @@ export async function undoBillPayment(id: string): Promise<{ deletedPayment: boo
     deletePayment,
     followUp ? db.delete(bill).where(eq(bill.id, followUp.id)) : null,
   ].filter((step) => step !== null);
+  // The recorded payment's files go with it
+  const files =
+    deletePayment && row.transactionId
+      ? await storedFileKeys(
+          and(
+            eq(attachment.transactionId, row.transactionId),
+            eq(attachment.organizationId, organizationId),
+          ),
+        )
+      : [];
   await db.batch(steps as [(typeof steps)[number], ...typeof steps]);
+  await deleteFiles(files);
 
   await recordAudit(actor, {
     area: "bill",

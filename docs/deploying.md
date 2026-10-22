@@ -11,7 +11,12 @@ One-time setup:
    [Neon integration](https://vercel.com/integrations/neon). It sets
    `DATABASE_URL` and gives every preview deployment its own copy of the
    database (a Neon "branch"), so previews never touch production data.
-2. **Vercel**: import the GitHub repository. Then, under **Settings →
+2. **Vercel Blob** (optional, for attached files): in the Vercel project,
+   create a Blob store (**Storage → Blob**, private access) and connect it:
+   it sets `BLOB_READ_WRITE_TOKEN`. Without it, files are kept in the
+   database. If the site already has files, run `npm run files:move` once
+   with that token and the production `DATABASE_URL`.
+3. **Vercel**: import the GitHub repository. Then, under **Settings →
    Environment Variables**:
    - All environments: `BETTER_AUTH_SECRET` (a different one from your
      local one), `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_EMAIL`,
@@ -24,10 +29,10 @@ One-time setup:
    - Production only: `BETTER_AUTH_URL` set to the real address, e.g.
      `https://app.finely.com`. Previews leave it unset and use their own
      branch address.
-3. **Google sign-in**: add `https://<your domain>/api/auth/callback/google`
+4. **Google sign-in**: add `https://<your domain>/api/auth/callback/google`
    as a redirect URI in the Google Cloud console. Google sign-in only works
    on addresses listed there, so it won't work on previews.
-4. **Sentry**: create a Next.js project at [sentry.io](https://sentry.io),
+5. **Sentry**: create a Next.js project at [sentry.io](https://sentry.io),
    then copy its DSN and an auth token into the variables above.
 
 Deploying is then automatic: pushing to `main` deploys to production, and

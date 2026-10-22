@@ -24,12 +24,14 @@
     "test:e2e:db": "docker run --rm -d --name finely-e2e-db -e POSTGRES_USER=e2e -e POSTGRES_PASSWORD=e2e -e POSTGRES_DB=finely_e2e -p 5433:5432 postgres:17",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "files:move": "node scripts/move-attachments.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.10",
     "@neondatabase/serverless": "^1.2.0",
     "@sentry/nextjs": "^11.8.0",
+    "@vercel/blob": "^2.8.1",
     "better-auth": "^1.7.10",
     "decimal.js": "^10.6.0",
     "drizzle-orm": "^0.45.4",

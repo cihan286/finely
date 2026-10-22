@@ -27,6 +27,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   integer,
   jsonb,
@@ -460,15 +461,26 @@ export const attachment = pgTable(
     contentType: text("content_type").notNull(),
     // In bytes
     size: integer("size").notNull(),
-    // The file, base64-encoded. Never select this for lists.
-    data: text("data").notNull(),
+    // The file, base64-encoded, for files kept in the database (when no
+    // file storage is set up, see lib/storage.ts). Never select this for
+    // lists.
+    data: text("data"),
+    // Where the file is kept in file storage (Vercel Blob), for the others
+    storageKey: text("storage_key"),
     // Who added it (empty if that person's account was deleted)
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("attachment_transactionId_idx").on(table.transactionId)],
+  (table) => [
+    index("attachment_transactionId_idx").on(table.transactionId),
+    // Each file is kept in exactly one place
+    check(
+      "attachment_kept_once",
+      sql`(${table.data} is null) <> (${table.storageKey} is null)`,
+    ),
+  ],
 );
 
 // Which emails a person wants about a company. People without a row get

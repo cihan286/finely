@@ -312,12 +312,17 @@ chosen while adding a transaction; more are added by opening it afterwards.
 Pictures are shown small in the list.
 
 What kind a file is comes from its content, not its name, so a web page
-called `receipt.pdf` is refused. Files are kept in the database, in the
-`attachment` table (base64 text), not in a storage service: they're exactly
-as private as the rest of the company's data, served only through
-`/dashboard/transactions/attachments/<id>` after the usual company check,
-and need no extra setup. The price is a database that grows with every
-file; see the limitations.
+called `receipt.pdf` is refused. Files are kept in **Vercel Blob** once a
+store is connected (`BLOB_READ_WRITE_TOKEN`), as private files nobody can
+open from the internet; without one, they stay in the database (the
+`attachment` table, as base64 text), which needs no setup. Either way
+they're served only through `/dashboard/transactions/attachments/<id>`
+after the usual company check: Blob's own addresses never reach the
+browser. Deleting a file, its transaction, a bill payment it belongs to, a
+payment the bank took back or the whole company removes the file from
+the store too. `npm run files:move` moves files that are still in the
+database to the store (once, after connecting it; it can be run again
+safely).
 
 ## Email notifications
 

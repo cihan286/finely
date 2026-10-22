@@ -176,6 +176,13 @@
       "when": 1792674836807,
       "tag": "0024_document_numbers",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792676989882,
+      "tag": "0025_attachment_storage",
+      "breakpoints": true
     }
   ]
 }
