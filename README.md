@@ -138,6 +138,8 @@ Open [http://localhost:3000](http://localhost:3000) and sign up.
   insights work
 - **[Deploying](docs/deploying.md)**: Vercel and Neon setup, scheduled jobs,
   security headers and the Content Security Policy
+- **[ERP roadmap](docs/erp-roadmap.md)** (Turkish): the plan for growing
+  Finely into an ERP, phase by phase
 
 ## Known limitations
 
