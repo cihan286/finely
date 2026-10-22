@@ -35,6 +35,32 @@ test("dashboard pages scroll inside their panel, never the whole page", async ({
   }
 });
 
+test("Ctrl+K jumps to a page, a setting or an action", async ({ page }) => {
+  await startDemo(page);
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Go to" });
+  await expect(palette).toBeVisible();
+  const box = palette.getByRole("combobox");
+  await expect(box).toBeFocused();
+
+  // Typing narrows the list; Enter opens the chosen one
+  await box.fill("branch");
+  await expect(palette.getByRole("option")).toHaveText(["Branches"]);
+  await box.press("Enter");
+  await expect(page).toHaveURL(/\/dashboard\/settings#branches$/);
+  await expect(palette).toBeHidden();
+
+  // The arrow keys choose among several
+  await page.keyboard.press("Control+k");
+  await box.fill("add");
+  await box.press("ArrowDown");
+  await expect(palette.getByRole("option", { selected: true })).toHaveText("Add a bill");
+  await box.press("ArrowUp");
+  await expect(palette.getByRole("option", { selected: true })).toHaveText("Add a transaction");
+  await box.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Add transaction" })).toBeVisible();
+});
+
 test("a wrong address shows a page with a way back", async ({ page }) => {
   const response = await page.goto("/no-such-page");
   expect(response?.status()).toBe(404);

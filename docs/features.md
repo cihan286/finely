@@ -537,6 +537,15 @@ links to them. The search box in the top bar opens the Transactions page with wh
 notes, of a category's name or of a bank account's name, or the exact amount ("45", "$1,234.50"),
 whether money in or out.
 
+**Ctrl+K** (⌘K on a Mac), anywhere in the dashboard, opens a **Go to**
+window: every page, each part of Settings (company details, branches, team,
+bank accounts…) and the things to start from anywhere (add a transaction,
+import a statement, add a bill or a card). Typing narrows the list (every
+word must appear, ignoring upper/lower case and Turkish letters, so "sube"
+finds "Şubeler"); the arrow keys choose and Enter opens. Only what the
+person's role allows is offered (a viewer isn't offered "Add a
+transaction"). For developers: `components/dashboard/command-palette/`.
+
 The bell reports what deserves a look in the company's books: a charge at
 least 50% above what that vendor usually charges, an account below zero, a
 balance expected to drop below zero within 30 days,

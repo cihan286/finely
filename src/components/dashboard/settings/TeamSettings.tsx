@@ -167,7 +167,7 @@ export default function TeamSettings({
   };
 
   return (
-    <div className={styles.stack}>
+    <div className={styles.stack} id="team">
       {/* Invite form: owners and admins only */}
       {canManage ? (
         <section className={styles.card}>

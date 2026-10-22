@@ -3,7 +3,8 @@
 //
 // In plain words: every dashboard page shares the same frame — the menu on the
 // left (sidebar) and the bar at the top with search, notifications and the
-// user's name. This file draws that frame and puts the current page inside it.
+// user's name, plus the Ctrl+K window to jump anywhere. This file draws that
+// frame and puts the current page inside it.
 // It also makes sure someone is logged in and has a company, and fetches both
 // (plus the person's other companies, for the switcher in the top bar, and
 // the company's notifications, for the bell).
@@ -17,6 +18,7 @@
 
 import type { ReactNode } from "react";
 import styles from "./layout.module.css";
+import CommandPalette from "@/components/dashboard/command-palette/CommandPalette";
 import Sidebar from "@/components/dashboard/sidebar/Sidebar";
 import TopBar from "@/components/dashboard/topbar/TopBar";
 import DemoBanner from "@/components/dashboard/demo-banner/DemoBanner";
@@ -24,6 +26,7 @@ import VerifyEmailBanner from "@/components/dashboard/verify-banner/VerifyEmailB
 import { todayIn } from "@/lib/dates";
 import { getCompanyLocale } from "@/lib/data/common";
 import { listNotifications } from "@/lib/data/notifications";
+import { can } from "@/lib/roles";
 import { listUserOrganizations, requireOrganization } from "@/lib/session";
 
 // Shared frame for every /dashboard/* page: sidebar + top bar stay mounted
@@ -33,7 +36,7 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, organization } = await requireOrganization();
+  const { user, organization, role } = await requireOrganization();
   const [organizations, notifications, { timeZone, demoExpiresAt }] = await Promise.all([
     listUserOrganizations(),
     listNotifications(),
@@ -57,6 +60,12 @@ export default async function DashboardLayout({
         {demoExpiresAt && <DemoBanner hoursLeft={hoursUntil(demoExpiresAt)} />}
         {children}
       </div>
+      {/* Ctrl+K: jump to a page, a setting or an action */}
+      <CommandPalette
+        canRecord={can(role, "finance.record")}
+        canManage={can(role, "finance.manage")}
+        canSeeActivity={can(role, "activity.view")}
+      />
     </div>
   );
 }

@@ -93,6 +93,11 @@ for (const colorScheme of ["light", "dark"] as const) {
       }
 
       await page.goto("/dashboard");
+      await page.keyboard.press("Control+k");
+      await expect(page.getByRole("dialog", { name: "Go to" })).toBeVisible();
+      await check("Ctrl+K window");
+      await page.keyboard.press("Escape");
+
       await page.getByRole("button", { name: "Notifications" }).click();
       await check("notifications");
 
