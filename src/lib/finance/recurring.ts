@@ -25,6 +25,7 @@
 import { daysBetween } from "@/lib/dates";
 import { nextDueDate } from "@/lib/finance/bills";
 import { vendorKey, vendorName } from "@/lib/finance/vendors";
+import { multiplyMoney, roundMoney } from "@/lib/money";
 import type { BillRepeat, ISODate } from "@/types/finance";
 
 /** The rhythms we look for (each is also a way a bill can repeat) */
@@ -88,8 +89,6 @@ export interface RecurringPayment {
   /** The latest payment's category */
   categoryId: string | null;
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -164,9 +163,9 @@ export function detectRecurring(
       name: vendorName(latest.name),
       direction: latest.amount > 0 ? "in" : "out",
       cadence: rhythm.cadence,
-      amount: round2(amount),
+      amount: roundMoney(amount),
       variable: (Math.max(...recent) - Math.min(...recent)) / amount > VARIABLE_SPREAD,
-      monthlyAmount: round2(amount * rhythm.perMonth),
+      monthlyAmount: multiplyMoney(amount, rhythm.perMonth),
       count: occurrences.length,
       lastDay,
       nextDay,

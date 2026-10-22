@@ -16,6 +16,7 @@ import { addDays } from "@/lib/dates";
 import { DEFAULT_LOCALE, intlLocale, type Locale } from "@/i18n/config";
 import { topCategories, type CategorySpending } from "@/lib/finance/dashboard-summary";
 import { vendorKey, vendorName } from "@/lib/finance/vendors";
+import { roundMoney, subtractMoney, sumMoney } from "@/lib/money";
 import type { ExpenseCategory, ISODate } from "@/types/finance";
 
 /** The periods to choose from, in months */
@@ -91,7 +92,6 @@ const monthLabel = (month: string, locale: Locale) =>
   new Intl.DateTimeFormat(intlLocale(locale), { month: "short", timeZone: "UTC" }).format(
     new Date(`${month}-01T00:00:00Z`),
   );
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Unusual charges: recent = the last 30 days, compared with the half year
 // before; at least 50% and $20 above the vendor's average, which must be
@@ -158,14 +158,14 @@ export function buildInsights({
   const points = months.map((month) => ({
     month,
     label: monthLabel(month, locale),
-    income: round2(byMonth.get(month)?.income ?? 0),
-    expenses: round2(byMonth.get(month)?.expenses ?? 0),
+    income: roundMoney(byMonth.get(month)?.income ?? 0),
+    expenses: roundMoney(byMonth.get(month)?.expenses ?? 0),
     partial: month === today.slice(0, 7),
   }));
 
-  const income = round2(points.reduce((sum, m) => sum + m.income, 0));
-  const spent = round2(points.reduce((sum, m) => sum + m.expenses, 0));
-  const net = round2(income - spent);
+  const income = sumMoney(points.map((m) => m.income));
+  const spent = sumMoney(points.map((m) => m.expenses));
+  const net = subtractMoney(income, spent);
 
   const merged = mergeVendors(vendors);
   const vendorTotal = merged.reduce((sum, v) => sum + v.amount, 0);
@@ -186,7 +186,7 @@ export function buildInsights({
       .slice(0, TOP_VENDORS)
       .map((v) => ({
         ...v,
-        amount: round2(v.amount),
+        amount: roundMoney(v.amount),
         share: vendorTotal > 0 ? v.amount / vendorTotal : 0,
       })),
     unusualCharges: findUnusualCharges(expenses, today),
@@ -247,8 +247,8 @@ export function findUnusualCharges(
         id: e.id,
         name: e.name,
         day: e.day,
-        amount: round2(amount),
-        usual: round2(usual),
+        amount: roundMoney(amount),
+        usual: roundMoney(usual),
         percentAbove: Math.round((amount / usual - 1) * 100),
       });
     }

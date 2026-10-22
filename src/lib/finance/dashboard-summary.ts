@@ -15,6 +15,7 @@
 import { addDays } from "@/lib/dates";
 import { DEFAULT_LOCALE, fill, intlLocale, type Locale } from "@/i18n/config";
 import { messagesFor } from "@/i18n/messages";
+import { roundMoney, subtractMoney, sumMoney } from "@/lib/money";
 import type {
   Account,
   Cashflow,
@@ -71,8 +72,6 @@ const monthLabel = (month: string, locale: Locale) =>
 // Color for spending without a category, and for "N more categories"
 const NEUTRAL_COLOR = "#94a3b8";
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
 /**
  * The days the dashboard looks at. "Last 30 days" includes today; the 30
  * days before that are the comparison. Each range runs up to (not
@@ -113,15 +112,11 @@ export function buildDashboardSummary({
 
   const byDay = new Map(daily.map((d) => [d.day, d]));
   const sumDays = (include: (day: ISODate) => boolean) => {
-    let income = 0;
-    let expenses = 0;
-    for (const d of daily) {
-      if (include(d.day)) {
-        income += d.income;
-        expenses += d.expenses;
-      }
-    }
-    return { income: round2(income), expenses: round2(expenses) };
+    const days = daily.filter((d) => include(d.day));
+    return {
+      income: sumMoney(days.map((d) => d.income)),
+      expenses: sumMoney(days.map((d) => d.expenses)),
+    };
   };
   const between = (from: ISODate, to: ISODate) => (day: ISODate) => day >= from && day < to;
 
@@ -131,8 +126,8 @@ export function buildDashboardSummary({
     return {
       date: day,
       label: dayLabel(day, locale),
-      income: round2(byDay.get(day)?.income ?? 0),
-      expenses: round2(byDay.get(day)?.expenses ?? 0),
+      income: roundMoney(byDay.get(day)?.income ?? 0),
+      expenses: roundMoney(byDay.get(day)?.expenses ?? 0),
     };
   });
   // ...and one per month of this year so far
@@ -148,15 +143,15 @@ export function buildDashboardSummary({
   // Summary tiles: the last 30 days against the 30 days before
   const current = sumDays(between(last30Start, tomorrow));
   const previous = sumDays(between(previous30Start, last30Start));
-  const totalBalance = round2(accounts.reduce((sum, a) => sum + a.balance, 0));
-  const net = round2(current.income - current.expenses);
+  const totalBalance = sumMoney(accounts.map((a) => a.balance));
+  const net = subtractMoney(current.income, current.expenses);
   const metrics: Metric[] = [
     {
       id: "balance",
       title: m.metrics.balance,
       value: totalBalance,
       // The balance 30 days ago: today's minus what changed since
-      previousValue: round2(totalBalance - net),
+      previousValue: subtractMoney(totalBalance, net),
       format: "currency",
       iconKey: "dollar",
       higherIsBetter: true,
@@ -183,7 +178,7 @@ export function buildDashboardSummary({
       id: "net",
       title: m.metrics.net,
       value: net,
-      previousValue: round2(previous.income - previous.expenses),
+      previousValue: subtractMoney(previous.income, previous.expenses),
       format: "currency",
       iconKey: "net",
       higherIsBetter: true,
@@ -215,7 +210,7 @@ export function topCategories(
     .map((s) => ({
       id: s.categoryId ?? "uncategorized",
       category: s.name ?? m.uncategorized,
-      amount: round2(s.amount),
+      amount: roundMoney(s.amount),
       iconKey: (s.iconKey ?? "more") as CategoryIconKey,
       color: s.color ?? NEUTRAL_COLOR,
     }))
@@ -228,7 +223,7 @@ export function topCategories(
     {
       id: "everything-else",
       category: fill(m.moreCategories, { count: rest.length }),
-      amount: round2(rest.reduce((sum, c) => sum + c.amount, 0)),
+      amount: sumMoney(rest.map((c) => c.amount)),
       iconKey: "more",
       color: NEUTRAL_COLOR,
     },

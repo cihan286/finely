@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { DEFAULT_LOCALE, intlLocale, type Locale } from "@/i18n/config";
+import { roundMoney, subtractMoney } from "@/lib/money";
 import type { CategoryIconKey, ISODate } from "@/types/finance";
 
 /**
@@ -45,8 +46,6 @@ export interface BudgetProgress extends BudgetSpending {
   ratio: number;
   status: BudgetStatus;
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "2026-10-13" -> "October", in Turkish "Ekim" */
 export function monthName(day: ISODate, locale: Locale = DEFAULT_LOCALE): string {
@@ -83,8 +82,8 @@ export function buildBudgets(spending: BudgetSpending[]): BudgetProgress[] {
   return spending
     .map((b) => ({
       ...b,
-      spent: round2(b.spent),
-      remaining: round2(b.budget - b.spent),
+      spent: roundMoney(b.spent),
+      remaining: subtractMoney(b.budget, b.spent),
       ratio: b.spent / b.budget,
       status: budgetStatus(b.spent, b.budget),
     }))

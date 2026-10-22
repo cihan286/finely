@@ -14,6 +14,7 @@ import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { financialAccount, transaction } from "@/db/finance";
+import { addMoney } from "@/lib/money";
 import { ACCOUNT_TYPES, type Account } from "@/types/finance";
 import { recordAudit } from "./audit";
 import {
@@ -55,7 +56,7 @@ export async function listAccounts(): Promise<Account[]> {
   return rows.map(({ openingBalance, completedTotal, ...row }) => ({
     ...row,
     type: row.type as Account["type"],
-    balance: Math.round((openingBalance + completedTotal) * 100) / 100,
+    balance: addMoney(openingBalance, completedTotal),
   }));
 }
 

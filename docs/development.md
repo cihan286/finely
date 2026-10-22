@@ -168,6 +168,7 @@ src/
 │   ├── demo.ts             Telling the demo's pretend people apart
 │   ├── dates.ts            Calendar days in a company's timezone
 │   ├── format.ts           Currency, number and date formatting, in either language
+│   ├── money.ts            Exact sums, differences and rounding of money (tested)
 │   ├── monitoring.ts       Sentry settings (what is and isn't sent)
 │   └── redirect.ts         Safe "return here after logging in" addresses
 ├── i18n/                   English and Turkish (see Languages below)
@@ -290,8 +291,13 @@ timezone. Browser code only formats day strings (`formatDate`,
 timezone never shifts a date.
 
 **Money.** Amounts are stored as `numeric(14,2)` (exact cents) and come back
-as plain numbers. An account's balance is its opening balance plus its
-completed transactions; pending ones don't count yet.
+as plain numbers. Add, subtract, multiply and round them only with the
+helpers in `src/lib/money.ts` (`sumMoney()`, `subtractMoney()`,
+`roundMoney()`, `sameAmount()`…), never with `+` and `Math.round`: they
+work in exact decimals, so 0.1 + 0.2 is 0.3 and half a cent goes away from
+zero (1.005 → 1.01, -1.005 → -1.01). Totals over many rows are best summed
+by Postgres (`sum()` is exact). An account's balance is its opening balance
+plus its completed transactions; pending ones don't count yet.
 
 **Emptying a database.** To delete all data, empty the tables in the `public`
 schema only. Leave `drizzle.__drizzle_migrations` alone: it records which

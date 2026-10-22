@@ -14,6 +14,7 @@
 // importTransactions() in lib/data/transactions.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { roundMoney } from "@/lib/money";
 import type { ISODate } from "@/types/finance";
 
 /** The most lines one import may contain */
@@ -291,7 +292,7 @@ export function interpretRows(
       problem("noAmount");
       continue;
     }
-    amount = Math.round(amount * 100) / 100;
+    amount = roundMoney(amount);
     if (amount === 0) {
       problem("zero");
       continue;

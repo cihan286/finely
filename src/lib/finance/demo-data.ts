@@ -15,6 +15,7 @@
 
 import { messagesFor, type Messages } from "@/i18n/messages";
 import { addDays, daysBetween } from "@/lib/dates";
+import { roundMoney } from "@/lib/money";
 import type { AccountType, BillRepeat, ISODate, TransactionStatus } from "@/types/finance";
 
 /** How far back the demo's history goes */
@@ -82,8 +83,6 @@ function seededRandom(seed: number) {
   };
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
 /** The days in [from, to] that fall on a given day of the month */
 function monthlyDays(from: ISODate, to: ISODate, dayOfMonth: number): ISODate[] {
   const days: ISODate[] = [];
@@ -122,7 +121,7 @@ export function generateDemoData(
   words: Messages["samples"]["demo"] = messagesFor("en").samples.demo,
 ): DemoData {
   const random = seededRandom(seed);
-  const between = (min: number, max: number) => round2(min + random() * (max - min));
+  const between = (min: number, max: number) => roundMoney(min + random() * (max - min));
   const start = addDays(today, -(DEMO_HISTORY_DAYS - 1));
   const transactions: DemoTransaction[] = [];
 
@@ -137,7 +136,7 @@ export function generateDemoData(
       account: extra.account ?? "checking",
       day,
       name,
-      amount: round2(amount),
+      amount: roundMoney(amount),
       category,
       card: extra.card ?? null,
       status: extra.status ?? "completed",

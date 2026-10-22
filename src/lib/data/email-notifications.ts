@@ -42,6 +42,7 @@ import {
   type Digest,
 } from "@/lib/finance/digest";
 import { findUnusualCharges, insightRange } from "@/lib/finance/insights";
+import { roundMoney, sumMoney } from "@/lib/money";
 import type { EmailPreferences, ISODate } from "@/types/finance";
 import { selectBudgetSpending } from "./budgets";
 import { DataError, getCompanyLocale, getFinanceContext } from "./common";
@@ -293,28 +294,25 @@ export async function loadDigest(
   ]);
 
   const billSummary = summarizeBills(bills, today);
-  const round2 = (n: number) => Math.round(n * 100) / 100;
   return {
     organizationName,
     currency,
     from,
     to,
     transactionCount: week.count,
-    moneyIn: round2(week.moneyIn),
-    moneyOut: round2(week.moneyOut),
-    balance: round2(
-      accounts.reduce((sum, a) => sum + a.openingBalance + a.completedTotal, 0),
-    ),
+    moneyIn: roundMoney(week.moneyIn),
+    moneyOut: roundMoney(week.moneyOut),
+    balance: sumMoney(accounts.flatMap((a) => [a.openingBalance, a.completedTotal])),
     topCategories: topCategories.map((c) => ({
       // null: no category ("Uncategorized" in each reader's language)
       name: c.name,
-      amount: round2(c.amount),
+      amount: roundMoney(c.amount),
     })),
     overdueBills: billSummary.overdue,
     billsDueSoon: billSummary.dueSoon,
     overBudget: budgets
       .filter((b) => b.spent > b.budget)
-      .map((b) => ({ name: b.name, spent: round2(b.spent), budget: b.budget })),
+      .map((b) => ({ name: b.name, spent: roundMoney(b.spent), budget: b.budget })),
     unusualCharges: findUnusualCharges(expenses, today, Infinity).filter(
       (charge) => charge.day >= from,
     ),

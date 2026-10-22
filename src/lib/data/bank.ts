@@ -37,6 +37,7 @@ import { zonedTime } from "@/lib/dates";
 import { finelyAccountType, last4From, planSync } from "@/lib/finance/bank-sync";
 import { cardFromDescription } from "@/lib/finance/cards";
 import { categoryFromRules } from "@/lib/finance/category-rules";
+import { roundMoney, subtractMoney } from "@/lib/money";
 import { recordAudit, type AuditActor } from "./audit";
 import { selectRules } from "./category-rules";
 import {
@@ -366,7 +367,7 @@ async function syncConnection(
   const fromBank = (t: (typeof plan.insert)[number]) => ({
     accountId: accountIds.get(t.accountExternalId)!,
     name: t.name,
-    amount: Math.round(t.amount * 100) / 100,
+    amount: roundMoney(t.amount),
     occurredAt: zonedTime(t.day, "12:00", timeZone),
     status: t.pending ? "pending" : "completed",
     externalId: t.externalId,
@@ -448,8 +449,7 @@ async function syncConnection(
     await db
       .update(financialAccount)
       .set({
-        openingBalance:
-          Math.round((bankAccount.balance - (completedIn.get(accountId) ?? 0)) * 100) / 100,
+        openingBalance: subtractMoney(bankAccount.balance, completedIn.get(accountId) ?? 0),
       })
       .where(
         and(

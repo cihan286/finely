@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { budgetStatus, type BudgetStatus } from "@/lib/finance/budgets";
+import { roundMoney, subtractMoney } from "@/lib/money";
 import type { Card } from "@/types/finance";
 
 /** A card with what was paid with it this month */
@@ -33,8 +34,6 @@ export interface CardProgress extends CardSpending {
   status: BudgetStatus | null;
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
 /**
  * Each card's progress against its monthly limit: cards in use first (the
  * most used up first, then by name), archived ones last.
@@ -45,8 +44,8 @@ export function buildCards(cards: CardSpending[]): CardProgress[] {
       const limit = card.monthlyLimit;
       return {
         ...card,
-        spent: round2(card.spent),
-        remaining: limit === null ? null : round2(limit - card.spent),
+        spent: roundMoney(card.spent),
+        remaining: limit === null ? null : subtractMoney(limit, card.spent),
         ratio: limit === null ? null : card.spent / limit,
         status: limit === null ? null : budgetStatus(card.spent, limit),
       };

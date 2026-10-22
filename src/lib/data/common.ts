@@ -18,6 +18,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { companySettings } from "@/db/finance";
+import { roundMoney } from "@/lib/money";
 import { requireOrganization } from "@/lib/session";
 import { currencyDecimals } from "@/lib/format";
 import { canManageFinances } from "@/lib/roles";
@@ -198,8 +199,7 @@ export function money(value: unknown, field: FieldKey, currency = "USD"): number
   if (Math.abs(amount) > MAX_AMOUNT) {
     throw new DataError("tooLarge", { field });
   }
-  const factor = 10 ** Math.min(currencyDecimals(currency), 2);
-  return Math.round(amount * factor) / factor;
+  return roundMoney(amount, Math.min(currencyDecimals(currency), 2));
 }
 
 /** A calendar day, e.g. "2026-10-01" */

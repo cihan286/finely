@@ -21,6 +21,7 @@ import { addDays, daysBetween } from "@/lib/dates";
 import { nextDueDate } from "@/lib/finance/bills";
 import { sameVendor } from "@/lib/finance/vendors";
 import { billKey, type RecurringPayment } from "@/lib/finance/recurring";
+import { addMoney, roundMoney, sameAmount, sumMoney } from "@/lib/money";
 import type { BillRepeat, ISODate } from "@/types/finance";
 
 /** How far ahead the forecast looks, in days */
@@ -58,8 +59,6 @@ export interface Forecast {
   /** Everything expected, soonest first */
   events: ForecastEvent[];
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Estimates the balance over the next 30 days. */
 export function buildForecast({
@@ -111,7 +110,7 @@ export function buildForecast({
     const index = bills.findIndex(
       (bill, i) =>
         !paidByPending.has(i) &&
-        Math.round(bill.amount * 100) === Math.round(-payment.amount * 100) &&
+        sameAmount(bill.amount, -payment.amount) &&
         Math.abs(daysBetween(bill.dueDate, payment.day)) <= PENDING_BILL_DAYS &&
         sameVendor(bill.name, payment.name),
     );
@@ -154,23 +153,19 @@ export function buildForecast({
 
   let running = balance;
   let lowest = { balance, day: today };
-  let moneyIn = 0;
-  let moneyOut = 0;
   for (const event of events) {
-    running = round2(running + event.amount);
-    if (event.amount > 0) moneyIn += event.amount;
-    else moneyOut -= event.amount;
+    running = addMoney(running, event.amount);
     if (running < lowest.balance) lowest = { balance: running, day: event.day };
   }
 
   return {
     today,
     until,
-    startBalance: round2(balance),
+    startBalance: roundMoney(balance),
     endBalance: running,
     lowest,
-    moneyIn: round2(moneyIn),
-    moneyOut: round2(moneyOut),
+    moneyIn: sumMoney(events.filter((e) => e.amount > 0).map((e) => e.amount)),
+    moneyOut: sumMoney(events.filter((e) => e.amount < 0).map((e) => -e.amount)),
     events,
   };
 }

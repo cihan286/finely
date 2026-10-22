@@ -1116,7 +1116,8 @@ describe("bills", () => {
     await importTransactions(accountId, [
       { date: today, name: "Tea", amount: -249.5, category: null },
     ]);
-    expect((await listTransactions()).transactions[0].amount).toBe(-249);
+    // Half a yen goes away from zero, for money out as for money in
+    expect((await listTransactions()).transactions[0].amount).toBe(-250);
   });
 
   it("checks what was typed", async () => {

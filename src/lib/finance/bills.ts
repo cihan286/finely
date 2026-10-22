@@ -20,6 +20,7 @@
 
 import { addDays, daysBetween } from "@/lib/dates";
 import { sameVendor } from "@/lib/finance/vendors";
+import { addMoney, sameAmount } from "@/lib/money";
 import type { BillRepeat, ISODate } from "@/types/finance";
 
 /** Bills due within this many days (today included) count as "due soon" */
@@ -106,7 +107,6 @@ export function matchBillPayments(
   bills: OwedBill[],
   payments: ArrivedPayment[],
 ): { billId: string; paymentId: string }[] {
-  const cents = (amount: number) => Math.round(amount * 100);
   const used = new Set<string>();
   const matches: { billId: string; paymentId: string }[] = [];
   const byDueDate = [...bills].sort(
@@ -117,7 +117,7 @@ export function matchBillPayments(
     let best: { id: string; distance: number } | null = null;
     for (const payment of payments) {
       if (used.has(payment.id)) continue;
-      if (payment.amount >= 0 || cents(-payment.amount) !== cents(bill.amount)) continue;
+      if (payment.amount >= 0 || !sameAmount(-payment.amount, bill.amount)) continue;
       // Positive when paid after the due date
       const late = daysBetween(bill.dueDate, payment.day);
       if (late < -window.early || late > window.late) continue;
@@ -152,7 +152,7 @@ export function summarizeBills(
   };
   const add = (to: { count: number; amount: number }, amount: number) => {
     to.count += 1;
-    to.amount = Math.round((to.amount + amount) * 100) / 100;
+    to.amount = addMoney(to.amount, amount);
   };
   for (const bill of unpaid) {
     add(summary.unpaid, bill.amount);
