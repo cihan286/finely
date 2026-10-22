@@ -55,6 +55,9 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
 
     test("the demo's pages, dialogs and notifications", async ({ page }) => {
+      // It checks every page of the demo and several windows, one after
+      // another: more than the usual 30 seconds
+      test.setTimeout(60_000);
       await page.goto("/");
       await page.getByRole("button", { name: "Try the demo" }).click();
       await expect(page.getByRole("heading", { name: "Dashboard Overview" })).toBeVisible({
