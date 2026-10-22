@@ -32,6 +32,8 @@ import {
   categoryRule,
   companyProfile,
   companySettings,
+  documentCounter,
+  documentSeries,
   financialAccount,
   notificationPreference,
   notificationRead,
@@ -165,6 +167,8 @@ export function companyDeletionSteps(id: string) {
     db.delete(companySettings).where(eq(companySettings.organizationId, id)),
     db.delete(companyProfile).where(eq(companyProfile.organizationId, id)),
     db.delete(branch).where(eq(branch.organizationId, id)),
+    db.delete(documentSeries).where(eq(documentSeries.organizationId, id)),
+    db.delete(documentCounter).where(eq(documentCounter.organizationId, id)),
     db.delete(notificationRead).where(eq(notificationRead.organizationId, id)),
     db.delete(recurringDismissal).where(eq(recurringDismissal.organizationId, id)),
     db

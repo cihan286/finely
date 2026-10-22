@@ -114,6 +114,7 @@ export const audit = {
     branchAdded: "Added the branch “{name}”",
     branchChanged: "Changed the branch “{name}”",
     branchRemoved: "Removed the branch “{name}”",
+    seriesPrefixChanged: "Changed a document series from {from} to {to}",
     transactionAdded: "Added the transaction “{name}” ({amount})",
     transactionChanged: "Changed the transaction “{name}”: {changes}",
     transactionDeleted: "Deleted the transaction “{name}” ({amount}, {day})",

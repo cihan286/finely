@@ -61,6 +61,7 @@ import {
 import { deleteCompany, transferOwnership } from "./company";
 import { getCompanyProfile, updateCompanyProfile } from "./company-profile";
 import { createBranch, deleteBranch, listBranches, updateBranch } from "./branches";
+import { listDocumentSeries, setSeriesPrefix, takeDocumentNumber } from "./document-numbers";
 import {
   getEmailPreferences,
   sendWeeklyDigests,
@@ -1752,6 +1753,64 @@ describe("company details and branches", () => {
     actAs(company);
     await deleteBranch(hq);
     expect((await listBranches()).map((b) => b.name)).toEqual(["İzmir", "Ankara"]);
+  });
+});
+
+describe("document numbers", () => {
+  it("counts each kind of document per company and year, never twice", async () => {
+    const one = await createTestCompany("numbers-one");
+    const two = await createTestCompany("numbers-two");
+    const take = (company: { organizationId: string }, day = "2026-03-01") =>
+      takeDocumentNumber(company.organizationId, "salesInvoice", day);
+
+    expect(await take(one)).toBe("FTR2026000000001");
+    expect(await take(one)).toBe("FTR2026000000002");
+    // Another company, another kind of document and another year count apart
+    expect(await take(two)).toBe("FTR2026000000001");
+    expect(await takeDocumentNumber(one.organizationId, "salesOrder", "2026-03-01")).toBe(
+      "SSP2026000000001",
+    );
+    expect(await take(one, "2027-01-01")).toBe("FTR2027000000001");
+    expect(await take(one)).toBe("FTR2026000000003");
+
+    // Taken at the same moment: all different, none skipped
+    const many = await Promise.all(Array.from({ length: 5 }, () => take(two)));
+    expect([...many].sort()).toEqual([
+      "FTR2026000000002",
+      "FTR2026000000003",
+      "FTR2026000000004",
+      "FTR2026000000005",
+      "FTR2026000000006",
+    ]);
+  });
+
+  it("lets a company choose its series' letters", async () => {
+    const company = await createTestCompany("series-co");
+    actAs(company, "accountant");
+    await setSeriesPrefix("salesInvoice", " acm ");
+    await expect(setSeriesPrefix("salesOrder", "ACM")).rejects.toThrow(
+      "Another kind of document is already numbered with these letters.",
+    );
+    await expect(setSeriesPrefix("salesOrder", "SS")).rejects.toThrow(
+      "A series is three capital letters or digits, like FTR.",
+    );
+    const year = Number(today.slice(0, 4));
+    await takeDocumentNumber(company.organizationId, "salesInvoice", today);
+    const series = await listDocumentSeries();
+    expect(series.find((s) => s.type === "salesInvoice")).toEqual({
+      type: "salesInvoice",
+      prefix: "ACM",
+      next: `ACM${year}000000002`,
+    });
+    expect(series.find((s) => s.type === "quote")?.next).toBe(`TKL${year}000000001`);
+
+    actAs(company, "member");
+    await expect(setSeriesPrefix("quote", "TEK")).rejects.toThrow(
+      "Your role in this company doesn't allow this.",
+    );
+    // Another company still has the standard letters
+    actAs(globex);
+    expect((await listDocumentSeries())[0].prefix).toBe("FTR");
   });
 });
 

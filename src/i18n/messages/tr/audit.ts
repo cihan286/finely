@@ -113,6 +113,7 @@ export const audit: typeof en = {
     branchAdded: "“{name}” şubesini ekledi",
     branchChanged: "“{name}” şubesini değiştirdi",
     branchRemoved: "“{name}” şubesini kaldırdı",
+    seriesPrefixChanged: "Bir belge serisini {from} yerine {to} yaptı",
     transactionAdded: "“{name}” işlemini ekledi ({amount})",
     transactionChanged: "“{name}” işlemini değiştirdi: {changes}",
     transactionDeleted: "“{name}” işlemini sildi ({amount}, {day})",

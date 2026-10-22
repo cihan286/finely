@@ -147,6 +147,42 @@ export const branch = pgTable(
   ],
 );
 
+// The prefix a company numbers one kind of document with, when it isn't
+// the standard one (see lib/finance/documents.ts): "FTR" for invoices
+// becomes "ACM", say. Kinds without a row use the standard prefix.
+export const documentSeries = pgTable(
+  "document_series",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // A DocumentType, e.g. "salesInvoice"
+    type: text("type").notNull(),
+    // Three capital letters or digits
+    prefix: text("prefix").notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.organizationId, table.type] })],
+);
+
+// The last number given to one kind of document in one year, so the next
+// one is one more: numbers never repeat and never skip (see
+// lib/data/document-numbers.ts)
+export const documentCounter = pgTable(
+  "document_counter",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    // The calendar year, in the company's timezone
+    year: integer("year").notNull(),
+    lastNumber: integer("last_number").notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.organizationId, table.type, table.year] })],
+);
+
 // A bank the company linked (through Plaid), so that its accounts'
 // transactions are imported automatically (see lib/data/bank.ts).
 export const bankConnection = pgTable(

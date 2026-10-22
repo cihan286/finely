@@ -26,6 +26,8 @@ export const errors = {
   invalidMersis: "A MERSİS number has 16 digits.",
   branchCode: "Code can only have letters, digits and dashes.",
   duplicateBranch: "Another branch already has this name or code.",
+  seriesPrefix: "A series is three capital letters or digits, like FTR.",
+  seriesPrefixTaken: "Another kind of document is already numbered with these letters.",
   // Accounts and cards
   lastFourDigits: "Last four digits must be exactly 4 digits.",
   accountHasTransactions: "This account still has transactions. Move or delete them first.",
@@ -146,4 +148,5 @@ export const fields = {
   phone: "Phone",
   website: "Website",
   code: "Code",
+  type: "Type",
 };

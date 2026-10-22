@@ -139,6 +139,29 @@ the checksums are in `lib/finance/company-identity.ts` and the countries
 (ISO 3166 codes, named in the reader's language) in
 `lib/finance/countries.ts`.
 
+## Document numbers
+
+Invoices, quotes, orders, delivery notes and journal entries will all be
+**documents** that live the same way: a **draft** can be changed or thrown
+away and has no number; an **approved** one is final, gets the next number
+of its series and can't be changed; a **cancelled** one is undone by a
+reversing entry and keeps its number, so the numbers never have a gap.
+
+Numbers follow the Turkish e-invoice format: three capital letters or
+digits for the series, the year, then a nine-digit count that starts again
+each year (`FTR2026000000001`). Each kind of document has its own series
+(FTR for sales invoices, ALF for purchase invoices, TKL for quotes, …) and
+counts on its own, per company. Owners, admins and accountants can change
+a series' letters; numbers already given keep theirs and the count goes
+on. No two series of a company share letters.
+
+For developers: the rules and the format are in
+`lib/finance/documents.ts`; `lib/data/document-numbers.ts` hands out the
+next number atomically (`takeDocumentNumber()`, for the data functions
+that approve a document: call it only once the document is sure to be
+saved). There is no screen for the series yet; it comes with the first
+documents ([ERP roadmap](erp-roadmap.md), phase 2).
+
 ## Plans and billing
 
 Plans differ in how many people can be on a company's team

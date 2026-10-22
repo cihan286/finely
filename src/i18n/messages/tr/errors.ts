@@ -23,6 +23,8 @@ export const errors: typeof enErrors = {
   invalidMersis: "MERSİS numarası 16 hanelidir.",
   branchCode: "Kod yalnızca harf, rakam ve kısa çizgi içerebilir.",
   duplicateBranch: "Bu ad veya kod başka bir şubede kullanılıyor.",
+  seriesPrefix: "Seri, FTR gibi üç büyük harf veya rakamdır.",
+  seriesPrefixTaken: "Bu harflerle başka bir belge türü numaralanıyor.",
   lastFourDigits: "Son dört hane tam olarak 4 rakam olmalıdır.",
   accountHasTransactions: "Bu hesapta hâlâ işlemler var. Önce onları taşıyın veya silin.",
   holderNotOnTeam: "Kart sahibi bu ekipte değil.",
@@ -136,4 +138,5 @@ export const fields: typeof enFields = {
   phone: "Telefon",
   website: "Web sitesi",
   code: "Kod",
+  type: "Tür",
 };
